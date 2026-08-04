@@ -7,10 +7,10 @@ import (
 // Maintenance exposes offline tenant export and purge. It is constructed
 // separately from Manager and requires MaintenanceAuthorizer on every call.
 type Maintenance struct {
-	store        MaintenanceStore
-	authorizer   MaintenanceAuthorizer
+	store         MaintenanceStore
+	authorizer    MaintenanceAuthorizer
 	securityAudit SecurityAuditSink
-	clock        Clock
+	clock         Clock
 }
 
 // NewMaintenance constructs the maintenance API.
@@ -78,16 +78,16 @@ func (m *Maintenance) PurgeTenant(ctx context.Context, tenantID TenantID, meta M
 	}
 
 	intent := MutationAuditEvent{
-		TenantID:       tenantID,
-		HostInitiator:  provenance.Initiator,
-		Operation:      "tenant.purge",
-		Phase:          AuditPhaseIntent,
-		TargetType:     "tenant",
-		TargetID:       string(tenantID),
-		Outcome:        AuditOutcomeSuccess,
-		ReasonCode:     meta.ReasonCode,
-		RequestID:      meta.RequestID,
-		At:             m.clock.Now(),
+		TenantID:      tenantID,
+		HostInitiator: provenance.Initiator,
+		Operation:     "tenant.purge",
+		Phase:         AuditPhaseIntent,
+		TargetType:    "tenant",
+		TargetID:      string(tenantID),
+		Outcome:       AuditOutcomeSuccess,
+		ReasonCode:    meta.ReasonCode,
+		RequestID:     meta.RequestID,
+		At:            m.clock.Now(),
 	}
 	if err := m.securityAudit.RecordSecurityEvent(ctx, intent); err != nil {
 		return ErrAuditUnavailable

@@ -146,11 +146,11 @@ func (b *Bootstrapper) BootstrapTenant(ctx context.Context, input BootstrapInput
 			}
 		}
 		grant := SubjectRoleGrant{
-			TenantID:         input.TenantID,
-			SubjectID:        input.OwnerSubjectID,
-			RoleID:           input.OwnerRoleID,
-			Provenance:       GrantProvenanceBootstrap,
-			GrantedAt:        b.clock.Now(),
+			TenantID:   input.TenantID,
+			SubjectID:  input.OwnerSubjectID,
+			RoleID:     input.OwnerRoleID,
+			Provenance: GrantProvenanceBootstrap,
+			GrantedAt:  b.clock.Now(),
 		}
 		if _, err := tx.InsertSubjectRoleGrant(ctx, grant); err != nil {
 			return err
@@ -169,17 +169,17 @@ func (b *Bootstrapper) BootstrapTenant(ctx context.Context, input BootstrapInput
 			return err
 		}
 		event := MutationAuditEvent{
-			TenantID:       input.TenantID,
-			HostInitiator:  provenance.Initiator,
-			Operation:      "tenant.bootstrap",
-			Phase:          AuditPhaseResult,
-			TargetType:     "tenant",
-			TargetID:       string(input.TenantID),
-			Outcome:        AuditOutcomeSuccess,
-			ReasonCode:     input.Metadata.ReasonCode,
-			RequestID:      input.Metadata.RequestID,
-			RoleVersion:    1,
-			At:             b.clock.Now(),
+			TenantID:      input.TenantID,
+			HostInitiator: provenance.Initiator,
+			Operation:     "tenant.bootstrap",
+			Phase:         AuditPhaseResult,
+			TargetType:    "tenant",
+			TargetID:      string(input.TenantID),
+			Outcome:       AuditOutcomeSuccess,
+			ReasonCode:    input.Metadata.ReasonCode,
+			RequestID:     input.Metadata.RequestID,
+			RoleVersion:   1,
+			At:            b.clock.Now(),
 		}
 		if err := tx.InsertMutationAudit(ctx, event); err != nil {
 			return err

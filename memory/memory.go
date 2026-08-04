@@ -20,16 +20,16 @@ type Store struct {
 }
 
 type tenantState struct {
-	roles           map[amsonia.RoleID]amsonia.Role
-	rolePerms       map[amsonia.RoleID]map[grantKey]amsonia.RolePermissionGrant
-	subjectRoles    map[amsonia.SubjectID]map[amsonia.RoleID]amsonia.SubjectRoleGrant
-	grantEdges      map[edgeKey]amsonia.GrantEdge
-	roleVersions    map[amsonia.RoleID]map[int64]amsonia.RoleVersion
-	audit           []amsonia.MutationAuditEvent
-	bootstrapped    bool
+	roles               map[amsonia.RoleID]amsonia.Role
+	rolePerms           map[amsonia.RoleID]map[grantKey]amsonia.RolePermissionGrant
+	subjectRoles        map[amsonia.SubjectID]map[amsonia.RoleID]amsonia.SubjectRoleGrant
+	grantEdges          map[edgeKey]amsonia.GrantEdge
+	roleVersions        map[amsonia.RoleID]map[int64]amsonia.RoleVersion
+	audit               []amsonia.MutationAuditEvent
+	bootstrapped        bool
 	bootstrapProvenance amsonia.HostProvenance
-	purged          bool
-	purgeLedger     map[string]amsonia.MutationAuditEvent
+	purged              bool
+	purgeLedger         map[string]amsonia.MutationAuditEvent
 }
 
 type grantKey struct {
@@ -385,13 +385,13 @@ type maintenanceTx struct {
 
 func (mt *maintenanceTx) ExportTenant(ctx context.Context) ([]byte, error) {
 	type export struct {
-		Format   string                       `json:"format"`
-		TenantID amsonia.TenantID             `json:"tenant_id"`
-		Roles    []amsonia.Role               `json:"roles"`
+		Format   string                        `json:"format"`
+		TenantID amsonia.TenantID              `json:"tenant_id"`
+		Roles    []amsonia.Role                `json:"roles"`
 		Grants   []amsonia.RolePermissionGrant `json:"grants"`
-		Versions []amsonia.RoleVersion        `json:"versions"`
-		Edges    []amsonia.GrantEdge          `json:"edges"`
-		Audit    []amsonia.MutationAuditEvent `json:"audit"`
+		Versions []amsonia.RoleVersion         `json:"versions"`
+		Edges    []amsonia.GrantEdge           `json:"edges"`
+		Audit    []amsonia.MutationAuditEvent  `json:"audit"`
 	}
 	e := export{Format: "amsonia.tenant.v1", TenantID: mt.tenantID}
 	for _, role := range mt.tenant.roles {

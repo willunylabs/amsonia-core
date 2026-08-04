@@ -49,8 +49,8 @@ type RevokePermissionInput = GrantPermissionInput
 
 // AssignRoleInput binds a subject to a role with grant-cycle protection.
 type AssignRoleInput struct {
-	SubjectID          SubjectID
-	RoleID             RoleID
+	SubjectID           SubjectID
+	RoleID              RoleID
 	ExpectedRoleVersion int64
 }
 
@@ -61,25 +61,25 @@ type UnassignRoleInput = AssignRoleInput
 // reference OwnerRoleID and must include the three configured control
 // permissions at tenant scope.
 type BootstrapInput struct {
-	TenantID            TenantID
-	OwnerSubjectID      SubjectID
-	OwnerRoleID         RoleID
-	OwnerRoleName       string
+	TenantID             TenantID
+	OwnerSubjectID       SubjectID
+	OwnerRoleID          RoleID
+	OwnerRoleName        string
 	OwnerRoleDescription string
-	Grants              []RolePermissionGrant
-	Metadata            MutationMetadata
+	Grants               []RolePermissionGrant
+	Metadata             MutationMetadata
 }
 
 // Manager executes tenant policy mutations through one serialized tenant
 // transaction per call. Applications must not write roles or bindings
 // directly.
 type Manager struct {
-	catalog      *Catalog
-	store        Store
-	memberships  WorkspaceMembershipReader
-	controls     ControlPermissions
+	catalog       *Catalog
+	store         Store
+	memberships   WorkspaceMembershipReader
+	controls      ControlPermissions
 	securityAudit SecurityAuditSink
-	clock        Clock
+	clock         Clock
 }
 
 // NewManager constructs a Manager. All dependencies are required.

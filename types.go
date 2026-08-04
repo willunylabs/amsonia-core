@@ -78,16 +78,16 @@ const (
 // Public sentinel errors. Adapters wrap underlying errors without changing
 // these classifications.
 var (
-	ErrInvalidInput         = errors.New("amsonia: invalid input")
-	ErrForbidden            = errors.New("amsonia: forbidden")
-	ErrConflict             = errors.New("amsonia: version conflict")
-	ErrNotFound             = errors.New("amsonia: not found")
-	ErrGrantCycle           = errors.New("amsonia: grant cycle would be created")
-	ErrLastAdministrator    = errors.New("amsonia: tenant would lose its last administrator")
-	ErrAlreadyBootstrapped  = errors.New("amsonia: tenant already bootstrapped")
+	ErrInvalidInput          = errors.New("amsonia: invalid input")
+	ErrForbidden             = errors.New("amsonia: forbidden")
+	ErrConflict              = errors.New("amsonia: version conflict")
+	ErrNotFound              = errors.New("amsonia: not found")
+	ErrGrantCycle            = errors.New("amsonia: grant cycle would be created")
+	ErrLastAdministrator     = errors.New("amsonia: tenant would lose its last administrator")
+	ErrAlreadyBootstrapped   = errors.New("amsonia: tenant already bootstrapped")
 	ErrDependencyUnavailable = errors.New("amsonia: dependency unavailable")
-	ErrAuditUnavailable     = errors.New("amsonia: audit unavailable")
-	ErrInvalidPolicy        = errors.New("amsonia: invalid policy data")
+	ErrAuditUnavailable      = errors.New("amsonia: audit unavailable")
+	ErrInvalidPolicy         = errors.New("amsonia: invalid policy data")
 )
 
 // PermissionDefinition is an immutable application catalog entry.

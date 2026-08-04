@@ -459,10 +459,10 @@ func TestEmptyGrantsPermissionNotGranted(t *testing.T) {
 func TestMissingTenantOrSubjectInvalid(t *testing.T) {
 	a := mustAuthorizer(t, nil, nil)
 	_, err := a.Check(context.Background(), CheckRequest{
-		Principal: Principal{SubjectID: "u1"},
+		Principal:  Principal{SubjectID: "u1"},
 		Permission: testPerm,
-		Mode:      ResourceExisting,
-		Resource:  ResourceContext{TenantID: "tenant-a", ResourceID: "x"},
+		Mode:       ResourceExisting,
+		Resource:   ResourceContext{TenantID: "tenant-a", ResourceID: "x"},
 	})
 	if err != nil {
 		t.Fatal(err)
