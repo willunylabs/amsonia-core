@@ -411,7 +411,11 @@ func (m *Manager) GrantPermission(ctx context.Context, actor Principal, meta Mut
 		}
 		if !changed {
 			event := m.auditEvent(actor.TenantID, actor, meta, "grant.permission", "role_permission", string(input.RoleID), AuditOutcomeNoop, role.Version)
-			return tx.InsertMutationAudit(ctx, event)
+			if err := tx.InsertMutationAudit(ctx, event); err != nil {
+				return err
+			}
+			result = MutationResult{Changed: false, RoleVersion: role.Version}
+			return nil
 		}
 		next := role.Version + 1
 		if err := m.bumpRoleVersion(ctx, tx, role, actor, next); err != nil {
@@ -477,7 +481,17 @@ func (m *Manager) RevokePermission(ctx context.Context, actor Principal, meta Mu
 		}
 		if !changed {
 			event := m.auditEvent(actor.TenantID, actor, meta, "revoke.permission", "role_permission", string(input.RoleID), AuditOutcomeNoop, role.Version)
-			return tx.InsertMutationAudit(ctx, event)
+			if err := tx.InsertMutationAudit(ctx, event); err != nil {
+				return err
+			}
+			result = MutationResult{Changed: false, RoleVersion: role.Version}
+			return nil
+		}
+		// A revoke may leave the tenant without a full administrator; the
+		// guard runs after the mutation inside the same serialized tenant
+		// transaction.
+		if err := m.guardLastAdministrator(ctx, tx); err != nil {
+			return err
 		}
 		next := role.Version + 1
 		if err := m.bumpRoleVersion(ctx, tx, role, actor, next); err != nil {
@@ -626,7 +640,17 @@ func (m *Manager) UnassignRole(ctx context.Context, actor Principal, meta Mutati
 		}
 		if !changed {
 			event := m.auditEvent(actor.TenantID, actor, meta, "unassign.role", "subject_role", string(input.SubjectID), AuditOutcomeNoop, role.Version)
-			return tx.InsertMutationAudit(ctx, event)
+			if err := tx.InsertMutationAudit(ctx, event); err != nil {
+				return err
+			}
+			result = MutationResult{Changed: false, RoleVersion: role.Version}
+			return nil
+		}
+		// Removing a binding may leave the tenant without an administrator;
+		// the guard runs after the mutation inside the same serialized
+		// tenant transaction.
+		if err := m.guardLastAdministrator(ctx, tx); err != nil {
+			return err
 		}
 		if removed.Provenance == GrantProvenanceDelegated && removed.GrantorSubjectID != "" {
 			edge := GrantEdge{
@@ -651,6 +675,21 @@ func (m *Manager) UnassignRole(ctx context.Context, actor Principal, meta Mutati
 		return MutationResult{}, err
 	}
 	return result, nil
+}
+
+// guardLastAdministrator ensures the tenant still has at least one subject
+// that effectively holds all three configured management permissions at
+// tenant scope. Callers hold the tenant mutation lock and must call this
+// after any mutation that removes authority (revoke, unassign, delete).
+func (m *Manager) guardLastAdministrator(ctx context.Context, tx TenantTx) error {
+	has, err := tx.HasAdministrator(ctx, m.controls)
+	if err != nil {
+		return err
+	}
+	if !has {
+		return ErrLastAdministrator
+	}
+	return nil
 }
 
 // bumpRoleVersion writes the next immutable snapshot and updates the current
