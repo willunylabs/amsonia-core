@@ -3,9 +3,11 @@
 Opinionated, tenant-safe delegated authorization for Go SaaS applications —
 embedded without additional infrastructure.
 
-Amsonia is the authorization kernel proven in production by the
-[willuny-go-admin](https://github.com/willunylabs/willuny-go-admin) International
-SaaS Starter.
+Amsonia is the open-source core of
+[willuny-go-admin](https://github.com/willunylabs/willuny-go-admin), the
+deployable SaaS starter for teams that need identity (Google OAuth), Stripe
+billing, orders, Resend email, full tenant/workspace lifecycle, admin APIs, and
+operations — the complete product built around this authorization kernel.
 
 ## Why Amsonia
 
@@ -145,4 +147,5 @@ Community support is best effort. Report security issues privately via
 
 ## License
 
-Apache-2.0. The International SaaS Starter is a separate commercial product.
+Apache-2.0. willuny-go-admin — the complete product built around this core — is
+licensed separately under a commercial source license.
