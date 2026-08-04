@@ -347,9 +347,19 @@ func TestPostgresTenantIsolation(t *testing.T) {
 	}
 
 	appURL := appURL(t)
-	// Replace the connection user with the dedicated non-bypass role.
-	appURL = strings.Replace(appURL, "postgres://will@", "postgres://"+role+":test-only@", 1)
-	appPool := newPool(t, appURL)
+	// Reconnect as the dedicated non-bypass role regardless of the admin
+	// URL's user name.
+	appCfg, err := pgxpool.ParseConfig(appURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	appCfg.ConnConfig.User = role
+	appCfg.ConnConfig.Password = "test-only"
+	appPool, err := pgxpool.NewWithConfig(ctx, appCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(appPool.Close)
 	conn, err := appPool.Acquire(ctx)
 	if err != nil {
 		t.Fatal(err)
