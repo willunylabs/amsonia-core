@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+          cache: true
+      - name: Format check
+        run: |
+          test -z "$(gofmt -l .)"
+      - name: Vet
+        run: go vet ./...
+      - name: Unit tests
+        run: go test ./...
+      - name: Race detector
+        run: go test -race ./...
+
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: amsonia_admin
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: amsonia_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U amsonia_admin"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+          cache: true
+      - name: Integration tests (PostgreSQL)
+        env:
+          TEST_DATABASE_ADMIN_URL: "postgres://amsonia_admin:test-only@localhost:5432/amsonia_test?sslmode=disable"
+          TEST_DATABASE_URL: "postgres://amsonia_admin:test-only@localhost:5432/amsonia_test?sslmode=disable"
+        run: go test -tags postgres -count=1 ./postgres/

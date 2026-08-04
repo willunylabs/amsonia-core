@@ -1,0 +1,13 @@
+# Binaries
+/bin/
+*.exe
+*.test
+
+# Local tooling
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Test artifacts
+/coverage.out

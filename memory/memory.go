@@ -72,6 +72,20 @@ func (s *Store) ReadTenant(ctx context.Context, tenantID amsonia.TenantID, fn fu
 	return fn(&tenantReader{tenant: s.tenant(tenantID), tenantID: tenantID})
 }
 
+// ListEffectiveGrants implements amsonia.PolicyReader.
+func (s *Store) ListEffectiveGrants(ctx context.Context, tenantID amsonia.TenantID, subjectID amsonia.SubjectID, permission amsonia.PermissionKey) ([]amsonia.EffectiveGrant, error) {
+	var grants []amsonia.EffectiveGrant
+	err := s.ReadTenant(ctx, tenantID, func(r amsonia.TenantReader) error {
+		var err error
+		grants, err = r.ListEffectiveGrants(ctx, subjectID, permission)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return grants, nil
+}
+
 // MutateTenant runs fn under a global write lock. This provides exclusive
 // ordering across tenants, which is stronger than the per-tenant guarantee
 // required by the Store contract.
