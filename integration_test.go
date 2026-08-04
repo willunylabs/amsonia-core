@@ -63,7 +63,9 @@ func hostAuth(ctx context.Context, tenantID amsonia.TenantID, operation string) 
 
 type nullAudit struct{}
 
-func (nullAudit) RecordSecurityEvent(ctx context.Context, event amsonia.MutationAuditEvent) error { return nil }
+func (nullAudit) RecordSecurityEvent(ctx context.Context, event amsonia.MutationAuditEvent) error {
+	return nil
+}
 
 type noMemberships struct{}
 
