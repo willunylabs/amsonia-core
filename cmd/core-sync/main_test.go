@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,8 +81,32 @@ func TestRunRejectsUnknownMode(t *testing.T) {
 }
 
 func TestRunHelpSucceeds(t *testing.T) {
-	if err := run([]string{"--help"}); err != nil {
-		t.Fatalf("run(--help) error = %v, want nil", err)
+	var runErr error
+	stdout, stderr := captureOutput(t, func() {
+		runErr = run([]string{"--help"})
+	})
+	if runErr != nil {
+		t.Fatalf("run(--help) error = %v, want nil", runErr)
+	}
+	if !strings.Contains(stdout, "Usage of core-sync:") {
+		t.Fatalf("stdout = %q, want usage text", stdout)
+	}
+	if stderr != "" {
+		t.Fatalf("stderr = %q, want empty", stderr)
+	}
+}
+
+func TestRunUnknownFlagWritesDiagnosticsToStderr(t *testing.T) {
+	var runErr error
+	stdout, stderr := captureOutput(t, func() {
+		runErr = run([]string{"--unknown"})
+	})
+	assertErrorContains(t, runErr, "parse flags")
+	if stdout != "" {
+		t.Fatalf("stdout = %q, want empty", stdout)
+	}
+	if !strings.Contains(stderr, "flag provided but not defined: -unknown") {
+		t.Fatalf("stderr = %q, want unknown flag diagnostic", stderr)
 	}
 }
 
@@ -160,6 +185,49 @@ func writeFile(t *testing.T, root, relativePath, content string) {
 	if err := os.WriteFile(filename, []byte(content), 0o600); err != nil {
 		t.Fatalf("os.WriteFile(%q) error = %v", filename, err)
 	}
+}
+
+func captureOutput(t *testing.T, function func()) (stdout, stderr string) {
+	t.Helper()
+	originalStdout := os.Stdout
+	originalStderr := os.Stderr
+	stdoutReader, stdoutWriter, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe(stdout) error = %v", err)
+	}
+	stderrReader, stderrWriter, err := os.Pipe()
+	if err != nil {
+		stdoutReader.Close()
+		stdoutWriter.Close()
+		t.Fatalf("os.Pipe(stderr) error = %v", err)
+	}
+	os.Stdout = stdoutWriter
+	os.Stderr = stderrWriter
+	defer func() {
+		os.Stdout = originalStdout
+		os.Stderr = originalStderr
+		stdoutReader.Close()
+		stdoutWriter.Close()
+		stderrReader.Close()
+		stderrWriter.Close()
+	}()
+
+	function()
+	if err := stdoutWriter.Close(); err != nil {
+		t.Fatalf("stdoutWriter.Close() error = %v", err)
+	}
+	if err := stderrWriter.Close(); err != nil {
+		t.Fatalf("stderrWriter.Close() error = %v", err)
+	}
+	stdoutBytes, err := io.ReadAll(stdoutReader)
+	if err != nil {
+		t.Fatalf("io.ReadAll(stdout) error = %v", err)
+	}
+	stderrBytes, err := io.ReadAll(stderrReader)
+	if err != nil {
+		t.Fatalf("io.ReadAll(stderr) error = %v", err)
+	}
+	return string(stdoutBytes), string(stderrBytes)
 }
 
 func assertErrorContains(t *testing.T, err error, want string) {

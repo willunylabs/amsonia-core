@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -18,7 +19,8 @@ func main() {
 
 func run(arguments []string) error {
 	flags := flag.NewFlagSet("core-sync", flag.ContinueOnError)
-	flags.SetOutput(os.Stdout)
+	flags.SetOutput(os.Stderr)
+	flags.Usage = func() {}
 	mode := flags.String("mode", "sync", "operation mode")
 	manifestPath := flags.String("manifest", "", "manifest path")
 	sourceRoot := flags.String("source-root", "", "source root")
@@ -27,6 +29,7 @@ func run(arguments []string) error {
 	provenancePath := flags.String("provenance", "", "provenance path relative to the destination root")
 	if err := flags.Parse(arguments); err != nil {
 		if err == flag.ErrHelp {
+			printUsage(flags, os.Stdout)
 			return nil
 		}
 		return fmt.Errorf("parse flags: %w", err)
@@ -75,4 +78,13 @@ func run(arguments []string) error {
 	default:
 		return fmt.Errorf("unknown mode %q: allowed modes are sync, check, verify", *mode)
 	}
+}
+
+func printUsage(flags *flag.FlagSet, output io.Writer) {
+	previousOutput := flags.Output()
+	flags.SetOutput(output)
+	defer flags.SetOutput(previousOutput)
+
+	fmt.Fprintf(output, "Usage of %s:\n", flags.Name())
+	flags.PrintDefaults()
 }
