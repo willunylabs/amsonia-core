@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -19,7 +18,7 @@ func main() {
 
 func run(arguments []string) error {
 	flags := flag.NewFlagSet("core-sync", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
+	flags.SetOutput(os.Stdout)
 	mode := flags.String("mode", "sync", "operation mode")
 	manifestPath := flags.String("manifest", "", "manifest path")
 	sourceRoot := flags.String("source-root", "", "source root")
@@ -27,6 +26,9 @@ func run(arguments []string) error {
 	sourceCommit := flags.String("source-commit", "", "source commit")
 	provenancePath := flags.String("provenance", "", "provenance path relative to the destination root")
 	if err := flags.Parse(arguments); err != nil {
+		if err == flag.ErrHelp {
+			return nil
+		}
 		return fmt.Errorf("parse flags: %w", err)
 	}
 	if flags.NArg() != 0 {

@@ -79,6 +79,12 @@ func TestRunRejectsUnknownMode(t *testing.T) {
 	assertErrorContains(t, run([]string{"--mode", "unknown"}), `unknown mode "unknown"`)
 }
 
+func TestRunHelpSucceeds(t *testing.T) {
+	if err := run([]string{"--help"}); err != nil {
+		t.Fatalf("run(--help) error = %v, want nil", err)
+	}
+}
+
 func TestRunRequiresSyncAndCheckFlags(t *testing.T) {
 	flags := []struct {
 		name  string
