@@ -12,11 +12,16 @@ import (
 )
 
 const (
-	argon2SaltLength     = 16
-	maxArgon2Memory      = 256 * 1024 // KiB, 256 MiB.
-	maxArgon2Iterations  = 32         // rounds.
-	maxArgon2Parallelism = 16         // lanes.
-	maxArgon2KeyLength   = 64         // bytes.
+	argon2SaltLength             = 16
+	maxEncodedPasswordHashLength = 4096       // bytes.
+	minArgon2Memory              = 64         // KiB.
+	maxArgon2Memory              = 256 * 1024 // KiB, 256 MiB.
+	minArgon2Iterations          = 1
+	maxArgon2Iterations          = 32 // rounds.
+	minArgon2Parallelism         = 1
+	maxArgon2Parallelism         = 16 // lanes.
+	minArgon2KeyLength           = 16 // bytes.
+	maxArgon2KeyLength           = 64 // bytes.
 )
 
 type PasswordHasher struct {
@@ -44,6 +49,9 @@ func (h *PasswordHasher) Hash(password string) (string, error) {
 }
 
 func (h *PasswordHasher) Verify(password, encoded string) bool {
+	if len(encoded) > maxEncodedPasswordHashLength {
+		return false
+	}
 	if h == nil || !validArgon2Config(h.memory, h.iterations, h.parallelism, h.keyLen) {
 		return false
 	}
@@ -84,6 +92,9 @@ func (h *PasswordHasher) Verify(password, encoded string) bool {
 
 func validArgon2Config(memory, iterations uint32, parallelism uint8, keyLen uint32) bool {
 	if memory == 0 || iterations == 0 || parallelism == 0 || keyLen == 0 {
+		return false
+	}
+	if memory < minArgon2Memory || iterations < minArgon2Iterations || parallelism < minArgon2Parallelism || keyLen < minArgon2KeyLength {
 		return false
 	}
 	if memory > maxArgon2Memory || iterations > maxArgon2Iterations || parallelism > maxArgon2Parallelism || keyLen > maxArgon2KeyLength {

@@ -65,6 +65,18 @@ func TestPasswordHasherRejectsWrongEncodedKeyStringLengths(t *testing.T) {
 	}
 }
 
+func TestPasswordHasherRejectsOversizedEncodedInput(t *testing.T) {
+	hasher := NewPasswordHasher(64, 1, 1, 32)
+	parameters := "m=" + strings.Repeat("9", maxEncodedPasswordHashLength) + ",t=1,p=1"
+	encoded := testEncodedPasswordHash("19", parameters, "synthetic-password-for-tests", 64, 1, 1, 32)
+	if len(encoded) <= maxEncodedPasswordHashLength {
+		t.Fatalf("test input length = %d, want greater than %d", len(encoded), maxEncodedPasswordHashLength)
+	}
+	if hasher.Verify("synthetic-password-for-tests", encoded) {
+		t.Fatal("oversized encoded input was accepted")
+	}
+}
+
 func TestPasswordHasherRejectsMismatchedParameters(t *testing.T) {
 	hasher := NewPasswordHasher(64, 1, 1, 32)
 	for _, tc := range []struct {
@@ -126,6 +138,7 @@ func TestPasswordHasherVerifyRejectsInvalidConfiguration(t *testing.T) {
 		{name: "zero iterations", hasher: NewPasswordHasher(64, 0, 1, 32)},
 		{name: "zero parallelism", hasher: NewPasswordHasher(64, 1, 0, 32)},
 		{name: "zero key length", hasher: NewPasswordHasher(64, 1, 1, 0)},
+		{name: "low key length", hasher: NewPasswordHasher(64, 1, 1, 15)},
 		{name: "high memory", hasher: NewPasswordHasher(maxArgon2Memory+1, 1, 1, 32)},
 		{name: "high iterations", hasher: NewPasswordHasher(64, 33, 1, 32)},
 		{name: "high parallelism", hasher: NewPasswordHasher(64, 1, 17, 32)},
@@ -189,7 +202,7 @@ func TestPasswordHasherRejectsInvalidEncodedValues(t *testing.T) {
 }
 
 func testEncodedPasswordHash(version, parameters, password string, memory, iterations uint32, parallelism uint8, keyLen uint32) string {
-	salt := []byte("synthetic-salt")
+	salt := []byte("synthetic-salt16")
 	key := argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, keyLen)
 	return fmt.Sprintf("argon2id$v=%s$%s$%s$%s", version, parameters,
 		base64.RawStdEncoding.EncodeToString(salt), base64.RawStdEncoding.EncodeToString(key))
