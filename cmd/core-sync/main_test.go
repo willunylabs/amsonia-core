@@ -96,17 +96,18 @@ func TestRunHelpSucceeds(t *testing.T) {
 	}
 }
 
-func TestRunUnknownFlagWritesDiagnosticsToStderr(t *testing.T) {
+func TestRunUnknownFlagReturnsErrorWithoutOutput(t *testing.T) {
 	var runErr error
 	stdout, stderr := captureOutput(t, func() {
 		runErr = run([]string{"--unknown"})
 	})
 	assertErrorContains(t, runErr, "parse flags")
+	assertErrorContains(t, runErr, "flag provided but not defined: -unknown")
 	if stdout != "" {
 		t.Fatalf("stdout = %q, want empty", stdout)
 	}
-	if !strings.Contains(stderr, "flag provided but not defined: -unknown") {
-		t.Fatalf("stderr = %q, want unknown flag diagnostic", stderr)
+	if stderr != "" {
+		t.Fatalf("stderr = %q, want empty", stderr)
 	}
 }
 

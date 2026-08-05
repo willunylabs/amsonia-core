@@ -19,7 +19,7 @@ func main() {
 
 func run(arguments []string) error {
 	flags := flag.NewFlagSet("core-sync", flag.ContinueOnError)
-	flags.SetOutput(os.Stderr)
+	flags.SetOutput(io.Discard)
 	flags.Usage = func() {}
 	mode := flags.String("mode", "sync", "operation mode")
 	manifestPath := flags.String("manifest", "", "manifest path")
