@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind utilities;
+
+@layer base {
+
+  :root {
+    color-scheme: light;
+    /* Palette: Amsonia daylight */
+    --bg-primary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-elevated: #f5f7fa;
+
+    --border-subtle: #e2e8f0;
+    --border-active: #94a3b8;
+
+    --accent-blue: #1d4ed8;
+    --grid-line: #e8edf3;
+
+    --text-primary: #0f172a;
+    --text-secondary: #526071;
+
+    --font-sans: var(--font-inter);
+    --font-mono: var(--font-jetbrains-mono);
+
+    /* Shadcn UI Variables */
+    --background: 0 0% 100%;
+    --foreground: 222.2 47.4% 11.2%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+
+  body {
+    @apply bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans antialiased selection:bg-[var(--accent-blue)] selection:text-white;
+  }
+
+  * {
+    @apply border-border;
+  }
+}
+
+@layer utilities {
+
+  /* Grid Background */
+  .bg-grid {
+    background-size: 32px 32px;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='%23e8edf3'%3e%3cpath d='M0 .5H32V32'/%3e%3c/svg%3e");
+  }
+
+  /* Gradient Text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-slate-950 via-blue-950 to-[var(--accent-blue)];
+  }
+
+  /* Glow Effect */
+  .glow-blue {
+    box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+  }
+
+  /* Card Hover */
+  .card-hover {
+    @apply transition-all duration-300 hover:border-[var(--border-active)] hover:bg-[var(--bg-elevated)];
+  }
+}

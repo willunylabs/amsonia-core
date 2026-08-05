@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "source_repository": "github.com/willunylabs/willuny-go-ui",
+  "source_commit": "215c248842507118b0a98b12bf039986346c8160",
+  "license": "Apache-2.0",
+  "entries": [
+    {
+      "source": "packages/ui/theme.css",
+      "destination": "web/theme.css",
+      "sha256": "d0139284385861c6a2b902d4d51eb588c5dbdb806b0b07c59c5c81b790ab4076"
+    }
+  ]
+}
