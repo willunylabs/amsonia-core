@@ -3,6 +3,7 @@ package security
 import (
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"testing"
 
 	"golang.org/x/crypto/argon2"
@@ -43,6 +44,27 @@ func TestPasswordHasherRejectsWrongKeyLengths(t *testing.T) {
 	}
 }
 
+func TestPasswordHasherRejectsWrongEncodedKeyStringLengths(t *testing.T) {
+	hasher := NewPasswordHasher(64, 1, 1, 32)
+	baseParts := strings.Split(testEncodedPasswordHash("19", "m=64,t=1,p=1", "synthetic-password-for-tests", 64, 1, 1, 32), "$")
+	expectedLength := base64.RawStdEncoding.EncodedLen(32)
+	for _, tc := range []struct {
+		name string
+		key  string
+	}{
+		{name: "truncated", key: baseParts[4][:expectedLength-1]},
+		{name: "oversized", key: baseParts[4] + "A"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			parts := append([]string(nil), baseParts...)
+			parts[4] = tc.key
+			if hasher.Verify("synthetic-password-for-tests", strings.Join(parts, "$")) {
+				t.Fatalf("encoded key string length %d was accepted", len(tc.key))
+			}
+		})
+	}
+}
+
 func TestPasswordHasherRejectsMismatchedParameters(t *testing.T) {
 	hasher := NewPasswordHasher(64, 1, 1, 32)
 	for _, tc := range []struct {
@@ -75,6 +97,7 @@ func TestPasswordHasherRejectsMalformedParameters(t *testing.T) {
 		{name: "missing parameter", version: "19", parameters: "m=64,t=1"},
 		{name: "malformed parameter", version: "19", parameters: "m=64,t=1,p"},
 		{name: "non-decimal parameter", version: "19", parameters: "m=0x40,t=1,p=1"},
+		{name: "signed parameter", version: "19", parameters: "m=+64,t=1,p=1"},
 		{name: "zero memory", version: "19", parameters: "m=0,t=1,p=1"},
 		{name: "zero iterations", version: "19", parameters: "m=64,t=0,p=1"},
 		{name: "zero parallelism", version: "19", parameters: "m=64,t=1,p=0"},
@@ -99,15 +122,33 @@ func TestPasswordHasherVerifyRejectsInvalidConfiguration(t *testing.T) {
 	}{
 		{name: "nil receiver", hasher: nil},
 		{name: "zero memory", hasher: NewPasswordHasher(0, 1, 1, 32)},
+		{name: "low memory", hasher: NewPasswordHasher(7, 1, 1, 32)},
 		{name: "zero iterations", hasher: NewPasswordHasher(64, 0, 1, 32)},
 		{name: "zero parallelism", hasher: NewPasswordHasher(64, 1, 0, 32)},
 		{name: "zero key length", hasher: NewPasswordHasher(64, 1, 1, 0)},
+		{name: "high memory", hasher: NewPasswordHasher(maxArgon2Memory+1, 1, 1, 32)},
+		{name: "high iterations", hasher: NewPasswordHasher(64, 33, 1, 32)},
+		{name: "high parallelism", hasher: NewPasswordHasher(64, 1, 17, 32)},
+		{name: "high key length", hasher: NewPasswordHasher(64, 1, 1, 65)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			assertPasswordHasherHashRejects(t, tc.hasher)
 			if tc.hasher.Verify("synthetic-password-for-tests", encoded) {
 				t.Fatal("invalid hasher configuration was accepted")
 			}
 		})
+	}
+}
+
+func assertPasswordHasherHashRejects(t *testing.T, hasher *PasswordHasher) {
+	t.Helper()
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			t.Fatalf("Hash panicked for invalid configuration: %v", recovered)
+		}
+	}()
+	if _, err := hasher.Hash("synthetic-password-for-tests"); err == nil {
+		t.Fatal("Hash accepted invalid configuration")
 	}
 }
 

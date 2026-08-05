@@ -1,18 +1,18 @@
 {
   "schema_version": 1,
   "source_repository": "github.com/willunylabs/willuny-go-admin",
-  "source_commit": "4658e599e61d00d1b9cc32ef4d8201175b5abf12",
+  "source_commit": "dbff8a220073eff0ec90e86acef1b0be7b9ef1d8",
   "license": "Apache-2.0",
   "entries": [
     {
       "source": "system/security/password.go",
       "destination": "internal/security/password.go",
-      "sha256": "1264cd806899c882efd2b141679fc6f9396c446f1cde258d00998aa08582c57f"
+      "sha256": "83d2eafef58b67fbbd11f910f9ad73e59ebdc4436db0b8a46e5fea7899bbb3d9"
     },
     {
       "source": "system/security/password_test.go",
       "destination": "internal/security/password_test.go",
-      "sha256": "9dc65451fc0b73515dc656251301d3810ef7d0ab78005c9c1c6302d424722354"
+      "sha256": "c876e73d5c0fdbe64e9bf3b98cb7f0d01e3b30e1035c15eeeb7fc2873b38401e"
     }
   ]
 }
