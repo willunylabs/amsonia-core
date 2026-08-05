@@ -3,6 +3,10 @@
 // Verify checks destination integrity against provenance expected to be reviewed
 // and committed with the destination tree. It does not authenticate a maliciously
 // modified provenance file.
+//
+// Sync assumes its source and destination roots are dedicated, exclusively
+// controlled worktrees. Hostile concurrent writers inside those roots are outside
+// the trust model.
 package coresync
 
 import (
@@ -37,7 +41,7 @@ type publishHookPhase uint8
 
 const (
 	publishHookAfterValidation publishHookPhase = iota + 1
-	publishHookAfterBackup
+	publishHookBeforeManagedPublication
 	publishHookAfterPublication
 )
 
@@ -128,8 +132,11 @@ func ValidateManifest(manifest Manifest) error {
 	return nil
 }
 
-// Sync copies all manifest entries and writes deterministic provenance. It
-// rolls back publication errors returned within the process, but it is not
+// Sync copies all manifest entries and writes deterministic provenance. Managed
+// files are atomically replaced with same-parent renames on supported Unix
+// worktree filesystems. Sync assumes dedicated, exclusively controlled worktrees;
+// hostile concurrent writers inside either root are outside the trust model.
+// It rolls back publication errors returned within the process, but it is not
 // process-crash recovery. Crash-consistent or versioned generations are outside
 // the scope of this local reviewed-worktree tool.
 func Sync(manifest Manifest, options Options) error {
@@ -331,6 +338,7 @@ type publicationItem struct {
 	provenance   bool
 	stagedName   string
 	stagedInfo   os.FileInfo
+	stagedExists bool
 	backupName   string
 	backupInfo   os.FileInfo
 	backupExists bool
@@ -645,6 +653,7 @@ func publishTransaction(destinationRoot *os.Root, items []publicationItem) error
 			closed = true
 			return errors.Join(fmt.Errorf("stage %q: %w", items[index].relativePath, err), cleanupErr, closeErr)
 		}
+		items[index].stagedExists = true
 	}
 
 	for index := range items {
@@ -850,11 +859,8 @@ func publishStableItem(directories []*stableDirectory, item *publicationItem, in
 		return err
 	}
 	if item.previous.exists {
-		if err := moveTargetToBackup(item); err != nil {
+		if err := createManagedBackup(item); err != nil {
 			return err
-		}
-		if err := runPublishHook(publishHookAfterBackup, index, item.relativePath); err != nil {
-			return fmt.Errorf("after backup for %q: %w", item.relativePath, err)
 		}
 		if err := validateStableDirectories(directories); err != nil {
 			return err
@@ -866,8 +872,16 @@ func publishStableItem(directories []*stableDirectory, item *publicationItem, in
 	if err := validateStagedArtifact(*item); err != nil {
 		return err
 	}
-	if err := item.parent.root.Link(item.stagedName, item.basename); err != nil {
-		return fmt.Errorf("publish %q without clobbering: %w", item.relativePath, err)
+	if item.previous.exists {
+		if err := runPublishHook(publishHookBeforeManagedPublication, index, item.relativePath); err != nil {
+			return fmt.Errorf("before managed publication for %q: %w", item.relativePath, err)
+		}
+		if err := item.parent.root.Rename(item.stagedName, item.basename); err != nil {
+			return fmt.Errorf("atomically publish managed destination %q: %w", item.relativePath, err)
+		}
+		item.stagedExists = false
+	} else if err := item.parent.root.Link(item.stagedName, item.basename); err != nil {
+		return fmt.Errorf("publish new destination %q without clobbering: %w", item.relativePath, err)
 	}
 	item.published = true
 	if err := runPublishHook(publishHookAfterPublication, index, item.relativePath); err != nil {
@@ -899,25 +913,50 @@ func validateStablePublicationTarget(item publicationItem) error {
 	return nil
 }
 
-func moveTargetToBackup(item *publicationItem) error {
+func createManagedBackup(item *publicationItem) error {
 	backupName, err := uniqueUnusedArtifactName(item.parent.root, ".coresync-backup-")
 	if err != nil {
 		return fmt.Errorf("allocate backup for %q: %w", item.relativePath, err)
 	}
 	item.backupName = backupName
-	if err := item.parent.root.Rename(item.basename, item.backupName); err != nil {
-		return fmt.Errorf("move %q to backup: %w", item.relativePath, err)
+	if err := item.parent.root.Link(item.basename, item.backupName); err != nil {
+		return fmt.Errorf("create live backup for %q: %w", item.relativePath, err)
 	}
 	item.backupExists = true
 	backup, err := readRootRegularFile(item.parent.root, item.backupName, false, "backup")
-	if err == nil && (!bytes.Equal(backup.content, item.previous.content) || backup.mode != item.previous.mode) {
-		err = fmt.Errorf("managed destination drift for %q after backup", item.relativePath)
+	if err == nil {
+		item.backupInfo = backup.info
+		liveInfo, liveErr := item.parent.root.Lstat(item.basename)
+		if liveErr != nil {
+			err = liveErr
+		} else if !os.SameFile(liveInfo, backup.info) || !bytes.Equal(backup.content, item.previous.content) || backup.mode != item.previous.mode {
+			err = fmt.Errorf("managed destination drift for %q after backup", item.relativePath)
+		}
 	}
 	if err != nil {
-		restoreErr := restoreBackupIfSafe(item)
-		return errors.Join(err, wrapRollbackError(restoreErr))
+		cleanupErr := discardManagedBackup(item)
+		return errors.Join(err, wrapRollbackError(cleanupErr))
 	}
-	item.backupInfo = backup.info
+	return nil
+}
+
+func discardManagedBackup(item *publicationItem) error {
+	if !item.backupExists {
+		return nil
+	}
+	if item.backupInfo == nil {
+		info, err := item.parent.root.Lstat(item.backupName)
+		if err != nil {
+			return fmt.Errorf("inspect backup recovery artifact %q: %w", item.backupName, err)
+		}
+		item.backupInfo = info
+	}
+	if err := removeArtifactIfUnchanged(item.parent.root, item.backupName, item.backupInfo); err != nil {
+		return fmt.Errorf("remove backup recovery artifact %q: %w", item.backupName, err)
+	}
+	item.backupExists = false
+	item.backupName = ""
+	item.backupInfo = nil
 	return nil
 }
 
@@ -947,6 +986,9 @@ func randomArtifactName(prefix string) (string, error) {
 }
 
 func validateStagedArtifact(item publicationItem) error {
+	if !item.stagedExists {
+		return nil
+	}
 	return validateArtifact(item.parent.root, item.stagedName, item.stagedInfo, item.desired, item.desiredMode, "staged file")
 }
 
@@ -1012,23 +1054,32 @@ func rollbackStableItems(items []publicationItem) error {
 	var rollbackErrors []error
 	for index := len(items) - 1; index >= 0; index-- {
 		item := &items[index]
+		if item.previous.exists {
+			if item.published {
+				if err := restoreManagedPublicationIfSafe(item); err != nil {
+					rollbackErrors = append(rollbackErrors, err)
+				}
+				continue
+			}
+			if item.backupExists {
+				if err := discardUnpublishedManagedBackupIfSafe(item); err != nil {
+					rollbackErrors = append(rollbackErrors, err)
+				}
+			}
+			continue
+		}
 		if item.published {
-			if err := removePublishedTargetIfSafe(item); err != nil {
+			if err := removeNewPublishedTargetIfSafe(item); err != nil {
 				rollbackErrors = append(rollbackErrors, err)
 				continue
 			}
 			item.published = false
 		}
-		if item.backupExists {
-			if err := restoreBackupIfSafe(item); err != nil {
-				rollbackErrors = append(rollbackErrors, err)
-			}
-		}
 	}
 	return errors.Join(rollbackErrors...)
 }
 
-func removePublishedTargetIfSafe(item *publicationItem) error {
+func removeNewPublishedTargetIfSafe(item *publicationItem) error {
 	snapshot, err := readRootRegularFile(item.parent.root, item.basename, true, "rollback target")
 	if err != nil {
 		return err
@@ -1045,37 +1096,42 @@ func removePublishedTargetIfSafe(item *publicationItem) error {
 	return nil
 }
 
-func restoreBackupIfSafe(item *publicationItem) error {
+func restoreManagedPublicationIfSafe(item *publicationItem) error {
 	if !item.backupExists {
-		return nil
+		return fmt.Errorf("cannot rollback managed destination %q: backup recovery artifact is missing", item.relativePath)
 	}
-	if err := validateBackupArtifact(*item); err != nil && item.backupInfo != nil {
+	if err := validateBackupArtifact(*item); err != nil {
 		return fmt.Errorf("backup recovery artifact %q is unsafe: %w", item.backupName, err)
 	}
-	_, err := item.parent.root.Lstat(item.basename)
-	if err == nil {
-		return fmt.Errorf("cannot restore backup recovery artifact %q for %q: target exists", item.backupName, item.relativePath)
+	live, err := readRootRegularFile(item.parent.root, item.basename, true, "rollback target")
+	if err != nil {
+		return err
 	}
-	if !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("inspect rollback target %q: %w", item.relativePath, err)
+	if !live.exists || !os.SameFile(live.info, item.stagedInfo) || !bytes.Equal(live.content, item.desired) || live.mode != item.desiredMode.Perm() {
+		return fmt.Errorf("unsafe rollback for %q: concurrent target retained with backup recovery artifact %q", item.relativePath, item.backupName)
 	}
-	if err := item.parent.root.Link(item.backupName, item.basename); err != nil {
-		return fmt.Errorf("restore backup recovery artifact %q for %q without clobbering: %w", item.backupName, item.relativePath, err)
-	}
-	if item.backupInfo == nil {
-		backup, snapshotErr := readRootRegularFile(item.parent.root, item.backupName, false, "backup")
-		if snapshotErr != nil {
-			return snapshotErr
-		}
-		item.backupInfo = backup.info
-	}
-	if err := removeArtifactIfUnchanged(item.parent.root, item.backupName, item.backupInfo); err != nil {
-		return fmt.Errorf("remove restored backup artifact %q: %w", item.backupName, err)
+	if err := item.parent.root.Rename(item.backupName, item.basename); err != nil {
+		return fmt.Errorf("atomically restore backup recovery artifact %q for %q: %w", item.backupName, item.relativePath, err)
 	}
 	item.backupExists = false
 	item.backupName = ""
 	item.backupInfo = nil
+	item.published = false
 	return nil
+}
+
+func discardUnpublishedManagedBackupIfSafe(item *publicationItem) error {
+	if err := validateBackupArtifact(*item); err != nil {
+		return fmt.Errorf("backup recovery artifact %q is unsafe: %w", item.backupName, err)
+	}
+	live, err := readRootRegularFile(item.parent.root, item.basename, false, "managed destination")
+	if err != nil {
+		return err
+	}
+	if !os.SameFile(live.info, item.backupInfo) || !bytes.Equal(live.content, item.previous.content) || live.mode != item.previous.mode {
+		return fmt.Errorf("cannot discard backup recovery artifact %q for %q: live target changed", item.backupName, item.relativePath)
+	}
+	return discardManagedBackup(item)
 }
 
 func removePublicationArtifacts(items []publicationItem) error {
@@ -1088,9 +1144,11 @@ func removePublicationArtifacts(items []publicationItem) error {
 				items[index].backupExists = false
 			}
 		}
-		if items[index].stagedName != "" {
+		if items[index].stagedExists {
 			if err := removeArtifactIfUnchanged(items[index].parent.root, items[index].stagedName, items[index].stagedInfo); err != nil {
 				cleanupErrors = append(cleanupErrors, fmt.Errorf("remove staged recovery artifact %q: %w", items[index].stagedName, err))
+			} else {
+				items[index].stagedExists = false
 			}
 		}
 	}

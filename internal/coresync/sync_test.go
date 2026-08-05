@@ -3,6 +3,7 @@ package coresync
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -432,11 +433,14 @@ func TestSyncUnsafeRollbackPreservesConcurrentTargetAndRecoveryArtifact(t *testi
 
 	injected := false
 	restoreHook := setPublishHookForTest(func(phase publishHookPhase, _ int, relativePath string) error {
-		if injected || phase != publishHookAfterBackup || relativePath != "export.txt" {
+		if injected || phase != publishHookAfterPublication || relativePath != "export.txt" {
 			return nil
 		}
 		injected = true
-		return os.WriteFile(filepath.Join(destinationRoot, "export.txt"), []byte("concurrent\n"), 0o600)
+		if err := os.WriteFile(filepath.Join(destinationRoot, "export.txt"), []byte("concurrent\n"), 0o600); err != nil {
+			return err
+		}
+		return errors.New("injected post-publication failure")
 	})
 	t.Cleanup(restoreHook)
 
@@ -450,6 +454,50 @@ func TestSyncUnsafeRollbackPreservesConcurrentTargetAndRecoveryArtifact(t *testi
 	recoveryPath := findTestFileWithPrefix(t, destinationRoot, ".coresync-backup-")
 	if got, want := string(readTestFile(t, destinationRoot, recoveryPath)), "original\n"; got != want {
 		t.Fatalf("recovery artifact content = %q, want %q", got, want)
+	}
+}
+
+func TestSyncKeepsManagedDestinationReadableUntilAtomicReplacement(t *testing.T) {
+	sourceRoot := t.TempDir()
+	destinationRoot := t.TempDir()
+	writeTestFile(t, sourceRoot, "source.txt", "original\n")
+	manifest := validManifest(Entry{Source: "source.txt", Destination: "export.txt"})
+	options := Options{
+		SourceRoot:      sourceRoot,
+		DestinationRoot: destinationRoot,
+		SourceCommit:    testSourceCommit,
+		ProvenancePath:  "provenance.json",
+	}
+	if err := Sync(manifest, options); err != nil {
+		t.Fatalf("first Sync() error = %v", err)
+	}
+	writeTestFile(t, sourceRoot, "source.txt", "updated\n")
+
+	observed := false
+	restoreHook := setPublishHookForTest(func(phase publishHookPhase, _ int, relativePath string) error {
+		if phase != publishHookBeforeManagedPublication || relativePath != "export.txt" {
+			return nil
+		}
+		content, err := os.ReadFile(filepath.Join(destinationRoot, "export.txt"))
+		if err != nil {
+			return fmt.Errorf("read managed destination immediately before publication: %w", err)
+		}
+		if got, want := string(content), "original\n"; got != want {
+			return fmt.Errorf("managed destination immediately before publication = %q, want %q", got, want)
+		}
+		observed = true
+		return nil
+	})
+	t.Cleanup(restoreHook)
+
+	if err := Sync(manifest, options); err != nil {
+		t.Fatalf("second Sync() error = %v", err)
+	}
+	if !observed {
+		t.Fatal("managed destination was not observed immediately before publication")
+	}
+	if got, want := string(readTestFile(t, destinationRoot, "export.txt")), "updated\n"; got != want {
+		t.Fatalf("managed destination after publication = %q, want %q", got, want)
 	}
 }
 
