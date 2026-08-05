@@ -1,8 +1,13 @@
 // Package coresync copies a declared set of files and records deterministic provenance.
+//
+// Verify checks destination integrity against provenance expected to be reviewed
+// and committed with the destination tree. It does not authenticate a maliciously
+// modified provenance file.
 package coresync
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -11,17 +16,21 @@ import (
 	"io"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 )
 
 const supportedSchemaVersion = 1
 
 var (
-	sourceCommitPattern = regexp.MustCompile(`^[0-9a-f]{40,64}$`)
+	sourceCommitPattern = regexp.MustCompile(`^([0-9a-f]{40}|[0-9a-f]{64})$`)
 	sha256Pattern       = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	publishHookState    struct {
+		sync.Mutex
+		hook func(int, string) error
+	}
 )
 
 // Entry maps one source file to one destination file.
@@ -119,25 +128,40 @@ func Sync(manifest Manifest, options Options) error {
 	if err := validateOptions(options); err != nil {
 		return err
 	}
+	destinationPaths := make([]string, 0, len(manifest.Entries))
+	for _, entry := range manifest.Entries {
+		destinationPaths = append(destinationPaths, entry.Destination)
+	}
+	if err := validatePathCollisions(destinationPaths, options.ProvenancePath); err != nil {
+		return err
+	}
 
-	existing, existingBytes, provenanceExists, err := loadProvenance(options.DestinationRoot, options.ProvenancePath)
+	sourceRoot, err := openContainedRoot("source root", options.SourceRoot)
 	if err != nil {
 		return err
 	}
-	if provenanceExists && existing.SourceRepository != manifest.SourceRepository {
+	defer sourceRoot.Close()
+	destinationRoot, err := openContainedRoot("destination root", options.DestinationRoot)
+	if err != nil {
+		return err
+	}
+	defer destinationRoot.Close()
+
+	existing, provenanceSnapshot, err := loadProvenance(destinationRoot, options.ProvenancePath)
+	if err != nil {
+		return err
+	}
+	if provenanceSnapshot.exists && existing.SourceRepository != manifest.SourceRepository {
 		return fmt.Errorf("existing provenance belongs to different source repository %q", existing.SourceRepository)
 	}
 
-	managed := make(map[string]struct{}, len(existing.Entries))
+	managed := make(map[string]ProvenanceEntry, len(existing.Entries))
 	for _, entry := range existing.Entries {
-		managed[entry.Destination] = struct{}{}
+		managed[entry.Destination] = entry
 	}
 	current := make(map[string]struct{}, len(manifest.Entries))
 	for _, entry := range manifest.Entries {
 		current[entry.Destination] = struct{}{}
-		if entry.Destination == options.ProvenancePath {
-			return fmt.Errorf("destination %q conflicts with provenance path", entry.Destination)
-		}
 	}
 	for _, entry := range existing.Entries {
 		if _, exists := current[entry.Destination]; !exists {
@@ -147,7 +171,7 @@ func Sync(manifest Manifest, options Options) error {
 
 	preparedEntries := make([]preparedEntry, 0, len(manifest.Entries))
 	for _, entry := range manifest.Entries {
-		content, digest, err := readSourceFile(options.SourceRoot, entry.Source)
+		content, digest, err := readSourceFile(sourceRoot, entry.Source)
 		if err != nil {
 			return err
 		}
@@ -180,76 +204,91 @@ func Sync(manifest Manifest, options Options) error {
 		return err
 	}
 
-	for _, prepared := range preparedEntries {
-		_, isManaged := managed[prepared.entry.Destination]
-		exists, err := inspectDestination(options.DestinationRoot, prepared.entry.Destination)
+	for index := range preparedEntries {
+		prepared := &preparedEntries[index]
+		previousEntry, isManaged := managed[prepared.entry.Destination]
+		snapshot, err := inspectDestination(destinationRoot, prepared.entry.Destination)
 		if err != nil {
 			return err
 		}
-		if exists && !isManaged {
+		if snapshot.exists && !isManaged {
 			return fmt.Errorf("unmanaged destination %q already exists", prepared.entry.Destination)
 		}
 		if options.Check {
-			if !exists {
+			if !snapshot.exists {
 				return fmt.Errorf("content drift for destination %q: file is missing", prepared.entry.Destination)
 			}
-			actual, err := hashDestinationFile(options.DestinationRoot, prepared.entry.Destination)
-			if err != nil {
-				return fmt.Errorf("content drift for destination %q: %w", prepared.entry.Destination, err)
-			}
-			if actual != prepared.digest {
+			if snapshot.digest != prepared.digest {
 				return fmt.Errorf("content drift for destination %q", prepared.entry.Destination)
 			}
+			continue
+		}
+		if isManaged {
+			if !snapshot.exists || snapshot.digest != previousEntry.SHA256 {
+				return fmt.Errorf("managed destination drift for %q", prepared.entry.Destination)
+			}
+			prepared.previous = snapshot
 		}
 	}
 
 	if options.Check {
-		if !provenanceExists {
+		if !provenanceSnapshot.exists {
 			return errors.New("provenance drift: provenance file is missing")
 		}
-		if !bytes.Equal(existingBytes, desiredBytes) {
+		if !bytes.Equal(provenanceSnapshot.content, desiredBytes) {
 			return errors.New("provenance drift")
 		}
 		return nil
 	}
 
+	publications := make([]publicationItem, 0, len(preparedEntries)+1)
 	for _, prepared := range preparedEntries {
-		_, canOverwrite := managed[prepared.entry.Destination]
-		if err := atomicWriteRelative(options.DestinationRoot, prepared.entry.Destination, prepared.content, canOverwrite); err != nil {
-			return fmt.Errorf("write destination %q: %w", prepared.entry.Destination, err)
-		}
+		publications = append(publications, publicationItem{
+			relativePath: prepared.entry.Destination,
+			desired:      prepared.content,
+			desiredMode:  0o644,
+			previous:     prepared.previous,
+		})
 	}
-	if err := atomicWriteRelative(options.DestinationRoot, options.ProvenancePath, desiredBytes, provenanceExists); err != nil {
-		return fmt.Errorf("write provenance: %w", err)
-	}
-	return nil
+	publications = append(publications, publicationItem{
+		relativePath: options.ProvenancePath,
+		desired:      desiredBytes,
+		desiredMode:  0o644,
+		previous:     provenanceSnapshot,
+		provenance:   true,
+	})
+	return publishTransaction(destinationRoot, publications)
 }
 
-// Verify checks every destination against the committed provenance.
-func Verify(destinationRoot, provenancePath string) error {
-	if err := validateRoot("destination root", destinationRoot); err != nil {
-		return err
+// Verify checks destination integrity against committed provenance. It treats
+// that committed provenance as the trust anchor and does not authenticate a
+// maliciously modified provenance file.
+func Verify(destinationRootPath, provenancePath string) error {
+	if strings.TrimSpace(destinationRootPath) == "" {
+		return errors.New("destination root is required")
 	}
 	if !isSafeRelativePath(provenancePath) {
 		return fmt.Errorf("unsafe provenance path %q", provenancePath)
 	}
 
-	provenance, _, exists, err := loadProvenance(destinationRoot, provenancePath)
+	destinationRoot, err := openContainedRoot("destination root", destinationRootPath)
 	if err != nil {
 		return err
 	}
-	if !exists {
+	defer destinationRoot.Close()
+	provenance, snapshot, err := loadProvenance(destinationRoot, provenancePath)
+	if err != nil {
+		return err
+	}
+	if !snapshot.exists {
 		return errors.New("provenance file is missing")
 	}
 	for _, entry := range provenance.Entries {
-		if entry.Destination == provenancePath {
-			return fmt.Errorf("destination %q conflicts with provenance path", entry.Destination)
-		}
-		digest, err := hashDestinationFile(destinationRoot, entry.Destination)
+		destination, err := inspectDestination(destinationRoot, entry.Destination)
 		if err != nil {
 			return fmt.Errorf("hash mismatch for destination %q: %w", entry.Destination, err)
 		}
-		if digest != entry.SHA256 {
+		if !destination.exists || destination.digest != entry.SHA256 {
 			return fmt.Errorf("hash mismatch for destination %q", entry.Destination)
 		}
 	}
@@ -257,20 +296,38 @@ func Verify(destinationRoot, provenancePath string) error {
 }
 
 type preparedEntry struct {
-	entry   Entry
+	entry    Entry
+	content  []byte
+	digest   string
+	previous fileSnapshot
+}
+
+type fileSnapshot struct {
+	exists  bool
 	content []byte
+	mode    os.FileMode
 	digest  string
 }
 
+type publicationItem struct {
+	relativePath string
+	desired      []byte
+	desiredMode  os.FileMode
+	previous     fileSnapshot
+	provenance   bool
+	stagedPath   string
+	backupPath   string
+}
+
 func validateOptions(options Options) error {
-	if err := validateRoot("source root", options.SourceRoot); err != nil {
-		return err
+	if strings.TrimSpace(options.SourceRoot) == "" {
+		return errors.New("source root is required")
 	}
-	if err := validateRoot("destination root", options.DestinationRoot); err != nil {
-		return err
+	if strings.TrimSpace(options.DestinationRoot) == "" {
+		return errors.New("destination root is required")
 	}
-	if !sourceCommitPattern.MatchString(options.SourceCommit) {
-		return errors.New("source commit must be 40-64 lowercase hexadecimal characters")
+	if !isValidSourceCommit(options.SourceCommit) {
+		return errors.New("source commit must be exactly 40 or 64 lowercase hexadecimal characters")
 	}
 	if !isSafeRelativePath(options.ProvenancePath) {
 		return fmt.Errorf("unsafe provenance path %q", options.ProvenancePath)
@@ -278,19 +335,67 @@ func validateOptions(options Options) error {
 	return nil
 }
 
-func validateRoot(name, root string) error {
-	if strings.TrimSpace(root) == "" {
-		return fmt.Errorf("%s is required", name)
-	}
-	info, err := os.Lstat(root)
+func openContainedRoot(name, filename string) (*os.Root, error) {
+	before, err := os.Lstat(filename)
 	if err != nil {
-		return fmt.Errorf("inspect %s: %w", name, err)
+		return nil, fmt.Errorf("inspect %s: %w", name, err)
 	}
+	if err := validateRootInfo(name, before); err != nil {
+		return nil, err
+	}
+
+	root, err := os.OpenRoot(filename)
+	if err != nil {
+		return nil, fmt.Errorf("open %s: %w", name, err)
+	}
+	opened, err := root.Stat(".")
+	if err != nil {
+		root.Close()
+		return nil, fmt.Errorf("inspect opened %s: %w", name, err)
+	}
+	after, err := os.Lstat(filename)
+	if err != nil {
+		root.Close()
+		return nil, fmt.Errorf("reinspect %s: %w", name, err)
+	}
+	if err := validateRootInfo(name, after); err != nil {
+		root.Close()
+		return nil, err
+	}
+	if !os.SameFile(before, opened) || !os.SameFile(after, opened) {
+		root.Close()
+		return nil, fmt.Errorf("%s changed while opening", name)
+	}
+	return root, nil
+}
+
+func validateRootInfo(name string, info os.FileInfo) error {
 	if info.Mode()&os.ModeSymlink != 0 {
 		return fmt.Errorf("%s must not be a symlink", name)
 	}
 	if !info.IsDir() {
 		return fmt.Errorf("%s must be a directory", name)
+	}
+	return nil
+}
+
+func validatePathCollisions(destinations []string, provenancePath string) error {
+	paths := make([]string, 0, len(destinations)+1)
+	paths = append(paths, destinations...)
+	paths = append(paths, provenancePath)
+	pathSet := make(map[string]struct{}, len(paths))
+	for _, relativePath := range paths {
+		if _, exists := pathSet[relativePath]; exists {
+			return fmt.Errorf("path collision at %q", relativePath)
+		}
+		pathSet[relativePath] = struct{}{}
+	}
+	for _, descendant := range paths {
+		for ancestor := path.Dir(descendant); ancestor != "."; ancestor = path.Dir(ancestor) {
+			if _, exists := pathSet[ancestor]; exists {
+				return fmt.Errorf("path collision between %q and %q", ancestor, descendant)
+			}
+		}
 	}
 	return nil
 }
@@ -315,8 +420,11 @@ func decodeJSONFile(filename string, target any) error {
 		return err
 	}
 	defer file.Close()
+	return decodeJSON(file, target)
+}
 
-	decoder := json.NewDecoder(file)
+func decodeJSON(reader io.Reader, target any) error {
+	decoder := json.NewDecoder(reader)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
 		return err
@@ -338,8 +446,8 @@ func validateProvenance(provenance Provenance) error {
 	if strings.TrimSpace(provenance.SourceRepository) == "" {
 		return errors.New("provenance source_repository must be non-empty")
 	}
-	if !sourceCommitPattern.MatchString(provenance.SourceCommit) {
-		return errors.New("provenance source_commit must be 40-64 lowercase hexadecimal characters")
+	if !isValidSourceCommit(provenance.SourceCommit) {
+		return errors.New("provenance source_commit must be exactly 40 or 64 lowercase hexadecimal characters")
 	}
 	if provenance.License != "Apache-2.0" {
 		return errors.New("provenance license must be Apache-2.0")
@@ -372,43 +480,29 @@ func validateProvenance(provenance Provenance) error {
 	return nil
 }
 
-func loadProvenance(destinationRoot, provenancePath string) (Provenance, []byte, bool, error) {
-	if err := rejectSymlinkComponents(destinationRoot, provenancePath, true); err != nil {
-		return Provenance{}, nil, false, fmt.Errorf("inspect provenance: %w", err)
-	}
-	filename := joinRelative(destinationRoot, provenancePath)
-	info, err := os.Lstat(filename)
-	if errors.Is(err, os.ErrNotExist) {
-		return Provenance{}, nil, false, nil
-	}
+func loadProvenance(destinationRoot *os.Root, provenancePath string) (Provenance, fileSnapshot, error) {
+	snapshot, err := readRootRegularFile(destinationRoot, provenancePath, true, "provenance")
 	if err != nil {
-		return Provenance{}, nil, false, fmt.Errorf("inspect provenance: %w", err)
+		return Provenance{}, fileSnapshot{}, err
 	}
-	if !info.Mode().IsRegular() {
-		return Provenance{}, nil, false, errors.New("provenance must be a regular file")
-	}
-
-	content, err := os.ReadFile(filename)
-	if err != nil {
-		return Provenance{}, nil, false, fmt.Errorf("read provenance: %w", err)
+	if !snapshot.exists {
+		return Provenance{}, snapshot, nil
 	}
 	var provenance Provenance
-	decoder := json.NewDecoder(bytes.NewReader(content))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&provenance); err != nil {
-		return Provenance{}, nil, false, fmt.Errorf("decode provenance: %w", err)
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return Provenance{}, nil, false, errors.New("decode provenance: trailing JSON value")
-		}
-		return Provenance{}, nil, false, fmt.Errorf("decode provenance trailing JSON: %w", err)
+	if err := decodeJSON(bytes.NewReader(snapshot.content), &provenance); err != nil {
+		return Provenance{}, fileSnapshot{}, fmt.Errorf("decode provenance: %w", err)
 	}
 	if err := validateProvenance(provenance); err != nil {
-		return Provenance{}, nil, false, err
+		return Provenance{}, fileSnapshot{}, err
 	}
-	return provenance, content, true, nil
+	destinations := make([]string, 0, len(provenance.Entries))
+	for _, entry := range provenance.Entries {
+		destinations = append(destinations, entry.Destination)
+	}
+	if err := validatePathCollisions(destinations, provenancePath); err != nil {
+		return Provenance{}, fileSnapshot{}, fmt.Errorf("invalid provenance: %w", err)
+	}
+	return provenance, snapshot, nil
 }
 
 func marshalProvenance(provenance Provenance) ([]byte, error) {
@@ -419,79 +513,74 @@ func marshalProvenance(provenance Provenance) ([]byte, error) {
 	return append(content, '\n'), nil
 }
 
-func readSourceFile(sourceRoot, sourcePath string) ([]byte, string, error) {
-	if err := rejectSymlinkComponents(sourceRoot, sourcePath, false); err != nil {
-		return nil, "", fmt.Errorf("inspect source %q: %w", sourcePath, err)
-	}
-	filename := joinRelative(sourceRoot, sourcePath)
-	file, err := os.Open(filename)
+func readSourceFile(sourceRoot *os.Root, sourcePath string) ([]byte, string, error) {
+	snapshot, err := readRootRegularFile(sourceRoot, sourcePath, false, "source")
 	if err != nil {
-		return nil, "", fmt.Errorf("open source %q: %w", sourcePath, err)
+		return nil, "", err
+	}
+	return snapshot.content, snapshot.digest, nil
+}
+
+func inspectDestination(destinationRoot *os.Root, destinationPath string) (fileSnapshot, error) {
+	return readRootRegularFile(destinationRoot, destinationPath, true, "destination")
+}
+
+func readRootRegularFile(root *os.Root, relativePath string, allowMissing bool, label string) (fileSnapshot, error) {
+	if err := rejectSymlinkComponents(root, relativePath, allowMissing); err != nil {
+		return fileSnapshot{}, fmt.Errorf("inspect %s %q: %w", label, relativePath, err)
+	}
+	before, err := root.Lstat(relativePath)
+	if errors.Is(err, os.ErrNotExist) && allowMissing {
+		return fileSnapshot{}, nil
+	}
+	if err != nil {
+		return fileSnapshot{}, fmt.Errorf("inspect %s %q: %w", label, relativePath, err)
+	}
+	if before.Mode()&os.ModeSymlink != 0 {
+		return fileSnapshot{}, fmt.Errorf("inspect %s %q: symlink is not allowed", label, relativePath)
+	}
+	if !before.Mode().IsRegular() {
+		return fileSnapshot{}, fmt.Errorf("%s %q must be a regular file", label, relativePath)
+	}
+
+	file, err := root.Open(relativePath)
+	if err != nil {
+		return fileSnapshot{}, fmt.Errorf("open %s %q: %w", label, relativePath, err)
 	}
 	defer file.Close()
-
-	info, err := file.Stat()
+	opened, err := file.Stat()
 	if err != nil {
-		return nil, "", fmt.Errorf("inspect source %q: %w", sourcePath, err)
+		return fileSnapshot{}, fmt.Errorf("inspect opened %s %q: %w", label, relativePath, err)
 	}
-	if !info.Mode().IsRegular() {
-		return nil, "", fmt.Errorf("source %q must be a regular file", sourcePath)
+	if !opened.Mode().IsRegular() {
+		return fileSnapshot{}, fmt.Errorf("%s %q must be a regular file", label, relativePath)
+	}
+	if !os.SameFile(before, opened) {
+		return fileSnapshot{}, fmt.Errorf("%s %q changed during inspection", label, relativePath)
 	}
 	content, err := io.ReadAll(file)
 	if err != nil {
-		return nil, "", fmt.Errorf("read source %q: %w", sourcePath, err)
+		return fileSnapshot{}, fmt.Errorf("read %s %q: %w", label, relativePath, err)
+	}
+	after, err := root.Lstat(relativePath)
+	if err != nil || !os.SameFile(before, after) {
+		return fileSnapshot{}, fmt.Errorf("%s %q changed during inspection", label, relativePath)
 	}
 	digest := sha256.Sum256(content)
-	return content, hex.EncodeToString(digest[:]), nil
+	return fileSnapshot{
+		exists:  true,
+		content: content,
+		mode:    opened.Mode().Perm(),
+		digest:  hex.EncodeToString(digest[:]),
+	}, nil
 }
 
-func inspectDestination(destinationRoot, destinationPath string) (bool, error) {
-	if err := rejectSymlinkComponents(destinationRoot, destinationPath, true); err != nil {
-		return false, fmt.Errorf("inspect destination %q: %w", destinationPath, err)
-	}
-	info, err := os.Lstat(joinRelative(destinationRoot, destinationPath))
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-	if err != nil {
-		return false, fmt.Errorf("inspect destination %q: %w", destinationPath, err)
-	}
-	if !info.Mode().IsRegular() {
-		return false, fmt.Errorf("destination %q must be a regular file", destinationPath)
-	}
-	return true, nil
-}
-
-func hashDestinationFile(destinationRoot, destinationPath string) (string, error) {
-	if err := rejectSymlinkComponents(destinationRoot, destinationPath, false); err != nil {
-		return "", err
-	}
-	file, err := os.Open(joinRelative(destinationRoot, destinationPath))
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	info, err := file.Stat()
-	if err != nil {
-		return "", err
-	}
-	if !info.Mode().IsRegular() {
-		return "", errors.New("destination must be a regular file")
-	}
-	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(hash.Sum(nil)), nil
-}
-
-func rejectSymlinkComponents(root, relativePath string, allowMissing bool) error {
-	current := root
-	components := strings.Split(filepath.FromSlash(relativePath), string(filepath.Separator))
+func rejectSymlinkComponents(root *os.Root, relativePath string, allowMissing bool) error {
+	current := ""
+	components := strings.Split(relativePath, "/")
 	for index, component := range components {
-		current = filepath.Join(current, component)
-		info, err := os.Lstat(current)
+		current = path.Join(current, component)
+		info, err := root.Lstat(current)
 		if errors.Is(err, os.ErrNotExist) && allowMissing {
 			return nil
 		}
@@ -508,104 +597,236 @@ func rejectSymlinkComponents(root, relativePath string, allowMissing bool) error
 	return nil
 }
 
-func atomicWriteRelative(root, relativePath string, content []byte, canOverwrite bool) error {
-	if err := ensureParentDirectories(root, relativePath); err != nil {
-		return err
-	}
-	if err := rejectSymlinkComponents(root, relativePath, true); err != nil {
-		return err
-	}
-
-	filename := joinRelative(root, relativePath)
-	if info, err := os.Lstat(filename); err == nil {
-		if info.Mode()&os.ModeSymlink != 0 {
-			return errors.New("destination symlink is not allowed")
-		}
-		if !canOverwrite {
-			return errors.New("unmanaged destination already exists")
-		}
-		if !info.Mode().IsRegular() {
-			return errors.New("destination must be a regular file")
-		}
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-
-	temporary, err := os.CreateTemp(filepath.Dir(filename), ".coresync-*")
+func publishTransaction(destinationRoot *os.Root, items []publicationItem) error {
+	stagingDirectory, err := createStagingDirectory(destinationRoot)
 	if err != nil {
-		return err
+		return fmt.Errorf("create staging directory: %w", err)
 	}
-	temporaryName := temporary.Name()
-	removeTemporary := true
+	cleanupStaging := true
 	defer func() {
-		if removeTemporary {
-			_ = os.Remove(temporaryName)
+		if cleanupStaging {
+			_ = destinationRoot.RemoveAll(stagingDirectory)
 		}
 	}()
 
-	if err := temporary.Chmod(0o644); err != nil {
-		_ = temporary.Close()
-		return err
-	}
-	if _, err := temporary.Write(content); err != nil {
-		_ = temporary.Close()
-		return err
-	}
-	if err := temporary.Sync(); err != nil {
-		_ = temporary.Close()
-		return err
-	}
-	if err := temporary.Close(); err != nil {
-		return err
-	}
-	if canOverwrite {
-		if err := os.Rename(temporaryName, filename); err != nil {
-			return err
-		}
-	} else {
-		// A hard link publishes the complete temporary file without a racy overwrite.
-		if err := os.Link(temporaryName, filename); err != nil {
-			if errors.Is(err, os.ErrExist) {
-				return errors.New("unmanaged destination already exists")
-			}
-			return err
-		}
-		if err := os.Remove(temporaryName); err != nil {
-			return err
+	for index := range items {
+		items[index].stagedPath = path.Join(stagingDirectory, fmt.Sprintf("desired-%06d", index))
+		if err := writeStagedFile(destinationRoot, items[index].stagedPath, items[index].desired, items[index].desiredMode); err != nil {
+			return fmt.Errorf("stage %q: %w", items[index].relativePath, err)
 		}
 	}
-	removeTemporary = false
-	return nil
-}
+	for index := range items {
+		if !items[index].previous.exists {
+			continue
+		}
+		items[index].backupPath = path.Join(stagingDirectory, fmt.Sprintf("backup-%06d", index))
+		if err := writeStagedFile(destinationRoot, items[index].backupPath, items[index].previous.content, items[index].previous.mode); err != nil {
+			return fmt.Errorf("stage backup for %q: %w", items[index].relativePath, err)
+		}
+	}
 
-func ensureParentDirectories(root, relativePath string) error {
-	parent := path.Dir(relativePath)
-	if parent == "." {
-		return nil
+	createdDirectories, err := ensurePublicationParents(destinationRoot, items)
+	if err != nil {
+		cleanupErr := removeCreatedDirectories(destinationRoot, createdDirectories)
+		return errors.Join(err, cleanupErr)
 	}
-	current := root
-	for _, component := range strings.Split(filepath.FromSlash(parent), string(filepath.Separator)) {
-		current = filepath.Join(current, component)
-		info, err := os.Lstat(current)
-		if errors.Is(err, os.ErrNotExist) {
-			if err := os.Mkdir(current, 0o755); err != nil && !errors.Is(err, os.ErrExist) {
-				return err
-			}
-			info, err = os.Lstat(current)
+	if err := validatePublicationState(destinationRoot, items); err != nil {
+		cleanupErr := removeCreatedDirectories(destinationRoot, createdDirectories)
+		return errors.Join(err, cleanupErr)
+	}
+
+	published := 0
+	for index := range items {
+		if err := validatePublicationItem(destinationRoot, items[index]); err != nil {
+			return rollbackPublicationFailure(destinationRoot, items, published, createdDirectories, stagingDirectory, err, &cleanupStaging)
+		}
+		if items[index].previous.exists {
+			err = destinationRoot.Rename(items[index].stagedPath, items[index].relativePath)
+		} else {
+			err = destinationRoot.Link(items[index].stagedPath, items[index].relativePath)
 		}
 		if err != nil {
+			publicationErr := fmt.Errorf("publish %q: %w", items[index].relativePath, err)
+			return rollbackPublicationFailure(destinationRoot, items, published, createdDirectories, stagingDirectory, publicationErr, &cleanupStaging)
+		}
+		published++
+		if err := runPublishHook(index, items[index].relativePath); err != nil {
+			publicationErr := fmt.Errorf("publish %q: %w", items[index].relativePath, err)
+			return rollbackPublicationFailure(destinationRoot, items, published, createdDirectories, stagingDirectory, publicationErr, &cleanupStaging)
+		}
+	}
+
+	if err := destinationRoot.RemoveAll(stagingDirectory); err != nil {
+		return fmt.Errorf("remove staging directory: %w", err)
+	}
+	cleanupStaging = false
+	return nil
+}
+
+func createStagingDirectory(root *os.Root) (string, error) {
+	for range 100 {
+		random := make([]byte, 16)
+		if _, err := rand.Read(random); err != nil {
+			return "", err
+		}
+		name := ".coresync-stage-" + hex.EncodeToString(random)
+		if err := root.Mkdir(name, 0o700); err == nil {
+			return name, nil
+		} else if !errors.Is(err, os.ErrExist) {
+			return "", err
+		}
+	}
+	return "", errors.New("could not allocate unique staging directory")
+}
+
+func writeStagedFile(root *os.Root, relativePath string, content []byte, mode os.FileMode) error {
+	file, err := root.OpenFile(relativePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return err
+	}
+	if err := file.Chmod(mode.Perm()); err != nil {
+		file.Close()
+		return err
+	}
+	if _, err := file.Write(content); err != nil {
+		file.Close()
+		return err
+	}
+	if err := file.Sync(); err != nil {
+		file.Close()
+		return err
+	}
+	return file.Close()
+}
+
+func ensurePublicationParents(root *os.Root, items []publicationItem) ([]string, error) {
+	created := make([]string, 0)
+	for _, item := range items {
+		parent := path.Dir(item.relativePath)
+		if parent == "." {
+			continue
+		}
+		current := ""
+		for _, component := range strings.Split(parent, "/") {
+			current = path.Join(current, component)
+			info, err := root.Lstat(current)
+			if errors.Is(err, os.ErrNotExist) {
+				if err := root.Mkdir(current, 0o755); err != nil {
+					if !errors.Is(err, os.ErrExist) {
+						return created, fmt.Errorf("create destination directory %q: %w", current, err)
+					}
+				} else {
+					created = append(created, current)
+				}
+				info, err = root.Lstat(current)
+			}
+			if err != nil {
+				return created, fmt.Errorf("inspect destination directory %q: %w", current, err)
+			}
+			if info.Mode()&os.ModeSymlink != 0 {
+				return created, fmt.Errorf("symlink path component %q is not allowed", component)
+			}
+			if !info.IsDir() {
+				return created, fmt.Errorf("path component %q is not a directory", component)
+			}
+		}
+	}
+	return created, nil
+}
+
+func validatePublicationState(root *os.Root, items []publicationItem) error {
+	for _, item := range items {
+		if err := validatePublicationItem(root, item); err != nil {
 			return err
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("symlink path component %q is not allowed", component)
-		}
-		if !info.IsDir() {
-			return fmt.Errorf("path component %q is not a directory", component)
 		}
 	}
 	return nil
 }
 
-func joinRelative(root, relativePath string) string {
-	return filepath.Join(root, filepath.FromSlash(relativePath))
+func validatePublicationItem(root *os.Root, item publicationItem) error {
+	snapshot, err := readRootRegularFile(root, item.relativePath, true, "publication target")
+	if err != nil {
+		return err
+	}
+	if !item.previous.exists {
+		if !snapshot.exists {
+			return nil
+		}
+		if item.provenance {
+			return errors.New("provenance drift: provenance file appeared before publication")
+		}
+		return fmt.Errorf("unmanaged destination %q appeared before publication", item.relativePath)
+	}
+	if !snapshot.exists || !bytes.Equal(snapshot.content, item.previous.content) || snapshot.mode != item.previous.mode {
+		if item.provenance {
+			return errors.New("provenance drift before publication")
+		}
+		return fmt.Errorf("managed destination drift for %q before publication", item.relativePath)
+	}
+	return nil
+}
+
+func rollbackPublicationFailure(root *os.Root, items []publicationItem, published int, createdDirectories []string, stagingDirectory string, publicationErr error, cleanupStaging *bool) error {
+	rollbackErr := rollbackPublished(root, items[:published])
+	directoryErr := removeCreatedDirectories(root, createdDirectories)
+	if rollbackErr != nil || directoryErr != nil {
+		*cleanupStaging = false
+		return errors.Join(
+			publicationErr,
+			fmt.Errorf("rollback from staging directory %q: %w", stagingDirectory, errors.Join(rollbackErr, directoryErr)),
+		)
+	}
+	return publicationErr
+}
+
+func rollbackPublished(root *os.Root, published []publicationItem) error {
+	var rollbackErrors []error
+	for index := len(published) - 1; index >= 0; index-- {
+		item := published[index]
+		if item.previous.exists {
+			if err := root.Rename(item.backupPath, item.relativePath); err != nil {
+				rollbackErrors = append(rollbackErrors, fmt.Errorf("restore %q: %w", item.relativePath, err))
+			}
+			continue
+		}
+		if err := root.Remove(item.relativePath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			rollbackErrors = append(rollbackErrors, fmt.Errorf("remove %q: %w", item.relativePath, err))
+		}
+	}
+	return errors.Join(rollbackErrors...)
+}
+
+func removeCreatedDirectories(root *os.Root, directories []string) error {
+	var cleanupErrors []error
+	for index := len(directories) - 1; index >= 0; index-- {
+		if err := root.Remove(directories[index]); err != nil && !errors.Is(err, os.ErrNotExist) {
+			cleanupErrors = append(cleanupErrors, fmt.Errorf("remove directory %q: %w", directories[index], err))
+		}
+	}
+	return errors.Join(cleanupErrors...)
+}
+
+func isValidSourceCommit(commit string) bool {
+	return sourceCommitPattern.MatchString(commit)
+}
+
+func setPublishHookForTest(hook func(int, string) error) func() {
+	publishHookState.Lock()
+	previous := publishHookState.hook
+	publishHookState.hook = hook
+	publishHookState.Unlock()
+	return func() {
+		publishHookState.Lock()
+		publishHookState.hook = previous
+		publishHookState.Unlock()
+	}
+}
+
+func runPublishHook(index int, relativePath string) error {
+	publishHookState.Lock()
+	defer publishHookState.Unlock()
+	if publishHookState.hook == nil {
+		return nil
+	}
+	return publishHookState.hook(index, relativePath)
 }

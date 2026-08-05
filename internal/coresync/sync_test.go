@@ -2,6 +2,7 @@ package coresync
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -261,6 +262,136 @@ func TestSyncRejectsDestinationSymlinkComponent(t *testing.T) {
 	assertErrorContains(t, err, "symlink")
 }
 
+func TestSyncRejectsManagedDestinationDriftWithoutWriting(t *testing.T) {
+	sourceRoot := t.TempDir()
+	destinationRoot := t.TempDir()
+	writeTestFile(t, sourceRoot, "source.txt", "original\n")
+	manifest := validManifest(Entry{Source: "source.txt", Destination: "export.txt"})
+	options := Options{
+		SourceRoot:      sourceRoot,
+		DestinationRoot: destinationRoot,
+		SourceCommit:    testSourceCommit,
+		ProvenancePath:  "provenance.json",
+	}
+	if err := Sync(manifest, options); err != nil {
+		t.Fatalf("first Sync() error = %v", err)
+	}
+	provenanceBefore := readTestFile(t, destinationRoot, options.ProvenancePath)
+	writeTestFile(t, destinationRoot, "export.txt", "tampered\n")
+	writeTestFile(t, sourceRoot, "source.txt", "updated\n")
+
+	assertErrorContains(t, Sync(manifest, options), "managed destination drift")
+	if got, want := string(readTestFile(t, destinationRoot, "export.txt")), "tampered\n"; got != want {
+		t.Fatalf("destination after rejected sync = %q, want unchanged %q", got, want)
+	}
+	if got := readTestFile(t, destinationRoot, options.ProvenancePath); string(got) != string(provenanceBefore) {
+		t.Fatalf("rejected sync changed provenance:\nbefore: %s\nafter:  %s", provenanceBefore, got)
+	}
+}
+
+func TestSyncRejectsDestinationPrefixCollisionWithoutWriting(t *testing.T) {
+	sourceRoot := t.TempDir()
+	destinationRoot := t.TempDir()
+	writeTestFile(t, sourceRoot, "one.txt", "one\n")
+	writeTestFile(t, sourceRoot, "two.txt", "two\n")
+	writeTestFile(t, sourceRoot, "three.txt", "three\n")
+	options := Options{
+		SourceRoot:      sourceRoot,
+		DestinationRoot: destinationRoot,
+		SourceCommit:    testSourceCommit,
+		ProvenancePath:  "provenance.json",
+	}
+	manifest := validManifest(
+		Entry{Source: "one.txt", Destination: "a"},
+		Entry{Source: "three.txt", Destination: "a-b"},
+		Entry{Source: "two.txt", Destination: "a/b"},
+	)
+
+	assertErrorContains(t, Sync(manifest, options), "path collision")
+	assertTestPathDoesNotExist(t, destinationRoot, "a")
+	assertTestPathDoesNotExist(t, destinationRoot, options.ProvenancePath)
+}
+
+func TestSyncRejectsProvenancePrefixCollisionWithoutWriting(t *testing.T) {
+	sourceRoot := t.TempDir()
+	destinationRoot := t.TempDir()
+	writeTestFile(t, sourceRoot, "source.txt", "content\n")
+	options := Options{
+		SourceRoot:      sourceRoot,
+		DestinationRoot: destinationRoot,
+		SourceCommit:    testSourceCommit,
+		ProvenancePath:  ".amsonia/provenance.json",
+	}
+	manifest := validManifest(Entry{Source: "source.txt", Destination: ".amsonia"})
+
+	assertErrorContains(t, Sync(manifest, options), "path collision")
+	assertTestPathDoesNotExist(t, destinationRoot, ".amsonia")
+}
+
+func TestSyncRollsBackPublishedFilesWhenPublicationFails(t *testing.T) {
+	sourceRoot := t.TempDir()
+	destinationRoot := t.TempDir()
+	writeTestFile(t, sourceRoot, "old-source.txt", "old content\n")
+	options := Options{
+		SourceRoot:      sourceRoot,
+		DestinationRoot: destinationRoot,
+		SourceCommit:    testSourceCommit,
+		ProvenancePath:  "provenance.json",
+	}
+	initialManifest := validManifest(Entry{Source: "old-source.txt", Destination: "a-old.txt"})
+	if err := Sync(initialManifest, options); err != nil {
+		t.Fatalf("first Sync() error = %v", err)
+	}
+	provenanceBefore := readTestFile(t, destinationRoot, options.ProvenancePath)
+
+	writeTestFile(t, sourceRoot, "old-source.txt", "updated content\n")
+	writeTestFile(t, sourceRoot, "new-source.txt", "new content\n")
+	manifest := validManifest(
+		Entry{Source: "old-source.txt", Destination: "a-old.txt"},
+		Entry{Source: "new-source.txt", Destination: "b-new.txt"},
+	)
+	restoreHook := setPublishHookForTest(func(_ int, relativePath string) error {
+		if relativePath == options.ProvenancePath {
+			return errors.New("injected publication failure")
+		}
+		return nil
+	})
+	t.Cleanup(restoreHook)
+
+	assertErrorContains(t, Sync(manifest, options), "injected publication failure")
+	if got, want := string(readTestFile(t, destinationRoot, "a-old.txt")), "old content\n"; got != want {
+		t.Fatalf("rolled-back managed content = %q, want %q", got, want)
+	}
+	assertTestPathDoesNotExist(t, destinationRoot, "b-new.txt")
+	if got := readTestFile(t, destinationRoot, options.ProvenancePath); string(got) != string(provenanceBefore) {
+		t.Fatalf("rolled-back provenance changed:\nbefore: %s\nafter:  %s", provenanceBefore, got)
+	}
+}
+
+func TestSourceCommitValidationAcceptsExactly40Or64LowercaseHexCharacters(t *testing.T) {
+	tests := []struct {
+		name   string
+		commit string
+		valid  bool
+	}{
+		{name: "40", commit: strings.Repeat("a", 40), valid: true},
+		{name: "64", commit: strings.Repeat("b", 64), valid: true},
+		{name: "39", commit: strings.Repeat("a", 39)},
+		{name: "41", commit: strings.Repeat("a", 41)},
+		{name: "63", commit: strings.Repeat("a", 63)},
+		{name: "65", commit: strings.Repeat("a", 65)},
+		{name: "uppercase", commit: strings.Repeat("A", 40)},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := isValidSourceCommit(test.commit); got != test.valid {
+				t.Fatalf("isValidSourceCommit(%q) = %t, want %t", test.commit, got, test.valid)
+			}
+		})
+	}
+}
+
 func validManifest(entries ...Entry) Manifest {
 	return Manifest{
 		SchemaVersion:    1,
@@ -288,6 +419,14 @@ func readTestFile(t *testing.T, root, relativePath string) []byte {
 		t.Fatalf("os.ReadFile(%q) error = %v", relativePath, err)
 	}
 	return content
+}
+
+func assertTestPathDoesNotExist(t *testing.T, root, relativePath string) {
+	t.Helper()
+	_, err := os.Lstat(filepath.Join(root, filepath.FromSlash(relativePath)))
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("os.Lstat(%q) error = %v, want os.ErrNotExist", relativePath, err)
+	}
 }
 
 func assertErrorContains(t *testing.T, err error, want string) {
