@@ -350,8 +350,8 @@ func TestSyncRollsBackPublishedFilesWhenPublicationFails(t *testing.T) {
 		Entry{Source: "old-source.txt", Destination: "a-old.txt"},
 		Entry{Source: "new-source.txt", Destination: "b-new.txt"},
 	)
-	restoreHook := setPublishHookForTest(func(_ int, relativePath string) error {
-		if relativePath == options.ProvenancePath {
+	restoreHook := setPublishHookForTest(func(phase publishHookPhase, _ int, relativePath string) error {
+		if phase == publishHookAfterPublication && relativePath == options.ProvenancePath {
 			return errors.New("injected publication failure")
 		}
 		return nil
@@ -365,6 +365,91 @@ func TestSyncRollsBackPublishedFilesWhenPublicationFails(t *testing.T) {
 	assertTestPathDoesNotExist(t, destinationRoot, "b-new.txt")
 	if got := readTestFile(t, destinationRoot, options.ProvenancePath); string(got) != string(provenanceBefore) {
 		t.Fatalf("rolled-back provenance changed:\nbefore: %s\nafter:  %s", provenanceBefore, got)
+	}
+}
+
+func TestSyncDoesNotFollowSwappedParentDuringPublication(t *testing.T) {
+	sourceRoot := t.TempDir()
+	destinationRoot := t.TempDir()
+	writeTestFile(t, sourceRoot, "source.txt", "original\n")
+	manifest := validManifest(Entry{Source: "source.txt", Destination: "nested/export.txt"})
+	options := Options{
+		SourceRoot:      sourceRoot,
+		DestinationRoot: destinationRoot,
+		SourceCommit:    testSourceCommit,
+		ProvenancePath:  "provenance.json",
+	}
+	if err := Sync(manifest, options); err != nil {
+		t.Fatalf("first Sync() error = %v", err)
+	}
+	provenanceBefore := readTestFile(t, destinationRoot, options.ProvenancePath)
+	writeTestFile(t, sourceRoot, "source.txt", "updated\n")
+
+	swapped := false
+	restoreHook := setPublishHookForTest(func(phase publishHookPhase, _ int, relativePath string) error {
+		if swapped || phase != publishHookAfterValidation || relativePath != "nested/export.txt" {
+			return nil
+		}
+		swapped = true
+		if err := os.Rename(filepath.Join(destinationRoot, "nested"), filepath.Join(destinationRoot, "moved")); err != nil {
+			return err
+		}
+		if err := os.Mkdir(filepath.Join(destinationRoot, "nested"), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(destinationRoot, "nested", "export.txt"), []byte("unrelated\n"), 0o600)
+	})
+	t.Cleanup(restoreHook)
+
+	assertErrorContains(t, Sync(manifest, options), "parent changed")
+	if got, want := string(readTestFile(t, destinationRoot, "nested/export.txt")), "unrelated\n"; got != want {
+		t.Fatalf("replacement parent content = %q, want unchanged %q", got, want)
+	}
+	if got, want := string(readTestFile(t, destinationRoot, "moved/export.txt")), "original\n"; got != want {
+		t.Fatalf("moved managed content = %q, want unchanged %q", got, want)
+	}
+	if got := readTestFile(t, destinationRoot, options.ProvenancePath); string(got) != string(provenanceBefore) {
+		t.Fatalf("parent-swap failure changed provenance:\nbefore: %s\nafter:  %s", provenanceBefore, got)
+	}
+}
+
+func TestSyncUnsafeRollbackPreservesConcurrentTargetAndRecoveryArtifact(t *testing.T) {
+	sourceRoot := t.TempDir()
+	destinationRoot := t.TempDir()
+	writeTestFile(t, sourceRoot, "source.txt", "original\n")
+	manifest := validManifest(Entry{Source: "source.txt", Destination: "export.txt"})
+	options := Options{
+		SourceRoot:      sourceRoot,
+		DestinationRoot: destinationRoot,
+		SourceCommit:    testSourceCommit,
+		ProvenancePath:  "provenance.json",
+	}
+	if err := Sync(manifest, options); err != nil {
+		t.Fatalf("first Sync() error = %v", err)
+	}
+	provenanceBefore := readTestFile(t, destinationRoot, options.ProvenancePath)
+	writeTestFile(t, sourceRoot, "source.txt", "updated\n")
+
+	injected := false
+	restoreHook := setPublishHookForTest(func(phase publishHookPhase, _ int, relativePath string) error {
+		if injected || phase != publishHookAfterBackup || relativePath != "export.txt" {
+			return nil
+		}
+		injected = true
+		return os.WriteFile(filepath.Join(destinationRoot, "export.txt"), []byte("concurrent\n"), 0o600)
+	})
+	t.Cleanup(restoreHook)
+
+	assertErrorContains(t, Sync(manifest, options), "rollback")
+	if got, want := string(readTestFile(t, destinationRoot, "export.txt")), "concurrent\n"; got != want {
+		t.Fatalf("concurrent target content = %q, want unchanged %q", got, want)
+	}
+	if got := readTestFile(t, destinationRoot, options.ProvenancePath); string(got) != string(provenanceBefore) {
+		t.Fatalf("unsafe rollback changed provenance:\nbefore: %s\nafter:  %s", provenanceBefore, got)
+	}
+	recoveryPath := findTestFileWithPrefix(t, destinationRoot, ".coresync-backup-")
+	if got, want := string(readTestFile(t, destinationRoot, recoveryPath)), "original\n"; got != want {
+		t.Fatalf("recovery artifact content = %q, want %q", got, want)
 	}
 }
 
@@ -427,6 +512,21 @@ func assertTestPathDoesNotExist(t *testing.T, root, relativePath string) {
 	if !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("os.Lstat(%q) error = %v, want os.ErrNotExist", relativePath, err)
 	}
+}
+
+func findTestFileWithPrefix(t *testing.T, root, prefix string) string {
+	t.Helper()
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatalf("os.ReadDir(%q) error = %v", root, err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), prefix) {
+			return entry.Name()
+		}
+	}
+	t.Fatalf("no file with prefix %q found in %q", prefix, root)
+	return ""
 }
 
 func assertErrorContains(t *testing.T, err error, want string) {

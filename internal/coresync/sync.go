@@ -29,8 +29,16 @@ var (
 	sha256Pattern       = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	publishHookState    struct {
 		sync.Mutex
-		hook func(int, string) error
+		hook func(publishHookPhase, int, string) error
 	}
+)
+
+type publishHookPhase uint8
+
+const (
+	publishHookAfterValidation publishHookPhase = iota + 1
+	publishHookAfterBackup
+	publishHookAfterPublication
 )
 
 // Entry maps one source file to one destination file.
@@ -120,7 +128,10 @@ func ValidateManifest(manifest Manifest) error {
 	return nil
 }
 
-// Sync copies all manifest entries and writes deterministic provenance.
+// Sync copies all manifest entries and writes deterministic provenance. It
+// rolls back publication errors returned within the process, but it is not
+// process-crash recovery. Crash-consistent or versioned generations are outside
+// the scope of this local reviewed-worktree tool.
 func Sync(manifest Manifest, options Options) error {
 	if err := ValidateManifest(manifest); err != nil {
 		return err
@@ -307,16 +318,32 @@ type fileSnapshot struct {
 	content []byte
 	mode    os.FileMode
 	digest  string
+	info    os.FileInfo
 }
 
 type publicationItem struct {
 	relativePath string
+	basename     string
+	parent       *stableDirectory
 	desired      []byte
 	desiredMode  os.FileMode
 	previous     fileSnapshot
 	provenance   bool
-	stagedPath   string
-	backupPath   string
+	stagedName   string
+	stagedInfo   os.FileInfo
+	backupName   string
+	backupInfo   os.FileInfo
+	backupExists bool
+	published    bool
+}
+
+type stableDirectory struct {
+	root         *os.Root
+	parent       *stableDirectory
+	name         string
+	relativePath string
+	info         os.FileInfo
+	created      bool
 }
 
 func validateOptions(options Options) error {
@@ -572,6 +599,7 @@ func readRootRegularFile(root *os.Root, relativePath string, allowMissing bool, 
 		content: content,
 		mode:    opened.Mode().Perm(),
 		digest:  hex.EncodeToString(digest[:]),
+		info:    opened,
 	}, nil
 }
 
@@ -598,153 +626,258 @@ func rejectSymlinkComponents(root *os.Root, relativePath string, allowMissing bo
 }
 
 func publishTransaction(destinationRoot *os.Root, items []publicationItem) error {
-	stagingDirectory, err := createStagingDirectory(destinationRoot)
+	directories, err := openStablePublicationParents(destinationRoot, items)
 	if err != nil {
-		return fmt.Errorf("create staging directory: %w", err)
+		return err
 	}
-	cleanupStaging := true
+	closed := false
 	defer func() {
-		if cleanupStaging {
-			_ = destinationRoot.RemoveAll(stagingDirectory)
+		if !closed {
+			_ = closeStableDirectories(directories, false)
 		}
 	}()
 
 	for index := range items {
-		items[index].stagedPath = path.Join(stagingDirectory, fmt.Sprintf("desired-%06d", index))
-		if err := writeStagedFile(destinationRoot, items[index].stagedPath, items[index].desired, items[index].desiredMode); err != nil {
-			return fmt.Errorf("stage %q: %w", items[index].relativePath, err)
-		}
-	}
-	for index := range items {
-		if !items[index].previous.exists {
-			continue
-		}
-		items[index].backupPath = path.Join(stagingDirectory, fmt.Sprintf("backup-%06d", index))
-		if err := writeStagedFile(destinationRoot, items[index].backupPath, items[index].previous.content, items[index].previous.mode); err != nil {
-			return fmt.Errorf("stage backup for %q: %w", items[index].relativePath, err)
-		}
-	}
-
-	createdDirectories, err := ensurePublicationParents(destinationRoot, items)
-	if err != nil {
-		cleanupErr := removeCreatedDirectories(destinationRoot, createdDirectories)
-		return errors.Join(err, cleanupErr)
-	}
-	if err := validatePublicationState(destinationRoot, items); err != nil {
-		cleanupErr := removeCreatedDirectories(destinationRoot, createdDirectories)
-		return errors.Join(err, cleanupErr)
-	}
-
-	published := 0
-	for index := range items {
-		if err := validatePublicationItem(destinationRoot, items[index]); err != nil {
-			return rollbackPublicationFailure(destinationRoot, items, published, createdDirectories, stagingDirectory, err, &cleanupStaging)
-		}
-		if items[index].previous.exists {
-			err = destinationRoot.Rename(items[index].stagedPath, items[index].relativePath)
-		} else {
-			err = destinationRoot.Link(items[index].stagedPath, items[index].relativePath)
-		}
+		items[index].stagedName, items[index].stagedInfo, err = createStagedFile(items[index].parent.root, items[index].desired, items[index].desiredMode)
 		if err != nil {
-			publicationErr := fmt.Errorf("publish %q: %w", items[index].relativePath, err)
-			return rollbackPublicationFailure(destinationRoot, items, published, createdDirectories, stagingDirectory, publicationErr, &cleanupStaging)
-		}
-		published++
-		if err := runPublishHook(index, items[index].relativePath); err != nil {
-			publicationErr := fmt.Errorf("publish %q: %w", items[index].relativePath, err)
-			return rollbackPublicationFailure(destinationRoot, items, published, createdDirectories, stagingDirectory, publicationErr, &cleanupStaging)
+			cleanupErr := removePublicationArtifacts(items)
+			closeErr := closeStableDirectories(directories, cleanupErr == nil)
+			closed = true
+			return errors.Join(fmt.Errorf("stage %q: %w", items[index].relativePath, err), cleanupErr, closeErr)
 		}
 	}
 
-	if err := destinationRoot.RemoveAll(stagingDirectory); err != nil {
-		return fmt.Errorf("remove staging directory: %w", err)
+	for index := range items {
+		if err := publishStableItem(directories, &items[index], index); err != nil {
+			result := rollbackStableTransaction(items, directories, err)
+			closed = true
+			return result
+		}
 	}
-	cleanupStaging = false
+	if err := validateStableDirectories(directories); err != nil {
+		result := rollbackStableTransaction(items, directories, err)
+		closed = true
+		return result
+	}
+	if err := validatePublishedTransaction(items); err != nil {
+		result := rollbackStableTransaction(items, directories, err)
+		closed = true
+		return result
+	}
+	cleanupErr := removePublicationArtifacts(items)
+	closeErr := closeStableDirectories(directories, false)
+	closed = true
+	return errors.Join(cleanupErr, closeErr)
+}
+
+func openStablePublicationParents(destinationRoot *os.Root, items []publicationItem) ([]*stableDirectory, error) {
+	rootInfo, err := destinationRoot.Stat(".")
+	if err != nil {
+		return nil, fmt.Errorf("inspect destination root: %w", err)
+	}
+	rootDirectory := &stableDirectory{root: destinationRoot, relativePath: ".", info: rootInfo}
+	directories := []*stableDirectory{rootDirectory}
+	byPath := map[string]*stableDirectory{".": rootDirectory}
+
+	for index := range items {
+		parentPath := path.Dir(items[index].relativePath)
+		current := rootDirectory
+		currentPath := ""
+		if parentPath != "." {
+			for _, component := range strings.Split(parentPath, "/") {
+				currentPath = path.Join(currentPath, component)
+				if existing := byPath[currentPath]; existing != nil {
+					current = existing
+					continue
+				}
+				directory, openErr := openStableDirectoryComponent(current, component, currentPath)
+				if openErr != nil {
+					closeErr := closeStableDirectories(directories, true)
+					return nil, errors.Join(openErr, closeErr)
+				}
+				directories = append(directories, directory)
+				byPath[currentPath] = directory
+				current = directory
+			}
+		}
+		items[index].parent = current
+		items[index].basename = path.Base(items[index].relativePath)
+	}
+	if err := validateStableDirectories(directories); err != nil {
+		closeErr := closeStableDirectories(directories, true)
+		return nil, errors.Join(err, closeErr)
+	}
+	return directories, nil
+}
+
+func openStableDirectoryComponent(parent *stableDirectory, name, relativePath string) (*stableDirectory, error) {
+	info, err := parent.root.Lstat(name)
+	created := false
+	if errors.Is(err, os.ErrNotExist) {
+		if err := parent.root.Mkdir(name, 0o755); err != nil {
+			return nil, fmt.Errorf("create destination directory %q: %w", relativePath, err)
+		}
+		created = true
+		info, err = parent.root.Lstat(name)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("inspect destination directory %q: %w", relativePath, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("symlink path component %q is not allowed", name)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("path component %q is not a directory", name)
+	}
+	root, err := parent.root.OpenRoot(name)
+	if err != nil {
+		return nil, fmt.Errorf("open destination directory %q: %w", relativePath, err)
+	}
+	opened, err := root.Stat(".")
+	if err != nil {
+		root.Close()
+		return nil, fmt.Errorf("inspect opened destination directory %q: %w", relativePath, err)
+	}
+	after, err := parent.root.Lstat(name)
+	if err != nil || !os.SameFile(info, opened) || !os.SameFile(after, opened) {
+		root.Close()
+		return nil, fmt.Errorf("destination parent changed while opening %q", relativePath)
+	}
+	return &stableDirectory{
+		root:         root,
+		parent:       parent,
+		name:         name,
+		relativePath: relativePath,
+		info:         opened,
+		created:      created,
+	}, nil
+}
+
+func validateStableDirectories(directories []*stableDirectory) error {
+	for _, directory := range directories[1:] {
+		info, err := directory.parent.root.Lstat(directory.name)
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() || !os.SameFile(info, directory.info) {
+			return fmt.Errorf("destination parent changed at %q", directory.relativePath)
+		}
+	}
 	return nil
 }
 
-func createStagingDirectory(root *os.Root) (string, error) {
-	for range 100 {
-		random := make([]byte, 16)
-		if _, err := rand.Read(random); err != nil {
-			return "", err
+func closeStableDirectories(directories []*stableDirectory, removeCreated bool) error {
+	var closeErrors []error
+	for index := len(directories) - 1; index >= 1; index-- {
+		directory := directories[index]
+		if err := directory.root.Close(); err != nil {
+			closeErrors = append(closeErrors, fmt.Errorf("close destination directory %q: %w", directory.relativePath, err))
 		}
-		name := ".coresync-stage-" + hex.EncodeToString(random)
-		if err := root.Mkdir(name, 0o700); err == nil {
-			return name, nil
-		} else if !errors.Is(err, os.ErrExist) {
-			return "", err
-		}
-	}
-	return "", errors.New("could not allocate unique staging directory")
-}
-
-func writeStagedFile(root *os.Root, relativePath string, content []byte, mode os.FileMode) error {
-	file, err := root.OpenFile(relativePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		return err
-	}
-	if err := file.Chmod(mode.Perm()); err != nil {
-		file.Close()
-		return err
-	}
-	if _, err := file.Write(content); err != nil {
-		file.Close()
-		return err
-	}
-	if err := file.Sync(); err != nil {
-		file.Close()
-		return err
-	}
-	return file.Close()
-}
-
-func ensurePublicationParents(root *os.Root, items []publicationItem) ([]string, error) {
-	created := make([]string, 0)
-	for _, item := range items {
-		parent := path.Dir(item.relativePath)
-		if parent == "." {
+		if !removeCreated || !directory.created {
 			continue
 		}
-		current := ""
-		for _, component := range strings.Split(parent, "/") {
-			current = path.Join(current, component)
-			info, err := root.Lstat(current)
-			if errors.Is(err, os.ErrNotExist) {
-				if err := root.Mkdir(current, 0o755); err != nil {
-					if !errors.Is(err, os.ErrExist) {
-						return created, fmt.Errorf("create destination directory %q: %w", current, err)
-					}
-				} else {
-					created = append(created, current)
-				}
-				info, err = root.Lstat(current)
-			}
-			if err != nil {
-				return created, fmt.Errorf("inspect destination directory %q: %w", current, err)
-			}
-			if info.Mode()&os.ModeSymlink != 0 {
-				return created, fmt.Errorf("symlink path component %q is not allowed", component)
-			}
-			if !info.IsDir() {
-				return created, fmt.Errorf("path component %q is not a directory", component)
-			}
+		info, err := directory.parent.root.Lstat(directory.name)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil || !os.SameFile(info, directory.info) {
+			closeErrors = append(closeErrors, fmt.Errorf("destination parent changed before removing %q", directory.relativePath))
+			continue
+		}
+		if err := directory.parent.root.Remove(directory.name); err != nil {
+			closeErrors = append(closeErrors, fmt.Errorf("remove destination directory %q: %w", directory.relativePath, err))
 		}
 	}
-	return created, nil
+	return errors.Join(closeErrors...)
 }
 
-func validatePublicationState(root *os.Root, items []publicationItem) error {
-	for _, item := range items {
-		if err := validatePublicationItem(root, item); err != nil {
+func createStagedFile(parent *os.Root, content []byte, mode os.FileMode) (string, os.FileInfo, error) {
+	for range 100 {
+		name, err := randomArtifactName(".coresync-stage-")
+		if err != nil {
+			return "", nil, err
+		}
+		file, err := parent.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if errors.Is(err, os.ErrExist) {
+			continue
+		}
+		if err != nil {
+			return "", nil, err
+		}
+		createdInfo, err := file.Stat()
+		if err != nil {
+			file.Close()
+			return "", nil, err
+		}
+		cleanupFailedStage := func() {
+			file.Close()
+			_ = removeArtifactIfUnchanged(parent, name, createdInfo)
+		}
+		if err := file.Chmod(mode.Perm()); err != nil {
+			cleanupFailedStage()
+			return "", nil, err
+		}
+		if _, err := file.Write(content); err != nil {
+			cleanupFailedStage()
+			return "", nil, err
+		}
+		if err := file.Sync(); err != nil {
+			cleanupFailedStage()
+			return "", nil, err
+		}
+		info, err := file.Stat()
+		if err != nil {
+			cleanupFailedStage()
+			return "", nil, err
+		}
+		if err := file.Close(); err != nil {
+			_ = removeArtifactIfUnchanged(parent, name, createdInfo)
+			return "", nil, err
+		}
+		return name, info, nil
+	}
+	return "", nil, errors.New("could not allocate unique staged filename")
+}
+
+func publishStableItem(directories []*stableDirectory, item *publicationItem, index int) error {
+	if err := validateStableDirectories(directories); err != nil {
+		return err
+	}
+	if err := validateStablePublicationTarget(*item); err != nil {
+		return err
+	}
+	if err := runPublishHook(publishHookAfterValidation, index, item.relativePath); err != nil {
+		return fmt.Errorf("after validation for %q: %w", item.relativePath, err)
+	}
+	if err := validateStableDirectories(directories); err != nil {
+		return err
+	}
+	if item.previous.exists {
+		if err := moveTargetToBackup(item); err != nil {
+			return err
+		}
+		if err := runPublishHook(publishHookAfterBackup, index, item.relativePath); err != nil {
+			return fmt.Errorf("after backup for %q: %w", item.relativePath, err)
+		}
+		if err := validateStableDirectories(directories); err != nil {
+			return err
+		}
+		if err := validateBackupArtifact(*item); err != nil {
 			return err
 		}
 	}
+	if err := validateStagedArtifact(*item); err != nil {
+		return err
+	}
+	if err := item.parent.root.Link(item.stagedName, item.basename); err != nil {
+		return fmt.Errorf("publish %q without clobbering: %w", item.relativePath, err)
+	}
+	item.published = true
+	if err := runPublishHook(publishHookAfterPublication, index, item.relativePath); err != nil {
+		return fmt.Errorf("after publication for %q: %w", item.relativePath, err)
+	}
 	return nil
 }
 
-func validatePublicationItem(root *os.Root, item publicationItem) error {
-	snapshot, err := readRootRegularFile(root, item.relativePath, true, "publication target")
+func validateStablePublicationTarget(item publicationItem) error {
+	snapshot, err := readRootRegularFile(item.parent.root, item.basename, true, "publication target")
 	if err != nil {
 		return err
 	}
@@ -766,51 +899,233 @@ func validatePublicationItem(root *os.Root, item publicationItem) error {
 	return nil
 }
 
-func rollbackPublicationFailure(root *os.Root, items []publicationItem, published int, createdDirectories []string, stagingDirectory string, publicationErr error, cleanupStaging *bool) error {
-	rollbackErr := rollbackPublished(root, items[:published])
-	directoryErr := removeCreatedDirectories(root, createdDirectories)
-	if rollbackErr != nil || directoryErr != nil {
-		*cleanupStaging = false
-		return errors.Join(
-			publicationErr,
-			fmt.Errorf("rollback from staging directory %q: %w", stagingDirectory, errors.Join(rollbackErr, directoryErr)),
-		)
+func moveTargetToBackup(item *publicationItem) error {
+	backupName, err := uniqueUnusedArtifactName(item.parent.root, ".coresync-backup-")
+	if err != nil {
+		return fmt.Errorf("allocate backup for %q: %w", item.relativePath, err)
 	}
-	return publicationErr
+	item.backupName = backupName
+	if err := item.parent.root.Rename(item.basename, item.backupName); err != nil {
+		return fmt.Errorf("move %q to backup: %w", item.relativePath, err)
+	}
+	item.backupExists = true
+	backup, err := readRootRegularFile(item.parent.root, item.backupName, false, "backup")
+	if err == nil && (!bytes.Equal(backup.content, item.previous.content) || backup.mode != item.previous.mode) {
+		err = fmt.Errorf("managed destination drift for %q after backup", item.relativePath)
+	}
+	if err != nil {
+		restoreErr := restoreBackupIfSafe(item)
+		return errors.Join(err, wrapRollbackError(restoreErr))
+	}
+	item.backupInfo = backup.info
+	return nil
 }
 
-func rollbackPublished(root *os.Root, published []publicationItem) error {
-	var rollbackErrors []error
-	for index := len(published) - 1; index >= 0; index-- {
-		item := published[index]
-		if item.previous.exists {
-			if err := root.Rename(item.backupPath, item.relativePath); err != nil {
-				rollbackErrors = append(rollbackErrors, fmt.Errorf("restore %q: %w", item.relativePath, err))
-			}
+func uniqueUnusedArtifactName(parent *os.Root, prefix string) (string, error) {
+	for range 100 {
+		name, err := randomArtifactName(prefix)
+		if err != nil {
+			return "", err
+		}
+		_, err = parent.Lstat(name)
+		if errors.Is(err, os.ErrNotExist) {
+			return name, nil
+		}
+		if err != nil {
+			return "", err
+		}
+	}
+	return "", errors.New("could not allocate unique artifact filename")
+}
+
+func randomArtifactName(prefix string) (string, error) {
+	random := make([]byte, 16)
+	if _, err := rand.Read(random); err != nil {
+		return "", err
+	}
+	return prefix + hex.EncodeToString(random), nil
+}
+
+func validateStagedArtifact(item publicationItem) error {
+	return validateArtifact(item.parent.root, item.stagedName, item.stagedInfo, item.desired, item.desiredMode, "staged file")
+}
+
+func validateBackupArtifact(item publicationItem) error {
+	if !item.backupExists {
+		return nil
+	}
+	return validateArtifact(item.parent.root, item.backupName, item.backupInfo, item.previous.content, item.previous.mode, "backup")
+}
+
+func validateArtifact(parent *os.Root, name string, expectedInfo os.FileInfo, content []byte, mode os.FileMode, label string) error {
+	snapshot, err := readRootRegularFile(parent, name, false, label)
+	if err != nil {
+		return err
+	}
+	if !os.SameFile(snapshot.info, expectedInfo) || !bytes.Equal(snapshot.content, content) || snapshot.mode != mode.Perm() {
+		return fmt.Errorf("%s %q changed", label, name)
+	}
+	return nil
+}
+
+func validatePublishedTransaction(items []publicationItem) error {
+	for _, item := range items {
+		if !item.published {
 			continue
 		}
-		if err := root.Remove(item.relativePath); err != nil && !errors.Is(err, os.ErrNotExist) {
-			rollbackErrors = append(rollbackErrors, fmt.Errorf("remove %q: %w", item.relativePath, err))
+		if err := validatePublishedTarget(item); err != nil {
+			return err
+		}
+		if err := validateStagedArtifact(item); err != nil {
+			return err
+		}
+		if err := validateBackupArtifact(item); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validatePublishedTarget(item publicationItem) error {
+	snapshot, err := readRootRegularFile(item.parent.root, item.basename, false, "published target")
+	if err != nil {
+		return err
+	}
+	if !os.SameFile(snapshot.info, item.stagedInfo) || !bytes.Equal(snapshot.content, item.desired) || snapshot.mode != item.desiredMode.Perm() {
+		return fmt.Errorf("published target %q changed", item.relativePath)
+	}
+	return nil
+}
+
+func rollbackStableTransaction(items []publicationItem, directories []*stableDirectory, publicationErr error) error {
+	rollbackErr := rollbackStableItems(items)
+	if rollbackErr != nil {
+		closeErr := closeStableDirectories(directories, false)
+		return errors.Join(publicationErr, fmt.Errorf("rollback: %w", rollbackErr), closeErr)
+	}
+	cleanupErr := removePublicationArtifacts(items)
+	closeErr := closeStableDirectories(directories, cleanupErr == nil)
+	return errors.Join(publicationErr, wrapRollbackError(cleanupErr), closeErr)
+}
+
+func rollbackStableItems(items []publicationItem) error {
+	var rollbackErrors []error
+	for index := len(items) - 1; index >= 0; index-- {
+		item := &items[index]
+		if item.published {
+			if err := removePublishedTargetIfSafe(item); err != nil {
+				rollbackErrors = append(rollbackErrors, err)
+				continue
+			}
+			item.published = false
+		}
+		if item.backupExists {
+			if err := restoreBackupIfSafe(item); err != nil {
+				rollbackErrors = append(rollbackErrors, err)
+			}
 		}
 	}
 	return errors.Join(rollbackErrors...)
 }
 
-func removeCreatedDirectories(root *os.Root, directories []string) error {
+func removePublishedTargetIfSafe(item *publicationItem) error {
+	snapshot, err := readRootRegularFile(item.parent.root, item.basename, true, "rollback target")
+	if err != nil {
+		return err
+	}
+	if !snapshot.exists {
+		return nil
+	}
+	if !os.SameFile(snapshot.info, item.stagedInfo) || !bytes.Equal(snapshot.content, item.desired) || snapshot.mode != item.desiredMode.Perm() {
+		return fmt.Errorf("unsafe rollback for %q: concurrent target retained", item.relativePath)
+	}
+	if err := item.parent.root.Remove(item.basename); err != nil {
+		return fmt.Errorf("remove published target %q during rollback: %w", item.relativePath, err)
+	}
+	return nil
+}
+
+func restoreBackupIfSafe(item *publicationItem) error {
+	if !item.backupExists {
+		return nil
+	}
+	if err := validateBackupArtifact(*item); err != nil && item.backupInfo != nil {
+		return fmt.Errorf("backup recovery artifact %q is unsafe: %w", item.backupName, err)
+	}
+	_, err := item.parent.root.Lstat(item.basename)
+	if err == nil {
+		return fmt.Errorf("cannot restore backup recovery artifact %q for %q: target exists", item.backupName, item.relativePath)
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("inspect rollback target %q: %w", item.relativePath, err)
+	}
+	if err := item.parent.root.Link(item.backupName, item.basename); err != nil {
+		return fmt.Errorf("restore backup recovery artifact %q for %q without clobbering: %w", item.backupName, item.relativePath, err)
+	}
+	if item.backupInfo == nil {
+		backup, snapshotErr := readRootRegularFile(item.parent.root, item.backupName, false, "backup")
+		if snapshotErr != nil {
+			return snapshotErr
+		}
+		item.backupInfo = backup.info
+	}
+	if err := removeArtifactIfUnchanged(item.parent.root, item.backupName, item.backupInfo); err != nil {
+		return fmt.Errorf("remove restored backup artifact %q: %w", item.backupName, err)
+	}
+	item.backupExists = false
+	item.backupName = ""
+	item.backupInfo = nil
+	return nil
+}
+
+func removePublicationArtifacts(items []publicationItem) error {
 	var cleanupErrors []error
-	for index := len(directories) - 1; index >= 0; index-- {
-		if err := root.Remove(directories[index]); err != nil && !errors.Is(err, os.ErrNotExist) {
-			cleanupErrors = append(cleanupErrors, fmt.Errorf("remove directory %q: %w", directories[index], err))
+	for index := range items {
+		if items[index].backupExists {
+			if err := removeArtifactIfUnchanged(items[index].parent.root, items[index].backupName, items[index].backupInfo); err != nil {
+				cleanupErrors = append(cleanupErrors, fmt.Errorf("remove backup recovery artifact %q: %w", items[index].backupName, err))
+			} else {
+				items[index].backupExists = false
+			}
+		}
+		if items[index].stagedName != "" {
+			if err := removeArtifactIfUnchanged(items[index].parent.root, items[index].stagedName, items[index].stagedInfo); err != nil {
+				cleanupErrors = append(cleanupErrors, fmt.Errorf("remove staged recovery artifact %q: %w", items[index].stagedName, err))
+			}
 		}
 	}
 	return errors.Join(cleanupErrors...)
+}
+
+func removeArtifactIfUnchanged(parent *os.Root, name string, expected os.FileInfo) error {
+	if name == "" || expected == nil {
+		return nil
+	}
+	info, err := parent.Lstat(name)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !os.SameFile(info, expected) {
+		return errors.New("artifact changed; retained")
+	}
+	return parent.Remove(name)
+}
+
+func wrapRollbackError(err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("rollback: %w", err)
 }
 
 func isValidSourceCommit(commit string) bool {
 	return sourceCommitPattern.MatchString(commit)
 }
 
-func setPublishHookForTest(hook func(int, string) error) func() {
+func setPublishHookForTest(hook func(publishHookPhase, int, string) error) func() {
 	publishHookState.Lock()
 	previous := publishHookState.hook
 	publishHookState.hook = hook
@@ -822,11 +1137,12 @@ func setPublishHookForTest(hook func(int, string) error) func() {
 	}
 }
 
-func runPublishHook(index int, relativePath string) error {
+func runPublishHook(phase publishHookPhase, index int, relativePath string) error {
 	publishHookState.Lock()
-	defer publishHookState.Unlock()
-	if publishHookState.hook == nil {
+	hook := publishHookState.hook
+	publishHookState.Unlock()
+	if hook == nil {
 		return nil
 	}
-	return publishHookState.hook(index, relativePath)
+	return hook(phase, index, relativePath)
 }
