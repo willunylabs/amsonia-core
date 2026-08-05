@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
@@ -32,8 +33,15 @@ func (h *PasswordHasher) Hash(password string) (string, error) {
 }
 
 func (h *PasswordHasher) Verify(password, encoded string) bool {
+	if h == nil || h.memory == 0 || h.iterations == 0 || h.parallelism == 0 || h.keyLen == 0 {
+		return false
+	}
 	parts := strings.Split(encoded, "$")
-	if len(parts) != 5 || parts[0] != "argon2id" {
+	if len(parts) != 5 || parts[0] != "argon2id" || parts[1] != "v=19" {
+		return false
+	}
+	params, ok := parseArgon2Parameters(parts[2])
+	if !ok || params.memory != h.memory || params.iterations != h.iterations || params.parallelism != h.parallelism {
 		return false
 	}
 	salt, err := base64.RawStdEncoding.DecodeString(parts[3])
@@ -50,21 +58,69 @@ func (h *PasswordHasher) Verify(password, encoded string) bool {
 	if len(stored) == 0 {
 		return false
 	}
-	keyLen, ok := checkedUint32Len(len(stored))
-	if !ok {
+	if uint64(len(stored)) != uint64(h.keyLen) {
 		return false
 	}
-	key := argon2.IDKey([]byte(password), salt, h.iterations, h.memory, h.parallelism, keyLen)
+	key := argon2.IDKey([]byte(password), salt, h.iterations, h.memory, h.parallelism, h.keyLen)
 	return subtle.ConstantTimeCompare(stored, key) == 1
 }
 
-func checkedUint32Len(size int) (uint32, bool) {
-	if size < 0 {
-		return 0, false
+type argon2Parameters struct {
+	memory      uint32
+	iterations  uint32
+	parallelism uint8
+}
+
+func parseArgon2Parameters(encoded string) (argon2Parameters, bool) {
+	tokens := strings.Split(encoded, ",")
+	if len(tokens) != 3 {
+		return argon2Parameters{}, false
 	}
-	u := uint64(size)
-	if u > uint64(^uint32(0)) {
-		return 0, false
+
+	var params argon2Parameters
+	seen := make(map[string]struct{}, len(tokens))
+	for index, token := range tokens {
+		parts := strings.Split(token, "=")
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			return argon2Parameters{}, false
+		}
+		if _, found := seen[parts[0]]; found {
+			return argon2Parameters{}, false
+		}
+		seen[parts[0]] = struct{}{}
+
+		var bitSize int
+		switch parts[0] {
+		case "m":
+			bitSize = 32
+		case "t":
+			bitSize = 32
+		case "p":
+			bitSize = 8
+		default:
+			return argon2Parameters{}, false
+		}
+		value, err := strconv.ParseUint(parts[1], 10, bitSize)
+		if err != nil || value == 0 {
+			return argon2Parameters{}, false
+		}
+		switch index {
+		case 0:
+			if parts[0] != "m" {
+				return argon2Parameters{}, false
+			}
+			params.memory = uint32(value)
+		case 1:
+			if parts[0] != "t" {
+				return argon2Parameters{}, false
+			}
+			params.iterations = uint32(value)
+		case 2:
+			if parts[0] != "p" {
+				return argon2Parameters{}, false
+			}
+			params.parallelism = uint8(value)
+		}
 	}
-	return uint32(u), true
+	return params, true
 }

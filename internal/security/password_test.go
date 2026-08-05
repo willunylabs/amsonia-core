@@ -25,6 +25,92 @@ func TestPasswordHasherRoundTrip(t *testing.T) {
 	}
 }
 
+func TestPasswordHasherRejectsWrongKeyLengths(t *testing.T) {
+	hasher := NewPasswordHasher(64, 1, 1, 32)
+	for _, tc := range []struct {
+		name   string
+		keyLen uint32
+	}{
+		{name: "one-byte", keyLen: 1},
+		{name: "oversized", keyLen: 33},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			encoded := testEncodedPasswordHash("19", "m=64,t=1,p=1", "synthetic-password-for-tests", 64, 1, 1, tc.keyLen)
+			if hasher.Verify("synthetic-password-for-tests", encoded) {
+				t.Fatalf("key length %d was accepted", tc.keyLen)
+			}
+		})
+	}
+}
+
+func TestPasswordHasherRejectsMismatchedParameters(t *testing.T) {
+	hasher := NewPasswordHasher(64, 1, 1, 32)
+	for _, tc := range []struct {
+		name       string
+		parameters string
+	}{
+		{name: "memory", parameters: "m=65,t=1,p=1"},
+		{name: "iterations", parameters: "m=64,t=2,p=1"},
+		{name: "parallelism", parameters: "m=64,t=1,p=2"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			encoded := testEncodedPasswordHash("19", tc.parameters, "synthetic-password-for-tests", 64, 1, 1, 32)
+			if hasher.Verify("synthetic-password-for-tests", encoded) {
+				t.Fatalf("mismatched %s parameter was accepted", tc.name)
+			}
+		})
+	}
+}
+
+func TestPasswordHasherRejectsMalformedParameters(t *testing.T) {
+	hasher := NewPasswordHasher(64, 1, 1, 32)
+	for _, tc := range []struct {
+		name       string
+		version    string
+		parameters string
+	}{
+		{name: "wrong version", version: "18", parameters: "m=64,t=1,p=1"},
+		{name: "unknown parameter", version: "19", parameters: "m=64,x=1,p=1"},
+		{name: "duplicate parameter", version: "19", parameters: "m=64,m=64,p=1"},
+		{name: "missing parameter", version: "19", parameters: "m=64,t=1"},
+		{name: "malformed parameter", version: "19", parameters: "m=64,t=1,p"},
+		{name: "non-decimal parameter", version: "19", parameters: "m=0x40,t=1,p=1"},
+		{name: "zero memory", version: "19", parameters: "m=0,t=1,p=1"},
+		{name: "zero iterations", version: "19", parameters: "m=64,t=0,p=1"},
+		{name: "zero parallelism", version: "19", parameters: "m=64,t=1,p=0"},
+		{name: "memory overflow", version: "19", parameters: "m=4294967296,t=1,p=1"},
+		{name: "iterations overflow", version: "19", parameters: "m=64,t=4294967296,p=1"},
+		{name: "parallelism overflow", version: "19", parameters: "m=64,t=1,p=256"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			encoded := testEncodedPasswordHash(tc.version, tc.parameters, "synthetic-password-for-tests", 64, 1, 1, 32)
+			if hasher.Verify("synthetic-password-for-tests", encoded) {
+				t.Fatalf("malformed parameters were accepted: %s", tc.parameters)
+			}
+		})
+	}
+}
+
+func TestPasswordHasherVerifyRejectsInvalidConfiguration(t *testing.T) {
+	encoded := testEncodedPasswordHash("19", "m=64,t=1,p=1", "synthetic-password-for-tests", 64, 1, 1, 32)
+	for _, tc := range []struct {
+		name   string
+		hasher *PasswordHasher
+	}{
+		{name: "nil receiver", hasher: nil},
+		{name: "zero memory", hasher: NewPasswordHasher(0, 1, 1, 32)},
+		{name: "zero iterations", hasher: NewPasswordHasher(64, 0, 1, 32)},
+		{name: "zero parallelism", hasher: NewPasswordHasher(64, 1, 0, 32)},
+		{name: "zero key length", hasher: NewPasswordHasher(64, 1, 1, 0)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.hasher.Verify("synthetic-password-for-tests", encoded) {
+				t.Fatal("invalid hasher configuration was accepted")
+			}
+		})
+	}
+}
+
 func TestPasswordHasherRejectsEmptySaltWithDerivedKey(t *testing.T) {
 	hasher := NewPasswordHasher(64, 1, 1, 32)
 	password := "synthetic-password-for-tests"
@@ -59,4 +145,11 @@ func TestPasswordHasherRejectsInvalidEncodedValues(t *testing.T) {
 			}
 		})
 	}
+}
+
+func testEncodedPasswordHash(version, parameters, password string, memory, iterations uint32, parallelism uint8, keyLen uint32) string {
+	salt := []byte("synthetic-salt")
+	key := argon2.IDKey([]byte(password), salt, iterations, memory, parallelism, keyLen)
+	return fmt.Sprintf("argon2id$v=%s$%s$%s$%s", version, parameters,
+		base64.RawStdEncoding.EncodeToString(salt), base64.RawStdEncoding.EncodeToString(key))
 }
