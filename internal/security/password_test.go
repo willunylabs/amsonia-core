@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
 )
@@ -23,6 +24,53 @@ func TestPasswordHasherRoundTrip(t *testing.T) {
 	}
 	if hasher.Verify("different-synthetic-password", encoded) {
 		t.Fatal("wrong password verified")
+	}
+}
+
+func TestPasswordHasherEnforcesPasswordRuneLimit(t *testing.T) {
+	hasher := NewPasswordHasher(64, 1, 1, 32)
+	validPasswords := []struct {
+		name     string
+		password string
+	}{
+		{name: "ascii 128 code points", password: strings.Repeat("a", 128)},
+		{name: "multibyte 128 code points", password: strings.Repeat("界", 128)},
+	}
+	for _, tc := range validPasswords {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := utf8.RuneCountInString(tc.password); got != 128 {
+				t.Fatalf("test password has %d code points, want 128", got)
+			}
+			encoded, err := hasher.Hash(tc.password)
+			if err != nil {
+				t.Fatalf("hash 128-code-point password: %v", err)
+			}
+			if !hasher.Verify(tc.password, encoded) {
+				t.Fatal("128-code-point password did not verify")
+			}
+		})
+	}
+
+	validEncoded, err := hasher.Hash(strings.Repeat("a", 128))
+	if err != nil {
+		t.Fatalf("hash valid password for rejection cases: %v", err)
+	}
+	for _, tc := range []struct {
+		name     string
+		password string
+	}{
+		{name: "ascii 129 code points", password: strings.Repeat("a", 129)},
+		{name: "multibyte 129 code points", password: strings.Repeat("界", 129)},
+		{name: "invalid UTF-8", password: string([]byte{0xff, 0xfe})},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := hasher.Hash(tc.password); err == nil {
+				t.Fatal("invalid or overlong password was hashed")
+			}
+			if hasher.Verify(tc.password, validEncoded) {
+				t.Fatal("invalid or overlong password verified")
+			}
+		})
 	}
 }
 

@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
 )
 
 const (
 	argon2SaltLength             = 16
+	maxPasswordCodePoints        = 128        // Unicode code points.
 	maxEncodedPasswordHashLength = 4096       // bytes.
 	minArgon2Memory              = 64         // KiB.
 	maxArgon2Memory              = 256 * 1024 // KiB, 256 MiB.
@@ -36,6 +38,9 @@ func NewPasswordHasher(memory uint32, iterations uint32, parallelism uint8, keyL
 }
 
 func (h *PasswordHasher) Hash(password string) (string, error) {
+	if !validPasswordInput(password) {
+		return "", fmt.Errorf("invalid password input")
+	}
 	if h == nil || !validArgon2Config(h.memory, h.iterations, h.parallelism, h.keyLen) {
 		return "", fmt.Errorf("invalid argon2 configuration")
 	}
@@ -49,6 +54,9 @@ func (h *PasswordHasher) Hash(password string) (string, error) {
 }
 
 func (h *PasswordHasher) Verify(password, encoded string) bool {
+	if !validPasswordInput(password) {
+		return false
+	}
 	if len(encoded) > maxEncodedPasswordHashLength {
 		return false
 	}
@@ -88,6 +96,10 @@ func (h *PasswordHasher) Verify(password, encoded string) bool {
 	}
 	key := argon2.IDKey([]byte(password), salt, h.iterations, h.memory, h.parallelism, h.keyLen)
 	return subtle.ConstantTimeCompare(stored, key) == 1
+}
+
+func validPasswordInput(password string) bool {
+	return utf8.ValidString(password) && utf8.RuneCountInString(password) <= maxPasswordCodePoints
 }
 
 func validArgon2Config(memory, iterations uint32, parallelism uint8, keyLen uint32) bool {
