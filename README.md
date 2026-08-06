@@ -1,13 +1,16 @@
-# Amsonia
+# Amsonia Core
 
-Opinionated, tenant-safe delegated authorization for Go SaaS applications —
-embedded without additional infrastructure.
+Amsonia Core is the Apache-2.0 minimum edition of Amsonia. The current v0.1
+release provides an embedded Go authorization kernel with tenant-safe RBAC,
+scoped grants, safe delegation, immutable role versions, and PostgreSQL RLS.
 
-Amsonia is the open-source core of
-[willuny-go-admin](https://github.com/willunylabs/willuny-go-admin), the
-deployable SaaS starter for teams that need identity (Google OAuth), Stripe
-billing, orders, Resend email, full tenant/workspace lifecycle, admin APIs, and
-operations — the complete product built around this authorization kernel.
+The v0.2 development line is adding a runnable Go API and minimum management UI
+from explicitly public-safe source shared with the complete Amsonia product. The
+full-stack v0.2 experience is not part of a stable release yet.
+
+The complete Amsonia product is currently developed in the repositories named
+`willuny-go-admin` and `willuny-go-ui`. These are repository names, not separate
+product brands.
 
 ## Why Amsonia
 
@@ -147,5 +150,5 @@ Community support is best effort. Report security issues privately via
 
 ## License
 
-Apache-2.0. willuny-go-admin — the complete product built around this core — is
-licensed separately under a commercial source license.
+Apache-2.0. The complete Amsonia product is licensed separately under a
+commercial source license.
