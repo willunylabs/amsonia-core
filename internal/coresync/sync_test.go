@@ -184,6 +184,44 @@ func TestLoadManifestRejectsUnknownFieldsAndTrailingJSON(t *testing.T) {
 	}
 }
 
+func TestLoadManifestRejectsDuplicateJSONKeys(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+	}{
+		{
+			name:    "duplicate top-level key",
+			content: `{"schema_version":1,"source_repository":"github.com/willunylabs/amsonia","license":"Apache-2.0","license":"Apache-2.0","entries":[{"source":"a","destination":"b"}]}`,
+		},
+		{
+			name:    "duplicate nested entry key",
+			content: `{"schema_version":1,"source_repository":"github.com/willunylabs/amsonia","license":"Apache-2.0","entries":[{"source":"a","source":"a","destination":"b"}]}`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			filename := filepath.Join(t.TempDir(), "manifest.json")
+			if err := os.WriteFile(filename, []byte(test.content), 0o600); err != nil {
+				t.Fatalf("os.WriteFile() error = %v", err)
+			}
+			if _, err := LoadManifest(filename); err == nil {
+				t.Fatal("LoadManifest() error = nil, want duplicate key rejection")
+			} else {
+				assertErrorContains(t, err, "duplicate JSON object key")
+			}
+		})
+	}
+}
+
+func TestVerifyRejectsDuplicateProvenanceKeys(t *testing.T) {
+	destinationRoot := t.TempDir()
+	provenance := `{"schema_version":1,"source_repository":"github.com/willunylabs/amsonia","source_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","license":"Apache-2.0","license":"Apache-2.0","entries":[{"source":"source.txt","destination":"export.txt","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}`
+	writeTestFile(t, destinationRoot, "provenance.json", provenance)
+
+	assertErrorContains(t, Verify(destinationRoot, "provenance.json"), "duplicate JSON object key")
+}
+
 func TestValidateManifestRules(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -205,6 +243,19 @@ func TestValidateManifestRules(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			assertErrorContains(t, ValidateManifest(test.manifest), test.wantSubstr)
+		})
+	}
+}
+
+func TestValidateManifestRejectsWildcardPaths(t *testing.T) {
+	for _, wildcard := range []string{"*", "?", "[", "]", "{", "}"} {
+		t.Run("source "+wildcard, func(t *testing.T) {
+			manifest := validManifest(Entry{Source: "src/" + wildcard, Destination: "out.txt"})
+			assertErrorContains(t, ValidateManifest(manifest), "unsafe source path")
+		})
+		t.Run("destination "+wildcard, func(t *testing.T) {
+			manifest := validManifest(Entry{Source: "src.txt", Destination: "out/" + wildcard})
+			assertErrorContains(t, ValidateManifest(manifest), "unsafe destination path")
 		})
 	}
 }

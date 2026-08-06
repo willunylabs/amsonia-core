@@ -436,7 +436,7 @@ func validatePathCollisions(destinations []string, provenancePath string) error 
 }
 
 func isSafeRelativePath(value string) bool {
-	if value == "" || value == "." || strings.Contains(value, `\`) || strings.ContainsRune(value, 0) {
+	if value == "" || value == "." || strings.Contains(value, `\`) || strings.ContainsRune(value, 0) || strings.ContainsAny(value, "*?[]{}") {
 		return false
 	}
 	if path.IsAbs(value) || path.Clean(value) != value || value == ".." || strings.HasPrefix(value, "../") {
@@ -459,7 +459,15 @@ func decodeJSONFile(filename string, target any) error {
 }
 
 func decodeJSON(reader io.Reader, target any) error {
-	decoder := json.NewDecoder(reader)
+	content, err := io.ReadAll(reader)
+	if err != nil {
+		return err
+	}
+	if err := rejectDuplicateJSONKeys(content); err != nil {
+		return err
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(content))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
 		return err
@@ -470,6 +478,70 @@ func decodeJSON(reader io.Reader, target any) error {
 			return errors.New("trailing JSON value")
 		}
 		return fmt.Errorf("trailing JSON: %w", err)
+	}
+	return nil
+}
+
+func rejectDuplicateJSONKeys(content []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(content))
+	if err := scanJSONValue(decoder); err != nil {
+		return err
+	}
+	return nil
+}
+
+func scanJSONValue(decoder *json.Decoder) error {
+	token, err := decoder.Token()
+	if err != nil {
+		return err
+	}
+	delimiter, ok := token.(json.Delim)
+	if !ok {
+		return nil
+	}
+
+	switch delimiter {
+	case '{':
+		keys := make(map[string]struct{})
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			if err != nil {
+				return err
+			}
+			key, ok := keyToken.(string)
+			if !ok {
+				return errors.New("JSON object key is not a string")
+			}
+			if _, exists := keys[key]; exists {
+				return fmt.Errorf("duplicate JSON object key %q", key)
+			}
+			keys[key] = struct{}{}
+			if err := scanJSONValue(decoder); err != nil {
+				return err
+			}
+		}
+		closing, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if closing != json.Delim('}') {
+			return fmt.Errorf("invalid JSON object terminator %v", closing)
+		}
+	case '[':
+		for decoder.More() {
+			if err := scanJSONValue(decoder); err != nil {
+				return err
+			}
+		}
+		closing, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if closing != json.Delim(']') {
+			return fmt.Errorf("invalid JSON array terminator %v", closing)
+		}
+	default:
+		return fmt.Errorf("unexpected JSON delimiter %q", delimiter)
 	}
 	return nil
 }
