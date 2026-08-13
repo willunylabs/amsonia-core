@@ -1,0 +1,15 @@
+# syntax=docker/dockerfile:1
+FROM golang:1.25.12-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/amsonia-api ./cmd/api && \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/amsonia ./cmd/amsonia
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /out/amsonia-api /usr/local/bin/amsonia-api
+COPY --from=build /out/amsonia /usr/local/bin/amsonia
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/amsonia-api"]

@@ -10,8 +10,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/willunylabs/amsonia"
-	"github.com/willunylabs/amsonia/memory"
+	"github.com/willunylabs/amsonia-core"
+	"github.com/willunylabs/amsonia-core/memory"
 )
 
 const (

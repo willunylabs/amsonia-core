@@ -1,0 +1,445 @@
+openapi: 3.1.0
+info:
+  title: Amsonia Core API
+  version: 0.2.0-preview.1
+  description: Tenant administration and delegated authorization API for Amsonia Core.
+  license:
+    name: Apache-2.0
+    identifier: Apache-2.0
+servers:
+  - url: /
+    description: Same-origin deployment
+tags:
+  - name: Health
+    description: Process liveness and database readiness.
+  - name: Authentication
+    description: Administrator sessions and rotating credentials.
+  - name: Tenants
+    description: Tenant registry and membership views.
+  - name: Authorization
+    description: Permission catalog, roles, audit, and policy decisions.
+paths:
+  /health:
+    get:
+      summary: Check process liveness
+      tags: [Health]
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: Process is serving requests.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, uptime_seconds]
+                properties:
+                  status: { type: string, const: ok }
+                  uptime_seconds: { type: integer, minimum: 0 }
+  /readyz:
+    get:
+      summary: Check database readiness
+      tags: [Health]
+      operationId: getReadiness
+      security: []
+      responses:
+        "200":
+          description: Database schema is current and clean.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ready }
+        "503":
+          description: Database or migration state is not ready.
+          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  /api/v1/auth/login:
+    post:
+      summary: Sign in an administrator
+      tags: [Authentication]
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, format: password, maxLength: 128 }
+      responses:
+        "200":
+          description: Authenticated. Also sets the HttpOnly `amsonia_refresh` cookie.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/auth/refresh:
+    post:
+      summary: Rotate a session
+      tags: [Authentication]
+      operationId: refreshSession
+      description: Rotates the HttpOnly refresh cookie and returns a new access token.
+      security:
+        - refreshCookie: []
+      responses:
+        "200":
+          description: Session rotated.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/v1/auth/logout:
+    post:
+      summary: Revoke a session
+      tags: [Authentication]
+      operationId: logout
+      description: Revokes supplied access and refresh credentials. It is safe to call after access expiry.
+      security:
+        - bearerAuth: []
+        - refreshCookie: []
+      responses:
+        "204": { description: Credentials revoked and refresh cookie cleared. }
+  /api/v1/auth/me:
+    get:
+      summary: Read the current account
+      tags: [Authentication]
+      operationId: getCurrentAccount
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Current account.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Account" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/v1/tenants:
+    get:
+      summary: List visible tenants
+      tags: [Tenants]
+      operationId: listTenants
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Active tenants visible to the current account.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Tenant" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      summary: Provision a tenant
+      tags: [Tenants]
+      operationId: createTenant
+      description: System-administrator-only tenant provisioning.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 80 }
+      responses:
+        "201":
+          description: Active tenant with the current account as owner.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tenant" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /api/v1/permissions:
+    get:
+      summary: List the permission catalog
+      tags: [Authorization]
+      operationId: listPermissions
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Developer-owned immutable permission catalog.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Permission" }
+  /api/v1/tenants/{tenant_id}/members:
+    get:
+      summary: List tenant members
+      tags: [Tenants]
+      operationId: listTenantMembers
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: Tenant memberships.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Member" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/tenants/{tenant_id}/roles:
+    get:
+      summary: List tenant roles
+      tags: [Authorization]
+      operationId: listRoles
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: Active roles ordered by name.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Role" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Create a role with initial permissions
+      tags: [Authorization]
+      operationId: createRole
+      description: Atomically creates a role and its tenant-wide initial grants.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [id, name, description, permissions]
+              properties:
+                id: { type: string, minLength: 1, maxLength: 128 }
+                name: { type: string, minLength: 1, maxLength: 120 }
+                description: { type: string, maxLength: 500 }
+                permissions:
+                  type: array
+                  uniqueItems: true
+                  items: { type: string }
+      responses:
+        "201":
+          description: Role at immutable version one.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Role" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/tenants/{tenant_id}/audit-events:
+    get:
+      summary: List tenant policy audit events
+      tags: [Authorization]
+      operationId: listAuditEvents
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        "200":
+          description: Newest-first bounded mutation events.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/AuditEvent" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/authorization/check:
+    post:
+      summary: Evaluate an authorization decision
+      tags: [Authorization]
+      operationId: checkAuthorization
+      description: Tenant members may check themselves; system administrators may supply another subject.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuthorizationCheck" }
+      responses:
+        "200":
+          description: Explainable authorization decision.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Decision" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: amsonia_refresh
+  parameters:
+    TenantId:
+      name: tenant_id
+      in: path
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 256 }
+  responses:
+    BadRequest:
+      description: Invalid input.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Unauthorized:
+      description: Authentication or session is invalid.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Forbidden:
+      description: The current account lacks required authority.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    NotFound:
+      description: Resource is missing or intentionally hidden.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    Conflict:
+      description: Version or uniqueness conflict.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+    TooManyRequests:
+      description: Login is temporarily locked.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+  schemas:
+    Account:
+      type: object
+      required: [id, email, system_admin, created_at]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        system_admin: { type: boolean }
+        created_at: { type: string, format: date-time }
+        last_login_at: { type: string, format: date-time }
+    Session:
+      type: object
+      required: [access_token, expires_at, account]
+      properties:
+        access_token: { type: string, pattern: '^as_' }
+        expires_at: { type: string, format: date-time }
+        account: { $ref: "#/components/schemas/Account" }
+    Tenant:
+      type: object
+      required: [id, name, state, created_at]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        state: { type: string, enum: [pending, active, failed] }
+        created_at: { type: string, format: date-time }
+    Member:
+      type: object
+      required: [account_id, email, status, joined_at]
+      properties:
+        account_id: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [active, suspended] }
+        joined_at: { type: string, format: date-time }
+    Permission:
+      type: object
+      required: [key, description]
+      properties:
+        key: { type: string }
+        description: { type: string }
+    Role:
+      type: object
+      required: [tenant_id, role_id, name, description, version]
+      properties:
+        tenant_id: { type: string }
+        role_id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        version: { type: integer, minimum: 1 }
+        deleted: { type: boolean }
+    AuditEvent:
+      type: object
+      required: [tenant_id, operation, phase, target_type, target_id, outcome, at]
+      properties:
+        tenant_id: { type: string }
+        actor_subject_id: { type: string }
+        operation: { type: string }
+        phase: { type: string }
+        target_type: { type: string }
+        target_id: { type: string }
+        outcome: { type: string }
+        reason_code: { type: string }
+        request_id: { type: string }
+        role_version: { type: integer }
+        at: { type: string, format: date-time }
+    ResourceContext:
+      type: object
+      additionalProperties: false
+      properties:
+        tenant_id: { type: string }
+        resource_id: { type: string }
+        owner_subject_id: { type: string }
+        workspace_id: { type: string }
+    AuthorizationCheck:
+      type: object
+      additionalProperties: false
+      required: [tenant_id, permission, mode, resource]
+      properties:
+        tenant_id: { type: string }
+        subject_id: { type: string, description: Defaults to the current account. }
+        permission: { type: string }
+        mode: { type: string, enum: [existing, create, tenant_action] }
+        resource: { $ref: "#/components/schemas/ResourceContext" }
+    Decision:
+      type: object
+      required: [allowed, reason]
+      properties:
+        allowed: { type: boolean }
+        reason: { type: string }
+        effective_scope: { type: string, enum: [own, workspace, tenant] }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }

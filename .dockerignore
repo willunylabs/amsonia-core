@@ -1,0 +1,10 @@
+.git
+.github
+.playwright-cli
+output
+web/node_modules
+web/dist
+coverage.out
+*.test
+.env
+.env.*

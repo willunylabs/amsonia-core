@@ -5,7 +5,7 @@
 Do **not** open a public issue for security vulnerabilities. Report them
 privately to the maintainers.
 
-- GitHub Security Advisory: https://github.com/willunylabs/amsonia/security/advisories/new
+- GitHub Security Advisory: https://github.com/willunylabs/amsonia-core/security/advisories/new
 - Email: security@willunylabs.com (PGP fingerprint available on request)
 
 You will receive an acknowledgment within 72 hours and a status update at least
@@ -19,13 +19,13 @@ In scope:
 - tenant isolation and RLS enforcement;
 - delegated-administration and grant-cycle protection;
 - immutable role version and audit integrity;
-- secrets or credentials accidentally committed to this repository.
+- secrets or credentials accidentally committed to this repository;
+- session rotation, account bootstrap, and authentication lockout correctness;
 
 Out of scope:
 
 - the commercial willuny-go-admin International SaaS Starter product;
-- identity/authentication systems that embed Amsonia (Amsonia does not
-  authenticate).
+- authentication systems outside the standalone Core API;
 
 ## Disclosure policy
 

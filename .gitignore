@@ -11,3 +11,19 @@
 
 # Test artifacts
 /coverage.out
+
+# Web dependencies and generated output
+/web/node_modules/
+/web/dist/
+/web/*.tsbuildinfo
+/web/vite.config.js
+/web/vite.config.d.ts
+
+# Browser regression artifacts
+/.playwright-cli/
+/output/
+
+# Local environment files
+.env
+.env.*
+!.env.example

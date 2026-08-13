@@ -21,6 +21,15 @@ type CreateRoleInput struct {
 	Description string
 }
 
+// CreateRoleWithPermissionsInput creates one role and its initial tenant-wide
+// grants in a single transaction and immutable version snapshot.
+type CreateRoleWithPermissionsInput struct {
+	RoleID      RoleID
+	Name        string
+	Description string
+	Permissions []PermissionKey
+}
+
 // UpdateRoleInput renames or re-describes a role.
 type UpdateRoleInput struct {
 	RoleID          RoleID
@@ -215,6 +224,91 @@ func (m *Manager) CreateRole(ctx context.Context, actor Principal, meta Mutation
 	return role, MutationResult{Changed: true, RoleVersion: 1}, nil
 }
 
+// CreateRoleWithPermissions atomically creates a useful role. The actor must
+// manage roles and already cover every permission being delegated.
+func (m *Manager) CreateRoleWithPermissions(ctx context.Context, actor Principal, meta MutationMetadata, input CreateRoleWithPermissionsInput) (Role, MutationResult, error) {
+	if err := m.validateMeta(meta); err != nil {
+		return Role{}, MutationResult{}, err
+	}
+	if actor.TenantID.Validate() != nil || actor.SubjectID.Validate() != nil || input.RoleID.Validate() != nil {
+		return Role{}, MutationResult{}, ErrInvalidInput
+	}
+	if err := validateRoleName(input.Name); err != nil {
+		return Role{}, MutationResult{}, err
+	}
+	if len(input.Permissions) > len(m.catalog.Keys()) {
+		return Role{}, MutationResult{}, ErrInvalidInput
+	}
+	seen := make(map[PermissionKey]struct{}, len(input.Permissions))
+	permissions := make([]PermissionKey, 0, len(input.Permissions))
+	for _, permission := range input.Permissions {
+		if permission.Validate() != nil {
+			return Role{}, MutationResult{}, ErrInvalidInput
+		}
+		if _, ok := m.catalog.Lookup(permission); !ok {
+			return Role{}, MutationResult{}, ErrInvalidInput
+		}
+		if _, duplicate := seen[permission]; duplicate {
+			continue
+		}
+		seen[permission] = struct{}{}
+		permissions = append(permissions, permission)
+	}
+	sort.Slice(permissions, func(i, j int) bool { return permissions[i] < permissions[j] })
+	role := Role{
+		TenantID:    actor.TenantID,
+		RoleID:      input.RoleID,
+		Name:        strings.TrimSpace(input.Name),
+		Description: strings.TrimSpace(input.Description),
+		Version:     1,
+	}
+	err := m.store.MutateTenant(ctx, actor.TenantID, func(tx TenantTx) error {
+		if err := m.requireActor(ctx, tx, actor, m.controls.ManageRoles, ScopeTenant, nil); err != nil {
+			return err
+		}
+		for _, permission := range permissions {
+			if err := m.requireActorForGrant(ctx, tx, actor, permission, ScopeTenant, nil); err != nil {
+				return err
+			}
+		}
+		if err := tx.InsertRole(ctx, role); err != nil {
+			return err
+		}
+		grants := make([]RolePermissionGrant, 0, len(permissions))
+		for _, permission := range permissions {
+			grant := RolePermissionGrant{RoleID: role.RoleID, Permission: permission, Scope: ScopeTenant}
+			changed, err := tx.InsertRolePermissionGrant(ctx, grant)
+			if err != nil {
+				return err
+			}
+			if !changed {
+				return ErrConflict
+			}
+			grants = append(grants, grant)
+		}
+		snapshot := RoleVersion{
+			TenantID:           role.TenantID,
+			RoleID:             role.RoleID,
+			Version:            1,
+			Name:               role.Name,
+			Description:        role.Description,
+			Grants:             sortedGrants(grants),
+			CreatedAt:          m.clock.Now(),
+			CreatedBySubjectID: actor.SubjectID,
+		}
+		if err := tx.InsertRoleVersion(ctx, snapshot); err != nil {
+			return err
+		}
+		event := m.auditEvent(actor.TenantID, actor, meta, "role.create", "role", string(input.RoleID), AuditOutcomeSuccess, 1)
+		return tx.InsertMutationAudit(ctx, event)
+	})
+	if err != nil {
+		m.recordDenied(ctx, actor, meta, "role.create", "role", string(input.RoleID), 0, err)
+		return Role{}, MutationResult{}, err
+	}
+	return role, MutationResult{Changed: true, RoleVersion: 1}, nil
+}
+
 // UpdateRole renames or re-describes a role with optimistic concurrency.
 func (m *Manager) UpdateRole(ctx context.Context, actor Principal, meta MutationMetadata, input UpdateRoleInput) (Role, MutationResult, error) {
 	if err := m.validateMeta(meta); err != nil {
@@ -247,10 +341,11 @@ func (m *Manager) UpdateRole(ctx context.Context, actor Principal, meta Mutation
 		}
 		role.Name = strings.TrimSpace(input.Name)
 		role.Description = strings.TrimSpace(input.Description)
+		role.Version = input.ExpectedVersion + 1
 		if err := tx.UpdateRole(ctx, role, input.ExpectedVersion); err != nil {
 			return err
 		}
-		next := role.Version + 1
+		next := role.Version
 		grants, err := tx.ListRolePermissionGrants(ctx, role.RoleID)
 		if err != nil {
 			return err
@@ -273,7 +368,6 @@ func (m *Manager) UpdateRole(ctx context.Context, actor Principal, meta Mutation
 			return err
 		}
 		updated = role
-		updated.Version = next
 		result = MutationResult{Changed: true, RoleVersion: next}
 		return nil
 	})

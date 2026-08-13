@@ -92,23 +92,23 @@ var (
 
 // PermissionDefinition is an immutable application catalog entry.
 type PermissionDefinition struct {
-	Key         PermissionKey
-	Description string
+	Key         PermissionKey `json:"key"`
+	Description string        `json:"description"`
 }
 
 // Principal is an authenticated subject within one tenant.
 type Principal struct {
-	TenantID  TenantID
-	SubjectID SubjectID
+	TenantID  TenantID  `json:"tenant_id"`
+	SubjectID SubjectID `json:"subject_id"`
 }
 
 // ResourceContext carries authoritative resource facts loaded by the host
 // business service. Field requirements depend on the check mode and scope.
 type ResourceContext struct {
-	TenantID       TenantID
-	ResourceID     ResourceID
-	OwnerSubjectID SubjectID
-	WorkspaceID    WorkspaceID
+	TenantID       TenantID    `json:"tenant_id"`
+	ResourceID     ResourceID  `json:"resource_id"`
+	OwnerSubjectID SubjectID   `json:"owner_subject_id"`
+	WorkspaceID    WorkspaceID `json:"workspace_id"`
 }
 
 // CheckRequest is a complete authorization request.
@@ -121,9 +121,9 @@ type CheckRequest struct {
 
 // Decision is the public authorization outcome.
 type Decision struct {
-	Allowed        bool
-	Reason         ReasonCode
-	EffectiveScope Scope
+	Allowed        bool       `json:"allowed"`
+	Reason         ReasonCode `json:"reason"`
+	EffectiveScope Scope      `json:"effective_scope,omitempty"`
 }
 
 // EffectiveGrant is the read-only view of one scoped grant held by a subject.
@@ -169,12 +169,12 @@ type GrantEdge struct {
 
 // Role is a tenant-scoped role with an optimistic-concurrency version.
 type Role struct {
-	TenantID    TenantID
-	RoleID      RoleID
-	Name        string
-	Description string
-	Version     int64
-	Deleted     bool
+	TenantID    TenantID `json:"tenant_id"`
+	RoleID      RoleID   `json:"role_id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Version     int64    `json:"version"`
+	Deleted     bool     `json:"deleted"`
 }
 
 // RolePermissionGrant is one scoped permission grant on a role.
@@ -221,18 +221,18 @@ const (
 
 // MutationAuditEvent is the append-only record of one administrative action.
 type MutationAuditEvent struct {
-	TenantID       TenantID
-	ActorSubjectID SubjectID
-	HostInitiator  string
-	Operation      string
-	Phase          AuditPhase
-	TargetType     string
-	TargetID       string
-	Outcome        AuditOutcome
-	ReasonCode     string
-	RequestID      string
-	RoleVersion    int64
-	At             time.Time
+	TenantID       TenantID     `json:"tenant_id"`
+	ActorSubjectID SubjectID    `json:"actor_subject_id,omitempty"`
+	HostInitiator  string       `json:"host_initiator,omitempty"`
+	Operation      string       `json:"operation"`
+	Phase          AuditPhase   `json:"phase"`
+	TargetType     string       `json:"target_type"`
+	TargetID       string       `json:"target_id"`
+	Outcome        AuditOutcome `json:"outcome"`
+	ReasonCode     string       `json:"reason_code,omitempty"`
+	RequestID      string       `json:"request_id,omitempty"`
+	RoleVersion    int64        `json:"role_version,omitempty"`
+	At             time.Time    `json:"at"`
 }
 
 // HostProvenance identifies a host-initiated operation such as bootstrap,

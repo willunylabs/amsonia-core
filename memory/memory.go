@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/willunylabs/amsonia"
+	"github.com/willunylabs/amsonia-core"
 )
 
 // Store is a thread-safe, tenant-isolated in-memory Store.
@@ -49,27 +49,94 @@ func NewStore() *Store {
 	return &Store{tenants: map[amsonia.TenantID]*tenantState{}}
 }
 
+func newTenantState() *tenantState {
+	return &tenantState{
+		roles:        map[amsonia.RoleID]amsonia.Role{},
+		rolePerms:    map[amsonia.RoleID]map[grantKey]amsonia.RolePermissionGrant{},
+		subjectRoles: map[amsonia.SubjectID]map[amsonia.RoleID]amsonia.SubjectRoleGrant{},
+		grantEdges:   map[edgeKey]amsonia.GrantEdge{},
+		roleVersions: map[amsonia.RoleID]map[int64]amsonia.RoleVersion{},
+		purgeLedger:  map[string]amsonia.MutationAuditEvent{},
+	}
+}
+
 func (s *Store) tenant(tenantID amsonia.TenantID) *tenantState {
 	t, ok := s.tenants[tenantID]
 	if !ok {
-		t = &tenantState{
-			roles:        map[amsonia.RoleID]amsonia.Role{},
-			rolePerms:    map[amsonia.RoleID]map[grantKey]amsonia.RolePermissionGrant{},
-			subjectRoles: map[amsonia.SubjectID]map[amsonia.RoleID]amsonia.SubjectRoleGrant{},
-			grantEdges:   map[edgeKey]amsonia.GrantEdge{},
-			roleVersions: map[amsonia.RoleID]map[int64]amsonia.RoleVersion{},
-			purgeLedger:  map[string]amsonia.MutationAuditEvent{},
-		}
+		t = newTenantState()
 		s.tenants[tenantID] = t
 	}
 	return t
 }
 
+func cloneStrings(values []string) []string {
+	return append([]string(nil), values...)
+}
+
+func cloneGrant(grant amsonia.RolePermissionGrant) amsonia.RolePermissionGrant {
+	grant.WorkspaceRoles = cloneStrings(grant.WorkspaceRoles)
+	return grant
+}
+
+func cloneSnapshot(snapshot amsonia.RoleVersion) amsonia.RoleVersion {
+	snapshot.Grants = append([]amsonia.RolePermissionGrant(nil), snapshot.Grants...)
+	for index := range snapshot.Grants {
+		snapshot.Grants[index] = cloneGrant(snapshot.Grants[index])
+	}
+	return snapshot
+}
+
+func cloneTenantState(source *tenantState) *tenantState {
+	if source == nil {
+		return newTenantState()
+	}
+	clone := newTenantState()
+	for id, role := range source.roles {
+		clone.roles[id] = role
+	}
+	for roleID, grants := range source.rolePerms {
+		clone.rolePerms[roleID] = make(map[grantKey]amsonia.RolePermissionGrant, len(grants))
+		for key, grant := range grants {
+			clone.rolePerms[roleID][key] = cloneGrant(grant)
+		}
+	}
+	for subjectID, roles := range source.subjectRoles {
+		clone.subjectRoles[subjectID] = make(map[amsonia.RoleID]amsonia.SubjectRoleGrant, len(roles))
+		for roleID, grant := range roles {
+			clone.subjectRoles[subjectID][roleID] = grant
+		}
+	}
+	for key, edge := range source.grantEdges {
+		clone.grantEdges[key] = edge
+	}
+	for roleID, versions := range source.roleVersions {
+		clone.roleVersions[roleID] = make(map[int64]amsonia.RoleVersion, len(versions))
+		for version, snapshot := range versions {
+			clone.roleVersions[roleID][version] = cloneSnapshot(snapshot)
+		}
+	}
+	clone.audit = append([]amsonia.MutationAuditEvent(nil), source.audit...)
+	clone.bootstrapped = source.bootstrapped
+	clone.bootstrapProvenance = source.bootstrapProvenance
+	clone.purged = source.purged
+	for requestID, event := range source.purgeLedger {
+		clone.purgeLedger[requestID] = event
+	}
+	return clone
+}
+
 // ReadTenant runs fn under a read lock scoped to one tenant.
 func (s *Store) ReadTenant(ctx context.Context, tenantID amsonia.TenantID, fn func(amsonia.TenantReader) error) error {
+	if tenantID.Validate() != nil || fn == nil {
+		return amsonia.ErrInvalidInput
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return fn(&tenantReader{tenant: s.tenant(tenantID), tenantID: tenantID})
+	t := s.tenants[tenantID]
+	if t == nil {
+		t = newTenantState()
+	}
+	return fn(&tenantReader{tenant: t, tenantID: tenantID})
 }
 
 // ListEffectiveGrants implements amsonia.PolicyReader.
@@ -90,16 +157,21 @@ func (s *Store) ListEffectiveGrants(ctx context.Context, tenantID amsonia.Tenant
 // ordering across tenants, which is stronger than the per-tenant guarantee
 // required by the Store contract.
 func (s *Store) MutateTenant(ctx context.Context, tenantID amsonia.TenantID, fn func(amsonia.TenantTx) error) error {
+	if tenantID.Validate() != nil || fn == nil {
+		return amsonia.ErrInvalidInput
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	t := s.tenant(tenantID)
 	if t.purged {
 		return amsonia.ErrNotFound
 	}
-	tx := &tenantTx{tenant: t, tenantID: tenantID}
+	pending := cloneTenantState(t)
+	tx := &tenantTx{tenant: pending, tenantID: tenantID}
 	if err := fn(tx); err != nil {
 		return err
 	}
+	s.tenants[tenantID] = pending
 	return nil
 }
 
@@ -123,7 +195,7 @@ func (r *tenantReader) ListEffectiveGrants(ctx context.Context, subjectID amsoni
 				RoleID:         roleID,
 				Permission:     grant.Permission,
 				Scope:          grant.Scope,
-				WorkspaceRoles: grant.WorkspaceRoles,
+				WorkspaceRoles: cloneStrings(grant.WorkspaceRoles),
 			})
 			_ = key
 		}
@@ -145,7 +217,7 @@ func (r *tenantReader) ListRolePermissionGrants(ctx context.Context, roleID amso
 	}
 	var out []amsonia.RolePermissionGrant
 	for _, grant := range r.tenant.rolePerms[roleID] {
-		out = append(out, grant)
+		out = append(out, cloneGrant(grant))
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Permission != out[j].Permission {
@@ -199,26 +271,28 @@ func (r *tenantReader) HasGrantPath(ctx context.Context, from amsonia.SubjectID,
 }
 
 func (r *tenantReader) HasAdministrator(ctx context.Context, controls amsonia.ControlPermissions) (bool, error) {
-	for subjectID, roles := range r.tenant.subjectRoles {
-		for roleID := range roles {
-			hasAll := true
-			for _, control := range []amsonia.PermissionKey{controls.ManageRoles, controls.ManageGrants, controls.AssignRoles} {
-				found := false
+	for _, roles := range r.tenant.subjectRoles {
+		hasAll := true
+		for _, control := range []amsonia.PermissionKey{controls.ManageRoles, controls.ManageGrants, controls.AssignRoles} {
+			found := false
+			for roleID := range roles {
 				for _, grant := range r.tenant.rolePerms[roleID] {
 					if grant.Permission == control && grant.Scope == amsonia.ScopeTenant {
 						found = true
 						break
 					}
 				}
-				if !found {
-					hasAll = false
+				if found {
 					break
 				}
 			}
-			if hasAll {
-				return true, nil
+			if !found {
+				hasAll = false
+				break
 			}
-			_ = subjectID
+		}
+		if hasAll {
+			return true, nil
 		}
 	}
 	return false, nil
@@ -314,7 +388,7 @@ func (tx *tenantTx) InsertRolePermissionGrant(ctx context.Context, grant amsonia
 	if _, exists := tx.tenant.rolePerms[grant.RoleID][key]; exists {
 		return false, nil
 	}
-	tx.tenant.rolePerms[grant.RoleID][key] = grant
+	tx.tenant.rolePerms[grant.RoleID][key] = cloneGrant(grant)
 	return true, nil
 }
 
@@ -366,7 +440,7 @@ func (tx *tenantTx) InsertRoleVersion(ctx context.Context, snapshot amsonia.Role
 	if tx.tenant.roleVersions[snapshot.RoleID] == nil {
 		tx.tenant.roleVersions[snapshot.RoleID] = map[int64]amsonia.RoleVersion{}
 	}
-	tx.tenant.roleVersions[snapshot.RoleID][snapshot.Version] = snapshot
+	tx.tenant.roleVersions[snapshot.RoleID][snapshot.Version] = cloneSnapshot(snapshot)
 	return nil
 }
 
@@ -383,13 +457,18 @@ func (tx *tenantTx) MarkBootstrapped(ctx context.Context, provenance amsonia.Hos
 
 // MaintainTenant serializes maintenance against normal mutations.
 func (s *Store) MaintainTenant(ctx context.Context, tenantID amsonia.TenantID, fn func(amsonia.MaintenanceTx) error) error {
+	if tenantID.Validate() != nil || fn == nil {
+		return amsonia.ErrInvalidInput
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	t := s.tenant(tenantID)
-	if t.purged {
-		return amsonia.ErrNotFound
+	pending := cloneTenantState(t)
+	if err := fn(&maintenanceTx{tenant: pending, tenantID: tenantID}); err != nil {
+		return err
 	}
-	return fn(&maintenanceTx{tenant: t, tenantID: tenantID})
+	s.tenants[tenantID] = pending
+	return nil
 }
 
 type maintenanceTx struct {
@@ -398,6 +477,9 @@ type maintenanceTx struct {
 }
 
 func (mt *maintenanceTx) ExportTenant(ctx context.Context) ([]byte, error) {
+	if mt.tenant.purged {
+		return nil, amsonia.ErrNotFound
+	}
 	type export struct {
 		Format   string                        `json:"format"`
 		TenantID amsonia.TenantID              `json:"tenant_id"`
@@ -440,6 +522,9 @@ func (mt *maintenanceTx) PurgeTenant(ctx context.Context, event amsonia.Mutation
 			AlreadyCommitted: true,
 			CanonicalEvent:   canonical,
 		}, nil
+	}
+	if mt.tenant.purged {
+		return amsonia.PurgeResult{}, amsonia.ErrNotFound
 	}
 	// Purge all tenant authorization state except the ledger and the
 	// tombstone.

@@ -7,7 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/willunylabs/amsonia"
+	"github.com/willunylabs/amsonia-core"
 )
 
 type tenantReader struct {
@@ -149,14 +149,20 @@ func (r *tenantReader) HasAdministrator(ctx context.Context, controls amsonia.Co
 	sql := `
 		SELECT EXISTS (
 			SELECT 1
-			FROM amsonia.subject_roles sr
-			WHERE sr.tenant_id = $1
-			AND NOT EXISTS (
+			FROM (
+				SELECT DISTINCT subject_id
+				FROM amsonia.subject_roles
+				WHERE tenant_id = $1
+			) subjects
+			WHERE NOT EXISTS (
 				SELECT 1 FROM unnest($2::text[]) AS control(key)
 				WHERE NOT EXISTS (
-					SELECT 1 FROM amsonia.role_permission_grants rpg
-					WHERE rpg.tenant_id = sr.tenant_id
-					  AND rpg.role_id = sr.role_id
+					SELECT 1
+					FROM amsonia.subject_roles sr
+					JOIN amsonia.role_permission_grants rpg
+					  ON rpg.tenant_id = sr.tenant_id AND rpg.role_id = sr.role_id
+					WHERE sr.tenant_id = $1
+					  AND sr.subject_id = subjects.subject_id
 					  AND rpg.permission_key = control.key
 					  AND rpg.scope = 'tenant'
 				)
@@ -394,6 +400,17 @@ type maintenanceTx struct {
 }
 
 func (mt *maintenanceTx) ExportTenant(ctx context.Context) ([]byte, error) {
+	var purged bool
+	if err := mt.tx.QueryRow(ctx, `
+		SELECT COALESCE(purged, FALSE)
+		FROM amsonia.tenant_state
+		WHERE tenant_id = $1
+	`, string(mt.tenantID)).Scan(&purged); err != nil && err != pgx.ErrNoRows {
+		return nil, wrapPgxErr(err)
+	}
+	if purged {
+		return nil, amsonia.ErrNotFound
+	}
 	type export struct {
 		Format   string                        `json:"format"`
 		TenantID amsonia.TenantID              `json:"tenant_id"`
@@ -531,6 +548,17 @@ func (mt *maintenanceTx) PurgeTenant(ctx context.Context, event amsonia.Mutation
 			AlreadyCommitted: true,
 			CanonicalEvent:   canonical,
 		}, nil
+	}
+	var purged bool
+	if err := mt.tx.QueryRow(ctx, `
+		SELECT COALESCE(purged, FALSE)
+		FROM amsonia.tenant_state
+		WHERE tenant_id = $1
+	`, string(mt.tenantID)).Scan(&purged); err != nil && err != pgx.ErrNoRows {
+		return amsonia.PurgeResult{}, wrapPgxErr(err)
+	}
+	if purged {
+		return amsonia.PurgeResult{}, amsonia.ErrNotFound
 	}
 
 	// Delete all tenant authorization data. RLS constrains every DELETE to

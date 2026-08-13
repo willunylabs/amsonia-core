@@ -3,11 +3,13 @@ package amsonia_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/willunylabs/amsonia"
-	"github.com/willunylabs/amsonia/memory"
+	"github.com/willunylabs/amsonia-core"
+	"github.com/willunylabs/amsonia-core/memory"
 )
 
 const (
@@ -191,6 +193,47 @@ func TestCreateRoleAndGrantPermission(t *testing.T) {
 	_ = store
 }
 
+func TestCreateRoleWithPermissionsIsAtomic(t *testing.T) {
+	store, mgr, bs, _ := setup(t)
+	bootstrapTenant(t, bs, "tenant-a", "owner-1", "role-owner")
+	owner := amsonia.Principal{TenantID: "tenant-a", SubjectID: "owner-1"}
+
+	role, result, err := mgr.CreateRoleWithPermissions(context.Background(), owner, meta(), amsonia.CreateRoleWithPermissionsInput{
+		RoleID: "role-reader", Name: "reader", Permissions: []amsonia.PermissionKey{permInvoiceRead, permInvoiceRead},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if role.Version != 1 || result.RoleVersion != 1 {
+		t.Fatalf("initial role version must remain one: role=%+v result=%+v", role, result)
+	}
+	if err := store.ReadTenant(context.Background(), "tenant-a", func(reader amsonia.TenantReader) error {
+		grants, err := reader.ListRolePermissionGrants(context.Background(), "role-reader")
+		if err != nil {
+			return err
+		}
+		if len(grants) != 1 || grants[0].Permission != permInvoiceRead || grants[0].Scope != amsonia.ScopeTenant {
+			t.Fatalf("unexpected initial grants: %+v", grants)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err = mgr.CreateRoleWithPermissions(context.Background(), owner, meta(), amsonia.CreateRoleWithPermissionsInput{
+		RoleID: "role-writer", Name: "writer", Permissions: []amsonia.PermissionKey{permInvoiceWrite},
+	})
+	if !errors.Is(err, amsonia.ErrForbidden) {
+		t.Fatalf("owner cannot delegate uncovered permission, got %v", err)
+	}
+	if err := store.ReadTenant(context.Background(), "tenant-a", func(reader amsonia.TenantReader) error {
+		_, err := reader.GetRole(context.Background(), "role-writer")
+		return err
+	}); !errors.Is(err, amsonia.ErrNotFound) {
+		t.Fatalf("failed atomic create left a role behind: %v", err)
+	}
+}
+
 func TestStaleVersionConflict(t *testing.T) {
 	_, mgr, bs, _ := setup(t)
 	bootstrapTenant(t, bs, "tenant-a", "owner-1", "role-owner")
@@ -332,7 +375,7 @@ func TestActorMustCoverTargetGrant(t *testing.T) {
 }
 
 func TestLastAdministratorProtection(t *testing.T) {
-	_, mgr, bs, _ := setup(t)
+	store, mgr, bs, _ := setup(t)
 	bootstrapTenant(t, bs, "tenant-a", "owner-1", "role-owner")
 	owner := amsonia.Principal{TenantID: "tenant-a", SubjectID: "owner-1"}
 
@@ -348,6 +391,64 @@ func TestLastAdministratorProtection(t *testing.T) {
 	}); !errors.Is(err, amsonia.ErrLastAdministrator) {
 		t.Fatalf("expected ErrLastAdministrator, got %v", err)
 	}
+	if err := store.ReadTenant(context.Background(), "tenant-a", func(reader amsonia.TenantReader) error {
+		roles, err := reader.ListSubjectRoleIDs(context.Background(), "owner-1")
+		if err != nil {
+			return err
+		}
+		if len(roles) != 1 || roles[0] != "role-owner" {
+			t.Fatalf("failed unassign changed live state: %v", roles)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMemoryStoreRollsBackCallbackError(t *testing.T) {
+	store, _, bs, _ := setup(t)
+	bootstrapTenant(t, bs, "tenant-a", "owner-1", "role-owner")
+	sentinel := errors.New("abort transaction")
+	err := store.MutateTenant(context.Background(), "tenant-a", func(tx amsonia.TenantTx) error {
+		if _, _, err := tx.DeleteSubjectRoleGrant(context.Background(), "owner-1", "role-owner"); err != nil {
+			return err
+		}
+		return sentinel
+	})
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("expected callback error, got %v", err)
+	}
+	if err := store.ReadTenant(context.Background(), "tenant-a", func(reader amsonia.TenantReader) error {
+		roles, err := reader.ListSubjectRoleIDs(context.Background(), "owner-1")
+		if err != nil {
+			return err
+		}
+		if len(roles) != 1 || roles[0] != "role-owner" {
+			t.Fatalf("rollback lost role assignment: %v", roles)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMemoryStoreReadMissingTenantIsRaceSafe(t *testing.T) {
+	store := memory.NewStore()
+	var wg sync.WaitGroup
+	for index := range 32 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tenantID := amsonia.TenantID(fmt.Sprintf("tenant-%d", index))
+			if err := store.ReadTenant(context.Background(), tenantID, func(reader amsonia.TenantReader) error {
+				_, err := reader.ListSubjectRoleIDs(context.Background(), "subject")
+				return err
+			}); err != nil {
+				t.Errorf("read tenant: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func TestUnassignRemovesEdge(t *testing.T) {
