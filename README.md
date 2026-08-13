@@ -61,7 +61,7 @@ but are not yet exposed as v0.2 preview UI workflows.
 
 ## Requirements
 
-- Go 1.25.12 or newer within the supported release line
+- Go 1.25.13 or newer within the supported release line
 - PostgreSQL 16 or newer
 - Node.js 22.15 or newer and npm 10
 
