@@ -230,6 +230,13 @@ Amsonia product adds production SaaS modules, managed upgrade paths, and broader
 operations tooling. Product details and engineering notes are published at
 [willuny.xyz](https://willuny.xyz).
 
+For the broader product and architecture context, see:
+
+- [Amsonia Go SaaS boilerplate source kit](https://willuny.xyz/go-saas-boilerplate)
+- [Go SaaS architecture: multi-tenancy, RBAC, billing, and deployment](https://willuny.xyz/architecture)
+- [Multi-tenant SaaS foundations](https://willuny.xyz/features/multi-tenancy)
+- [Amsonia source package options](https://willuny.xyz/shop/products)
+
 Shared public-safe sources enter this repository only through reviewed export
 manifests and recorded provenance; see [docs/source-sync.md](docs/source-sync.md).
 
