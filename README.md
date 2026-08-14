@@ -1,244 +1,104 @@
 # Amsonia Core
 
-Amsonia Core is an Apache-2.0, full-stack foundation for tenant administration
-and delegated authorization in Go SaaS products. The v0.2 preview ships the Go
-kernel, PostgreSQL persistence with forced RLS, a standalone HTTP API and CLI,
-and a focused React management console in one repository.
+Amsonia Core is an Apache-2.0 full-stack foundation for multi-tenant Go SaaS
+products. It combines a Go authorization kernel, PostgreSQL persistence with
+forced row-level security, a versioned HTTP API, and a React management console
+in one repository.
 
-It is deliberately smaller than the complete Amsonia product: Core owns
-identity, sessions, tenants, memberships, roles, permissions, authorization
-checks, and policy audit. Billing, commerce, AI, education, messaging, and
-white-label operations stay outside the open-source boundary.
+Core focuses on identity, sessions, tenants, memberships, roles, permissions,
+authorization decisions, and policy audit. Billing, commerce, AI, education,
+messaging, and white-label operations belong to the complete Amsonia product,
+not this open-source core.
 
-## Why Amsonia
+## What it provides
 
-Most authorization systems either embed a generic policy engine or add a
-separate relationship service. Amsonia takes a narrower position:
+- Tenant-first delegated authorization with `own`, `workspace`, and `tenant`
+  scopes.
+- PostgreSQL-enforced tenant isolation with signed transaction-local bindings
+  and `FORCE ROW LEVEL SECURITY`.
+- Argon2id administrator authentication, lockout, rotating refresh sessions,
+  and one-time administrator bootstrap.
+- Permission catalogs, immutable role versions, grant-cycle protection, and
+  append-only audit events.
+- A standalone Go API, migration/administration CLI, in-memory adapter, and
+  React management console.
 
-> Tenant-first delegated authorization, embedded directly in your Go SaaS.
-
-- Every policy read and mutation has an explicit tenant boundary.
-- PostgreSQL enforces that boundary again with signed, transaction-local
-  bindings and `FORCE ROW LEVEL SECURITY`.
-- Administrators can only delegate permissions and scopes they already hold.
-- Role changes create immutable snapshots and append-only audit events.
-- Last-administrator and grant-cycle guards fail closed inside the transaction.
-- The API and React console are useful on their own; the Go kernel remains
-  embeddable without the web application.
-
-## Repository map
+## Repository layout
 
 | Path | Purpose |
 | --- | --- |
 | `cmd/api` | Standalone HTTP API |
-| `cmd/amsonia` | Migration and one-time administrator CLI |
-| `memory` | Transactional in-memory adapter for tests and local embedding |
-| `postgres` | PostgreSQL adapter, versioned migrations, and RLS tests |
-| `internal/coreapp` | Core identity, session, tenant, and HTTP composition |
-| `web` | React/Vite tenant management console |
-| `ops` | Least-privileged database role provisioning |
+| `cmd/amsonia` | Migration and administrator CLI |
+| `memory` | In-memory adapter for tests |
+| `postgres` | PostgreSQL adapter, migrations, and RLS tests |
+| `internal/coreapp` | Identity, session, tenant, and HTTP composition |
+| `web` | React/Vite management console |
 | `openapi` | Versioned HTTP contract |
+| `ops` | Least-privileged database role provisioning |
 
-## Included in v0.2 preview
+## Quick start
 
-- Email/password administrator sign-in with Argon2id hashing and login lockout.
-- Fifteen-minute access tokens plus rotating HttpOnly refresh cookies with
-  replay-family revocation.
-- One-time system-administrator bootstrap; there is no public registration.
-- Tenant creation, active memberships, permission catalog, roles, and
-  atomically assigned initial permissions.
-- `own`, `workspace`, and `tenant` authorization scopes with stable decisions.
-- Immutable role versions, mutation audit, grant-cycle protection, and
-  last-administrator protection.
-- Versioned migration runner with advisory locking and durable dirty markers.
-- Separate runtime and maintenance PostgreSQL roles; neither may be superuser,
-  table owner, or `BYPASSRLS`.
-- Desktop and mobile management UI for overview, members, roles, permission
-  catalog, audit history, and live policy checks.
+Requirements: Go 1.25.13+, PostgreSQL 16+, Node.js 22.15+, and npm 10.
+Docker is optional. The complete local setup, role provisioning, environment
+variables, and PostgreSQL checks are in
+[docs/getting-started.md](docs/getting-started.md).
 
-Invitations and richer member/role editing are represented in the data model
-but are not yet exposed as v0.2 preview UI workflows.
-
-## Requirements
-
-- Go 1.25.13 or newer within the supported release line
-- PostgreSQL 16 or newer
-- Node.js 22.15 or newer and npm 10
-
-Docker is not required. The commands below use a local PostgreSQL instance.
-
-## Local quick start (without Docker)
-
-Create an empty database and two non-privileged login roles. Use your own role
-passwords; do not reuse these names if they already belong to another service.
+After completing the database and environment setup, the shortest development
+flow is:
 
 ```bash
-createdb amsonia_core
-createuser --login --no-superuser --no-createdb --no-createrole --no-bypassrls --pwprompt amsonia_runtime
-createuser --login --no-superuser --no-createdb --no-createrole --no-bypassrls --pwprompt amsonia_maintenance
-```
-
-Run all migrations as the database owner:
-
-```bash
-export AMSONIA_MIGRATION_DSN='postgres://db_owner@127.0.0.1:5432/amsonia_core?sslmode=disable'
 go run ./cmd/amsonia migrate
-go run ./cmd/amsonia migration-status
-```
-
-Install the least-privileged grants using a PostgreSQL cluster administrator
-that is allowed to harden and revoke memberships from the two login roles.
-This is deliberately a separate operator boundary from the normal migration
-connection. The script prompts for two independent binding secrets as 64 or
-more hexadecimal characters; generate each with `openssl rand -hex 32` and
-paste it at the prompt.
-
-```bash
-export AMSONIA_ROLE_ADMIN_DSN='postgres://role_admin@127.0.0.1:5432/amsonia_core?sslmode=disable'
-psql "$AMSONIA_ROLE_ADMIN_DSN" \
-  -v runtime_role=amsonia_runtime \
-  -v maintenance_role=amsonia_maintenance \
-  -f ops/configure_database_roles.sql
-```
-
-Convert the runtime hex secret to unpadded base64url for the API. Keep the
-result in a secret manager or local untracked `.env`, never in Git.
-
-```bash
-export AMSONIA_DATABASE_DSN='host=127.0.0.1 port=5432 dbname=amsonia_core user=amsonia_runtime sslmode=disable'
-export PGPASSWORD='YOUR_RUNTIME_ROLE_PASSWORD'
-export AMSONIA_TENANT_BINDING_SECRET='YOUR_UNPADDED_BASE64URL_SECRET'
-```
-
-Create the first administrator exactly once with a password between 12 and 128
-Unicode characters, then start the API:
-
-```bash
 go run ./cmd/amsonia bootstrap-admin
 go run ./cmd/api
 ```
 
-In another terminal, start the console. Its default API proxy is
-`http://127.0.0.1:8080`; override it when the API uses another port.
+In another terminal:
 
 ```bash
 npm --prefix web ci
-VITE_API_PROXY_TARGET='http://127.0.0.1:8080' npm --prefix web run dev
+npm --prefix web run dev
 ```
 
-Open `http://127.0.0.1:3000` and sign in with the bootstrap administrator.
-
-## Configuration
-
-| Variable | Required | Meaning |
-| --- | --- | --- |
-| `AMSONIA_MIGRATION_DSN` | CLI migrate/status | Database-owner connection used only by the migration CLI |
-| `AMSONIA_ROLE_ADMIN_DSN` | Role provisioning | Operator-only cluster role administrator; never passed to an application process |
-| `AMSONIA_DATABASE_DSN` | API/bootstrap | Non-superuser runtime connection |
-| `AMSONIA_TENANT_BINDING_SECRET` | API/bootstrap | Unpadded base64url of the runtime role's 32+ byte binding secret |
-| `AMSONIA_HTTP_ADDR` | No | API listen address, default `:8080` |
-| `VITE_API_PROXY_TARGET` | Web dev only | Local Vite proxy target, default `http://127.0.0.1:8080` |
-| `VITE_API_URL` | Web build only | Optional same-origin path prefix; cross-origin API origins are rejected |
-
-See [.env.example](.env.example) for names and safe placeholders.
+Then open `http://127.0.0.1:3000` and sign in with the bootstrap administrator.
 
 ## HTTP API
 
-The versioned contract is [openapi/openapi.yaml](openapi/openapi.yaml). Primary
-routes include:
+The versioned contract is [openapi/openapi.yaml](openapi/openapi.yaml). Core
+routes cover:
 
-- `GET /health` and `/readyz`
-- `POST /api/v1/auth/login`, `/refresh`, and `/logout`
-- `GET /api/v1/auth/me`
-- `GET|POST /api/v1/tenants`
-- `GET /api/v1/permissions`
-- `GET /api/v1/tenants/{tenant_id}/members`
-- `GET|POST /api/v1/tenants/{tenant_id}/roles`
-- `GET /api/v1/tenants/{tenant_id}/audit-events`
-- `POST /api/v1/authorization/check`
+- authentication and session refresh;
+- tenants and memberships;
+- permission catalogs and roles;
+- audit events; and
+- authorization checks.
 
-The refresh credential is an HttpOnly `SameSite=Strict` cookie and is never
-returned in API JSON. Production deployments must terminate HTTPS before the
-API and preserve `X-Forwarded-Proto: https` so the cookie receives `Secure`.
+The API is intended to sit behind HTTPS in production. Refresh credentials are
+HttpOnly, `SameSite=Strict` cookies and are never returned in JSON.
 
-## Embed the Go kernel
+## Development
 
-The full-stack application is optional. The authorization kernel can be used
-with the in-memory adapter in tests or the PostgreSQL adapter in a host app.
-
-```go
-import (
-    amsonia "github.com/willunylabs/amsonia-core"
-    "github.com/willunylabs/amsonia-core/memory"
-)
-
-catalog, err := amsonia.NewCatalog([]amsonia.PermissionDefinition{
-    {Key: "billing:invoice:read", Description: "Read invoices"},
-    {Key: "iam:role:manage"},
-    {Key: "iam:grant:manage"},
-    {Key: "iam:role:assign"},
-})
-if err != nil {
-    panic(err)
-}
-store := memory.NewStore()
-_ = catalog
-_ = store
-```
-
-See [examples/saas/main.go](examples/saas/main.go) for the complete bootstrap,
-delegation, authorization, and audit flow.
-
-## Quality gates
-
-The main local gate does not require Docker:
+Run the local quality gate with:
 
 ```bash
 make check
 ```
 
-It runs Go format/vet/unit/race and reachable-vulnerability checks, plus web
-install/audit/type/lint/test/build and OpenAPI validation.
-To run PostgreSQL integration tests against an empty test database:
+It covers Go format/vet/unit/race checks, the reachable-vulnerability scan,
+web checks, and OpenAPI validation. Contribution rules are in
+[CONTRIBUTING.md](CONTRIBUTING.md), and the security model/reporting process is
+in [SECURITY.md](SECURITY.md) and [docs/security-model.md](docs/security-model.md).
 
-```bash
-TEST_DATABASE_ADMIN_URL='postgres://db_owner@127.0.0.1:5432/amsonia_test?sslmode=disable' make postgres-check
-```
+## Amsonia product
 
-The PostgreSQL tests create reusable cluster-level test roles named
-`amsonia_test_runtime` and `amsonia_test_maintenance`; run them only against a
-dedicated development PostgreSQL cluster.
+Amsonia Core is the reusable open-source authorization foundation. The complete
+Amsonia product adds production SaaS modules, managed upgrades, and broader
+operations tooling. See [willuny.xyz](https://willuny.xyz) for the product and
+architecture context:
 
-## Security boundary
-
-- Missing or invalid signed context yields no tenant rows.
-- Runtime SQL clients cannot manufacture tenant or account-discovery bindings
-  by setting PostgreSQL GUC values directly.
-- The maintenance adapter requires a separate pool and can export/purge tenant
-  policy data without reading identity or session tables.
-- Identity and session tables are global infrastructure within one deployment;
-  database runtime credentials remain a high-value secret.
-- The React console is an administrative interface and should not be exposed
-  without HTTPS, network controls, monitoring, and backups.
-
-Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
-
-## Core and the complete product
-
-Amsonia Core is the reusable, auditable authorization foundation. The complete
-Amsonia product adds production SaaS modules, managed upgrade paths, and broader
-operations tooling. Product details and engineering notes are published at
-[willuny.xyz](https://willuny.xyz).
-
-For the broader product and architecture context, see:
-
-- [Amsonia Go SaaS boilerplate source kit](https://willuny.xyz/go-saas-boilerplate)
-- [Go SaaS architecture: multi-tenancy, RBAC, billing, and deployment](https://willuny.xyz/architecture)
-- [Multi-tenant SaaS foundations](https://willuny.xyz/features/multi-tenancy)
-- [Amsonia source package options](https://willuny.xyz/shop/products)
-
-Shared public-safe sources enter this repository only through reviewed export
-manifests and recorded provenance; see [docs/source-sync.md](docs/source-sync.md).
+- [Go SaaS boilerplate source kit](https://willuny.xyz/go-saas-boilerplate)
+- [Multi-tenant SaaS architecture](https://willuny.xyz/architecture)
+- [Multi-tenant foundations](https://willuny.xyz/features/multi-tenancy)
+- [Source package options](https://willuny.xyz/shop/products)
 
 ## License
 
