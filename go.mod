@@ -1,6 +1,6 @@
 module github.com/willunylabs/amsonia-core
 
-go 1.25.12
+go 1.25.13
 
 require (
 	github.com/jackc/pgx/v5 v5.10.0

@@ -61,7 +61,7 @@ but are not yet exposed as v0.2 preview UI workflows.
 
 ## Requirements
 
-- Go 1.25.12 or newer within the supported release line
+- Go 1.25.13 or newer within the supported release line
 - PostgreSQL 16 or newer
 - Node.js 22.15 or newer and npm 10
 
@@ -229,6 +229,13 @@ Amsonia Core is the reusable, auditable authorization foundation. The complete
 Amsonia product adds production SaaS modules, managed upgrade paths, and broader
 operations tooling. Product details and engineering notes are published at
 [willuny.xyz](https://willuny.xyz).
+
+For the broader product and architecture context, see:
+
+- [Amsonia Go SaaS boilerplate source kit](https://willuny.xyz/go-saas-boilerplate)
+- [Go SaaS architecture: multi-tenancy, RBAC, billing, and deployment](https://willuny.xyz/architecture)
+- [Multi-tenant SaaS foundations](https://willuny.xyz/features/multi-tenancy)
+- [Amsonia source package options](https://willuny.xyz/shop/products)
 
 Shared public-safe sources enter this repository only through reviewed export
 manifests and recorded provenance; see [docs/source-sync.md](docs/source-sync.md).
