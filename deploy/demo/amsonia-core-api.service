@@ -1,0 +1,21 @@
+[Unit]
+Description=Amsonia Core demo API
+After=amsonia-core-postgres.service
+Requires=amsonia-core-postgres.service
+
+[Service]
+Type=simple
+User=amsonia-core
+Group=amsonia-core
+EnvironmentFile=/etc/amsonia-core/demo.env
+ExecStart=/opt/amsonia-core-demo/current/amsonia-api
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/amsonia-core
+
+[Install]
+WantedBy=multi-user.target

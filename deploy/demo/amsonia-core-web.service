@@ -1,0 +1,19 @@
+[Unit]
+Description=Amsonia Core demo web console
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=amsonia-core
+Group=amsonia-core
+ExecStart=/opt/amsonia-core-demo/current/amsonia-web -root /opt/amsonia-core-demo/current/web -addr 127.0.0.1:8083
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+[Unit]
+Description=Amsonia Core demo PostgreSQL
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=postgres
+Group=postgres
+ExecStart=/usr/bin/postgres -D /var/lib/pgsql/amsonia-core/data
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGINT
+TimeoutStopSec=60
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
