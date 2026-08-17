@@ -68,7 +68,11 @@ function Login({ onLogin }: { onLogin: (account: Account) => void }) {
           <span className="eyebrow">Open-source Go SaaS foundation</span>
           <h1>Tenant access<br />you can own.</h1>
           <p>Explore multi-tenant authorization, RBAC, PostgreSQL row-level security, and audit history in the Amsonia Core demo.</p>
-          <p className="fine-print"><a href="https://github.com/willunylabs/amsonia-core" target="_blank" rel="noreferrer">Read the Apache-2.0 source on GitHub</a></p>
+          <p className="fine-print">
+            <a href="https://github.com/willunylabs/amsonia-core" target="_blank" rel="noreferrer">Read the Apache-2.0 source on GitHub</a>
+            <span> · </span>
+            <a href="https://willuny.xyz/go-saas-boilerplate" target="_blank" rel="noreferrer">See the Go SaaS product overview</a>
+          </p>
         </div>
         <div className="trust-strip">
           <ShieldCheck size={22} />
