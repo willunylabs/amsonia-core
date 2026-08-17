@@ -1,14 +1,33 @@
-# Amsonia Core
+# Amsonia Core — Open-Source Go Multi-Tenant SaaS Authorization
 
-Amsonia Core is an Apache-2.0 full-stack foundation for multi-tenant Go SaaS
-products. It combines a Go authorization kernel, PostgreSQL persistence with
-forced row-level security, a versioned HTTP API, and a React management console
-in one repository.
+[![Apache-2.0 license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![CI](https://github.com/willunylabs/amsonia-core/actions/workflows/ci.yml/badge.svg)](https://github.com/willunylabs/amsonia-core/actions/workflows/ci.yml)
+
+**Amsonia Core** is an open-source Go foundation for teams building multi-tenant
+SaaS products. It provides tenant isolation, delegated RBAC, administrator
+authentication, PostgreSQL row-level security, audit events, a versioned HTTP
+API, and a React management console.
+
+[Try the live demo](https://amsonia.dev) · [Read the Amsonia product overview](https://willuny.xyz/go-saas-boilerplate) · [View the API contract](openapi/openapi.yaml)
+
+The demo shows the authorization console and its tenant, role, permission, and
+audit workflows. It is a technical preview, not a hosted production service.
 
 Core focuses on identity, sessions, tenants, memberships, roles, permissions,
 authorization decisions, and policy audit. Billing, commerce, AI, education,
 messaging, and white-label operations belong to the complete Amsonia product,
 not this open-source core.
+
+## Why teams use it
+
+- **Go-first ownership:** keep the authorization boundary and backend code in
+  your repository instead of hiding it behind a BaaS.
+- **Tenant isolation:** bind tenant context to each transaction and enforce it
+  with PostgreSQL `FORCE ROW LEVEL SECURITY`.
+- **Inspectable policy:** versioned roles, permission catalogs, grant-cycle
+  protection, and append-only audit events make access decisions reviewable.
+- **Useful starting point:** run the API and console locally, use the live demo,
+  then extend the contracts for your product.
 
 ## What it provides
 

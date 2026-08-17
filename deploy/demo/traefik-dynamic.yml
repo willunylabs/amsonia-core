@@ -1,0 +1,71 @@
+http:
+  middlewares:
+    amsonia-security:
+      headers:
+        frameDeny: true
+        contentTypeNosniff: true
+        referrerPolicy: no-referrer
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+    amsonia-redirect-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  routers:
+    amsonia-core-api:
+      entryPoints:
+        - websecure
+      rule: Host(`amsonia.dev`) && (PathPrefix(`/api`) || Path(`/health`) || Path(`/readyz`))
+      middlewares:
+        - amsonia-security
+      service: amsonia-core-api
+      tls:
+        certResolver: letsencrypt
+
+    amsonia-core-api-http:
+      entryPoints:
+        - web
+      rule: Host(`amsonia.dev`) && (PathPrefix(`/api`) || Path(`/health`) || Path(`/readyz`))
+      middlewares:
+        - amsonia-redirect-https
+      service: noop@internal
+
+    amsonia-core-web:
+      entryPoints:
+        - websecure
+      rule: Host(`amsonia.dev`)
+      middlewares:
+        - amsonia-security
+      service: amsonia-core-web
+      tls:
+        certResolver: letsencrypt
+
+    amsonia-core-web-http:
+      entryPoints:
+        - web
+      rule: Host(`amsonia.dev`)
+      middlewares:
+        - amsonia-redirect-https
+      service: noop@internal
+
+  services:
+    amsonia-core-api:
+      loadBalancer:
+        passHostHeader: true
+        healthCheck:
+          path: /readyz
+          interval: 10s
+          timeout: 3s
+        servers:
+          - url: http://127.0.0.1:8082
+
+    amsonia-core-web:
+      loadBalancer:
+        passHostHeader: true
+        healthCheck:
+          path: /healthz
+          interval: 10s
+          timeout: 3s
+        servers:
+          - url: http://127.0.0.1:8083
