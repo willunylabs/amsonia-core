@@ -41,7 +41,6 @@ not this open-source core.
   append-only audit events.
 - A standalone Go API, migration/administration CLI, in-memory adapter, and
   React management console.
-
 ## Repository layout
 
 | Path | Purpose |
