@@ -1,0 +1,27 @@
+---
+import PageIntro from '../components/PageIntro.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { breadcrumbSchema, COMMERCIAL_URL } from '../lib/site';
+
+const description = 'Learn how Amsonia separates its technical product brand, open-source Core, public evidence, and commercial distribution published by Willuny Labs.';
+---
+
+<BaseLayout title="About Amsonia" description={description} canonicalPath="/about" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'About', href: '/about' }])]}>
+  <main id="main-content">
+    <PageIntro eyebrow="Brand and publisher" index="ABOUT / 00" title="About Amsonia" summary="Amsonia is the technical product brand. Willuny Labs is its publisher and the commercial home for source distribution, licensing, purchase, and support." />
+    <div class="content-shell">
+      <div class="content-grid">
+        <aside class="content-aside"><nav aria-label="About sections"><a href="#brand">Brand</a><a href="#principles">Principles</a><a href="#publisher">Publisher</a></nav></aside>
+        <article class="prose">
+          <h2 id="brand">A durable technical identity.</h2>
+          <p>Amsonia is intentionally broader than its first repository. The brand can grow across released technical products without pretending that every component is open source or available today.</p>
+          <h2 id="principles">Claims follow evidence.</h2>
+          <ul><li>Published capabilities map to code, tests, contracts, or maintained documentation.</li><li>Open-source and commercial boundaries remain visible.</li><li>Product pages appear after release readiness, not as thin roadmap placeholders.</li><li>Technical learning lives here; purchase and company information live at Willuny.</li></ul>
+          <h2 id="publisher">Published by Willuny Labs.</h2>
+          <p>Willuny Labs maintains the company, legal, editorial, pricing, and transaction surfaces for Amsonia. The complete source distribution is available there.</p>
+          <div class="hero-actions"><a class="button primary" href={COMMERCIAL_URL} data-cta-target="commercial">Visit Willuny Labs ↗</a><a class="button secondary" href="/core">Explore Core →</a></div>
+        </article>
+      </div>
+    </div>
+  </main>
+</BaseLayout>

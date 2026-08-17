@@ -1,0 +1,24 @@
+[Unit]
+Description=Traefik reverse proxy for Amsonia
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=traefik
+Group=traefik
+ExecStart=/usr/local/bin/traefik --configFile=/etc/traefik/traefik.yml
+Restart=always
+RestartSec=3
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+LimitNOFILE=65535
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+ReadWritePaths=/etc/traefik /var/lib/traefik
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,52 @@
+---
+import AnalyticsConsent from '../components/AnalyticsConsent.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import '../styles/global.css';
+import { absoluteUrl, SITE_NAME } from '../lib/site';
+
+interface Props {
+  title: string;
+  description: string;
+  canonicalPath: string;
+  schemas?: Record<string, unknown>[];
+}
+
+const { title, description, canonicalPath, schemas = [] } = Astro.props;
+const canonical = absoluteUrl(canonicalPath);
+const fullTitle = canonicalPath === '/' ? `${SITE_NAME} — Production-grade Go infrastructure` : `${title} | ${SITE_NAME}`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#203b2e" />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/amsonia-mark.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Amsonia" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={absoluteUrl('/og-amsonia.svg')} />
+    <meta property="og:image:alt" content="Amsonia — production-grade Go infrastructure for modern applications" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={absoluteUrl('/og-amsonia.svg')} />
+    {schemas.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} />)}
+  </head>
+  <body>
+    <SiteHeader />
+    <slot />
+    <SiteFooter />
+    <AnalyticsConsent />
+  </body>
+</html>

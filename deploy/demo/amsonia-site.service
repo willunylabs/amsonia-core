@@ -1,5 +1,5 @@
 [Unit]
-Description=Amsonia Core demo web console
+Description=Amsonia product and technical website
 After=network-online.target
 Wants=network-online.target
 
@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=simple
 User=amsonia-core
 Group=amsonia-core
-ExecStart=/opt/amsonia-core-demo-web/current/amsonia-static -root /opt/amsonia-core-demo-web/current/web -addr 127.0.0.1:8083 -spa
+ExecStart=/opt/amsonia-site/current/amsonia-static -root /opt/amsonia-site/current/site -addr 127.0.0.1:8084
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true

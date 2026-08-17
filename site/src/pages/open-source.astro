@@ -1,0 +1,21 @@
+---
+import PageIntro from '../components/PageIntro.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { breadcrumbSchema, GITHUB_URL } from '../lib/site';
+
+const description = 'Explore released Amsonia open-source software. Amsonia Core is the Apache-2.0 foundation for tenant-safe authorization in Go.';
+---
+
+<BaseLayout title="Amsonia Open Source" description={description} canonicalPath="/open-source" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Open source', href: '/open-source' }])]}>
+  <main id="main-content">
+    <PageIntro eyebrow="Released source" index="OSS / 00" title="Open source" summary="This index lists only Amsonia components with public source and an explicit license. Today that list contains Amsonia Core." />
+    <div class="content-shell">
+      <section class="section">
+        <div class="core-grid">
+          <article><span class="specimen-number">01 / APACHE-2.0 / GO</span><h3>Amsonia<br />Core</h3><p>A tenant-safe delegated authorization foundation with PostgreSQL RLS, versioned roles, authenticated sessions, policy audit, OpenAPI, and a React Console.</p><div class="hero-actions"><a class="button primary" href="/core">Product page →</a><a class="button secondary" href={GITHUB_URL} data-cta-target="github">Source ↗</a></div></article>
+          <aside class="boundary-note"><div><span class="eyebrow">Publication rule</span><h3>Public means inspectable.</h3><p>An Amsonia component is described as open source only when the repository, license, version history, security reporting path, and documentation are publicly available.</p></div><code>released_components = ["core"]</code></aside>
+        </div>
+      </section>
+    </div>
+  </main>
+</BaseLayout>

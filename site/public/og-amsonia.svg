@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Amsonia — production-grade Go infrastructure">
+  <rect width="1200" height="630" fill="#f3efe4"/>
+  <path d="M0 506C245 454 403 478 599 522s369 65 601 4v104H0Z" fill="#203b2e"/>
+  <path d="M964 74c32 72 50 145 54 220-65 47-151 45-230-15 15-98 69-168 176-205Z" fill="#d7ef72"/>
+  <path d="M852 265c44-57 93-101 150-132M935 185c-4-34-1-61 10-84M928 190c36 4 66 15 92 35" fill="none" stroke="#203b2e" stroke-width="14" stroke-linecap="round"/>
+  <text x="82" y="126" fill="#637267" font-family="monospace" font-size="22" letter-spacing="7">AMSONIA / PRODUCT SYSTEM</text>
+  <text x="76" y="302" fill="#17201c" font-family="Georgia,serif" font-size="128" letter-spacing="-7">Amsonia</text>
+  <text x="82" y="372" fill="#435249" font-family="Arial,sans-serif" font-size="31">Production-grade Go infrastructure for modern applications.</text>
+  <text x="82" y="576" fill="#f3efe4" font-family="monospace" font-size="22" letter-spacing="3">AMSONIA.DEV  ·  CORE / DOCS / RELEASES</text>
+</svg>

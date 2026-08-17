@@ -1,0 +1,26 @@
+---
+import { primaryNav } from '../lib/site';
+
+const currentPath = Astro.url.pathname;
+---
+
+<header class="site-header">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <div class="header-inner">
+    <a class="wordmark" href="/" aria-label="Amsonia home">
+      <img src="/amsonia-mark.svg" width="38" height="38" alt="" />
+      <span>AMSONIA</span>
+      <small>PRODUCT SYSTEM</small>
+    </a>
+
+    <nav aria-label="Primary navigation">
+      {primaryNav.map((item) => (
+        <a href={item.href} aria-current={currentPath === item.href ? 'page' : undefined}>{item.label}</a>
+      ))}
+    </nav>
+
+    <a class="header-demo" href="https://demo.amsonia.dev" data-cta-target="demo">
+      Live demo <span aria-hidden="true">↗</span>
+    </a>
+  </div>
+</header>

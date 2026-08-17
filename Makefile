@@ -1,6 +1,6 @@
-.PHONY: check go-check web-check postgres-check
+.PHONY: check go-check web-check site-check postgres-check
 
-check: go-check web-check
+check: go-check web-check site-check
 
 go-check:
 	test -z "$$(gofmt -l -- $$(find . -path './web/node_modules' -prune -o -name '*.go' -print))"
@@ -17,6 +17,11 @@ web-check:
 	npm --prefix web run test
 	npm --prefix web run build
 	npx --yes @redocly/cli@2.46.1 lint openapi/openapi.yaml
+
+site-check:
+	npm --prefix site ci
+	npm --prefix site audit --audit-level=moderate
+	npm --prefix site run check
 
 postgres-check:
 	test -n "$(TEST_DATABASE_ADMIN_URL)"

@@ -71,7 +71,7 @@ function Login({ onLogin }: { onLogin: (account: Account) => void }) {
           <p className="fine-print">
             <a href="https://github.com/willunylabs/amsonia-core" target="_blank" rel="noreferrer">Read the Apache-2.0 source on GitHub</a>
             <span> · </span>
-            <a href="https://willuny.xyz/go-saas-boilerplate" target="_blank" rel="noreferrer">See the Go SaaS product overview</a>
+            <a href="https://willuny.xyz/amsonia" target="_blank" rel="noreferrer">See the commercial Amsonia distribution</a>
           </p>
         </div>
         <div className="trust-strip">
@@ -182,7 +182,7 @@ function Console({ account, onLogout }: { account: Account; onLogout: () => void
       </nav>
       <div className="sidebar-meta">
         <div className="status-line"><span className="status-dot" />Core API connected</div>
-        <a href="https://willuny.xyz" target="_blank" rel="noreferrer">Complete Amsonia product <ArrowRight size={13} /></a>
+        <a href="https://willuny.xyz/amsonia" target="_blank" rel="noreferrer">Complete Amsonia product <ArrowRight size={13} /></a>
       </div>
     </aside>
     <div className="workspace">

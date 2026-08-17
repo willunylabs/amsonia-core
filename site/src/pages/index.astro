@@ -1,0 +1,157 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import {
+  amsoniaBrandReference,
+  COMMERCIAL_URL,
+  COMPANY_NAME,
+  DEMO_URL,
+  GITHUB_URL,
+  publisherReference,
+  SITE_ORIGIN
+} from '../lib/site';
+
+const description = 'Amsonia is a technical product family for modern Go applications. Explore the open-source Amsonia Core, documentation, releases, demo, and commercial distribution.';
+const schemas = [{
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      ...publisherReference,
+      legalName: COMPANY_NAME,
+      logo: `${SITE_ORIGIN}/amsonia-mark.svg`,
+      owns: { '@id': `${SITE_ORIGIN}/#brand` }
+    },
+    {
+      ...amsoniaBrandReference,
+      logo: `${SITE_ORIGIN}/amsonia-mark.svg`
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_ORIGIN}/#website`,
+      name: 'Amsonia',
+      url: `${SITE_ORIGIN}/`,
+      description,
+      inLanguage: 'en-US',
+      publisher: { '@id': 'https://willuny.xyz/#organization' },
+      about: { '@id': `${SITE_ORIGIN}/#brand` }
+    }
+  ]
+}];
+---
+
+<BaseLayout title="Amsonia" description={description} canonicalPath="/" schemas={schemas}>
+  <main id="main-content">
+    <section class="hero">
+      <div class="shell hero-inner">
+        <div class="hero-copy">
+          <span class="eyebrow">Amsonia / Production system / Est. 2026</span>
+          <h1>Amsonia</h1>
+          <p class="hero-thesis">Production-grade Go infrastructure for modern applications.</p>
+          <p class="hero-summary">
+            An evolving family of explicit, source-owned infrastructure. Amsonia Core is the first public component: an open-source foundation for tenant-safe delegated authorization.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href={GITHUB_URL} data-cta-target="github">GitHub source <span aria-hidden="true">↗</span></a>
+            <a class="button secondary" href="/core/docs/getting-started" data-cta-target="docs">Documentation <span aria-hidden="true">→</span></a>
+            <a class="button quiet" href={DEMO_URL} data-cta-target="demo">Live demo <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+        <div class="hero-specimen" aria-label="Abstract Amsonia leaf specimen">
+          <span class="hero-folio">TENANT-SAFE / SOURCE-OWNED / GO-FIRST</span>
+          <div class="leaf-form" aria-hidden="true"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="shell brand-contract">
+        <div><span class="specimen-number">BRAND / 00</span></div>
+        <div>
+          <h2>One technical product family.</h2>
+          <p>The root domain establishes Amsonia as the durable product brand. It is not limited to one repository or one licensing model.</p>
+        </div>
+        <div>
+          <h3>Core leads today.</h3>
+          <p>Only released products appear here. New components enter the system when their source, documentation, and support boundary are ready.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="shell">
+        <div class="section-heading">
+          <span class="eyebrow">Open source / First component</span>
+          <div class="section-heading-copy">
+            <h2>Own the authorization boundary.</h2>
+            <p>Amsonia Core packages the parts that are expensive to improvise later: tenant context, delegated RBAC, PostgreSQL row-level security, authenticated sessions, and an auditable policy history.</p>
+          </div>
+        </div>
+
+        <div class="core-grid">
+          <article>
+            <span class="specimen-number">CORE / APACHE-2.0</span>
+            <h3>Amsonia<br />Core</h3>
+            <p>Open-source foundation of the Amsonia product family, implemented in Go with PostgreSQL and a React management console.</p>
+            <ul class="capability-list">
+              <li>Tenant-first delegated authorization</li>
+              <li>Forced PostgreSQL row-level security</li>
+              <li>Versioned roles and permission catalogs</li>
+              <li>Argon2id authentication and rotating sessions</li>
+              <li>Append-only policy audit events</li>
+              <li>Versioned HTTP and OpenAPI contract</li>
+            </ul>
+            <div class="hero-actions">
+              <a class="button primary" href="/core">Explore Core <span aria-hidden="true">→</span></a>
+              <a class="button secondary" href={DEMO_URL} data-cta-target="demo">Open Console <span aria-hidden="true">↗</span></a>
+            </div>
+          </article>
+          <aside class="boundary-note">
+            <div>
+              <span class="eyebrow">Scope boundary</span>
+              <h3>Precise by design.</h3>
+              <p>Core covers identity, sessions, tenants, memberships, roles, permissions, authorization decisions, and policy audit.</p>
+              <p>Billing, commerce, AI, education, messaging, and white-label operations belong to the complete commercial Amsonia distribution—not this repository.</p>
+            </div>
+            <code>core.status = "open-source"<br />core.license = "Apache-2.0"<br />publisher = "Willuny Labs"</code>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="section band">
+      <div class="shell">
+        <div class="section-heading">
+          <span class="eyebrow">Evaluate / Follow the evidence</span>
+          <div class="section-heading-copy">
+            <h2>Read the boundary before the promise.</h2>
+            <p>Every technical claim on this site is tied to public code, a versioned contract, a test, or a maintained document in Amsonia Core.</p>
+          </div>
+        </div>
+        <div class="link-grid">
+          <a class="link-card" href="/core/docs/getting-started">
+            <span>DOC / 01</span><h3>Start locally</h3><p>Bring up the least-privileged PostgreSQL roles, API, bootstrap administrator, and console.</p>
+          </a>
+          <a class="link-card" href="/core/security">
+            <span>SEC / 02</span><h3>Security model</h3><p>Understand signed tenant context, forced RLS, session behavior, and operational assumptions.</p>
+          </a>
+          <a class="link-card" href="/core/api">
+            <span>API / 03</span><h3>HTTP contract</h3><p>Inspect the versioned OpenAPI contract for authentication, tenants, roles, audit, and decisions.</p>
+          </a>
+          <a class="link-card" href="/releases">
+            <span>REL / 04</span><h3>Release history</h3><p>Follow the public tags and release notes instead of relying on an unversioned feature list.</p>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="commercial-panel">
+      <div>
+        <span class="eyebrow">Commercial distribution</span>
+        <h2>Build beyond Core.</h2>
+      </div>
+      <div>
+        <p>The complete Amsonia source distribution adds the wider SaaS application and operations layer. Pricing, licensing, purchase, and support live with the publisher at Willuny Labs.</p>
+        <a class="button" href={COMMERCIAL_URL} data-cta-target="commercial">Available from Willuny Labs <span aria-hidden="true">↗</span></a>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
