@@ -7,7 +7,7 @@ const siteRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const distRoot = join(siteRoot, 'dist');
 const origin = 'https://amsonia.dev';
 const requiredRoutes = [
-  '/', '/core', '/core/docs', '/core/docs/getting-started', '/core/api',
+  '/', '/core', '/core/docs', '/core/docs/getting-started', '/core/docs/business-data-rls', '/core/api',
   '/core/security', '/core/license', '/docs', '/releases', '/open-source', '/about'
 ];
 

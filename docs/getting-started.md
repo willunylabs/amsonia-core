@@ -1,7 +1,41 @@
 # Getting started
 
-This guide covers a least-privileged local PostgreSQL setup. Docker is not
-required.
+The fastest path uses Docker Compose while preserving separate migration,
+runtime, and maintenance roles. A fully manual PostgreSQL setup follows it.
+
+## Five-minute local stack
+
+Requirements: Docker with the Compose plugin and Go 1.25.13 or newer.
+
+```bash
+git clone https://github.com/willunylabs/amsonia-core.git
+cd amsonia-core
+make demo
+```
+
+On first run, the command creates `.amsonia/local.env` with owner-only file
+permissions, generates independent high-entropy infrastructure credentials,
+builds the full stack, and asks interactively for the one system administrator.
+The administrator password is read without echo and is not stored by the
+launcher.
+
+Open `http://127.0.0.1:8080`. Re-running `make demo` is idempotent.
+
+```bash
+make demo-status
+make demo-down
+```
+
+`make demo-down` preserves the PostgreSQL volume and generated credentials.
+The local override binds PostgreSQL to `127.0.0.1` only so host-side examples
+can connect; it does not expose the database on other network interfaces.
+
+Continue with [the business-data RLS proof](business-data-rls.md) to verify the
+tenant boundary against an application-owned invoice table.
+
+## Manual setup
+
+Docker is not required for the manual path.
 
 ## Requirements
 
