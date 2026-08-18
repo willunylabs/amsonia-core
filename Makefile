@@ -1,4 +1,13 @@
-.PHONY: check go-check web-check site-check postgres-check
+.PHONY: check demo demo-down demo-status go-check web-check site-check postgres-check
+
+demo:
+	go run ./cmd/amsonia-local up
+
+demo-down:
+	go run ./cmd/amsonia-local down
+
+demo-status:
+	go run ./cmd/amsonia-local status
 
 check: go-check web-check site-check
 

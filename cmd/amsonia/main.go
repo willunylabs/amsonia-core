@@ -28,11 +28,11 @@ func main() {
 }
 
 func run(ctx context.Context, args []string) error {
-	if len(args) != 1 || (args[0] != "migrate" && args[0] != "migration-status" && args[0] != "bootstrap-admin" && args[0] != "provision-demo-viewer") {
-		return errors.New("usage: amsonia migrate | migration-status | bootstrap-admin | provision-demo-viewer")
+	if len(args) != 1 || (args[0] != "migrate" && args[0] != "migration-status" && args[0] != "admin-status" && args[0] != "bootstrap-admin" && args[0] != "provision-demo-viewer") {
+		return errors.New("usage: amsonia migrate | migration-status | admin-status | bootstrap-admin | provision-demo-viewer")
 	}
 	dsnName := "AMSONIA_MIGRATION_DSN"
-	if args[0] == "bootstrap-admin" || args[0] == "provision-demo-viewer" {
+	if args[0] == "admin-status" || args[0] == "bootstrap-admin" || args[0] == "provision-demo-viewer" {
 		dsnName = "AMSONIA_DATABASE_DSN"
 	}
 	dsn := os.Getenv(dsnName)
@@ -55,10 +55,28 @@ func run(ctx context.Context, args []string) error {
 		for _, state := range states {
 			fmt.Printf("%06d  %-32s  dirty=%-5t  %s\n", state.Version, state.Name, state.Dirty, state.AppliedAt.UTC().Format(time.RFC3339))
 		}
+	case "admin-status":
+		return adminStatus(ctx, pool)
 	case "bootstrap-admin":
 		return bootstrapAdmin(ctx, pool)
 	case "provision-demo-viewer":
 		return provisionDemoViewer(ctx, pool)
+	}
+	return nil
+}
+
+func adminStatus(ctx context.Context, pool *pgxpool.Pool) error {
+	var count int
+	if err := pool.QueryRow(ctx, "SELECT count(*) FROM amsonia.system_administrators").Scan(&count); err != nil {
+		return fmt.Errorf("read administrator status: %w", err)
+	}
+	switch count {
+	case 0:
+		fmt.Fprintln(os.Stdout, "missing")
+	case 1:
+		fmt.Fprintln(os.Stdout, "configured")
+	default:
+		return fmt.Errorf("expected at most one system administrator, found %d", count)
 	}
 	return nil
 }

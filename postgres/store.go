@@ -33,8 +33,10 @@ type Store struct {
 	maintenanceBindingSecret []byte
 }
 
-// RunTenant executes one callback inside the signed tenant boundary. It is
-// intended for Core-owned persistence that shares the same tenant RLS model.
+// RunTenant executes one callback inside the signed tenant boundary. Core and
+// host-application tables may share this boundary when their policies use
+// amsonia.tenant_id() and the runtime role remains a non-owner without
+// BYPASSRLS. Authorization still belongs above this storage boundary.
 func (s *Store) RunTenant(ctx context.Context, tenantID amsonia.TenantID, readOnly bool, fn func(pgx.Tx) error) error {
 	if tenantID.Validate() != nil || fn == nil {
 		return amsonia.ErrInvalidInput
