@@ -473,23 +473,54 @@ func (s *Service) RevokeRefresh(ctx context.Context, refreshToken string) error 
 }
 
 func (s *Service) ListTenants(ctx context.Context, accountID string) ([]Tenant, error) {
-	tenants := make([]Tenant, 0)
-	err := s.store.RunActor(ctx, accountID, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT tenant_id, name, state, created_at FROM amsonia.list_account_tenants()`)
+	if amsonia.SubjectID(accountID).Validate() != nil {
+		return nil, amsonia.ErrInvalidInput
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT tenant_id, name, state, created_at
+		FROM amsonia.tenants WHERE state = 'active'
+		ORDER BY created_at, tenant_id
+	`)
+	if err != nil {
+		return nil, err
+	}
+	candidates := make([]Tenant, 0)
+	for rows.Next() {
+		var tenant Tenant
+		if err := rows.Scan(&tenant.ID, &tenant.Name, &tenant.State, &tenant.CreatedAt); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		candidates = append(candidates, tenant)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+
+	// Membership rows are protected by FORCE RLS and are deliberately never
+	// queried in a global actor-only context. Bind each candidate tenant with
+	// the signed runtime secret before checking the account membership.
+	tenants := make([]Tenant, 0, len(candidates))
+	for _, candidate := range candidates {
+		found := false
+		err := s.store.RunTenant(ctx, amsonia.TenantID(candidate.ID), true, func(tx pgx.Tx) error {
+			return tx.QueryRow(ctx, `
+				SELECT EXISTS (
+					SELECT 1 FROM amsonia.tenant_memberships
+					WHERE tenant_id = $1 AND account_id = $2 AND status = 'active'
+				)
+			`, candidate.ID, accountID).Scan(&found)
+		})
 		if err != nil {
-			return err
+			return nil, err
 		}
-		defer rows.Close()
-		for rows.Next() {
-			var tenant Tenant
-			if err := rows.Scan(&tenant.ID, &tenant.Name, &tenant.State, &tenant.CreatedAt); err != nil {
-				return err
-			}
-			tenants = append(tenants, tenant)
+		if found {
+			tenants = append(tenants, candidate)
 		}
-		return rows.Err()
-	})
-	return tenants, err
+	}
+	return tenants, nil
 }
 
 func (s *Service) CreateTenant(ctx context.Context, actor Account, input CreateTenantInput) (Tenant, error) {

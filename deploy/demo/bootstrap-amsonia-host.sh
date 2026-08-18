@@ -161,7 +161,9 @@ done
 test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8083/sitemap.xml)" = 404
 test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8084/api/example)" = 404
 
-redirect_status="$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Host: demo.amsonia.dev' http://127.0.0.1/)"
+redirect_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --retry 20 --retry-connrefused --retry-delay 1 \
+  -H 'Host: demo.amsonia.dev' http://127.0.0.1/)"
 if [[ "${redirect_status}" != 301 && "${redirect_status}" != 308 ]]; then
   echo "unexpected origin redirect status: ${redirect_status}" >&2
   exit 1
