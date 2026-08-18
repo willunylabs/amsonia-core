@@ -1,0 +1,7 @@
+# Local-only Compose additions used by `make demo`. The database binds only to
+# loopback so host-side examples and integration tools can connect without
+# exposing PostgreSQL on the network.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${AMSONIA_POSTGRES_PORT:-55432}:5432"

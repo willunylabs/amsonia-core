@@ -47,7 +47,7 @@ const schemas = [{
           <h1>Amsonia</h1>
           <p class="hero-thesis">Production-grade Go infrastructure for modern applications.</p>
           <p class="hero-summary">
-            An evolving family of explicit, source-owned infrastructure. Amsonia Core is the first public component: an open-source foundation for tenant-safe delegated authorization.
+            An evolving family of explicit, source-owned infrastructure. Amsonia Core is the first public component: tenant authorization for Go, enforced at the PostgreSQL row boundary.
           </p>
           <div class="hero-actions">
             <a class="button primary" href={GITHUB_URL} data-cta-target="github">GitHub source <span aria-hidden="true">↗</span></a>
@@ -82,7 +82,7 @@ const schemas = [{
           <span class="eyebrow">Open source / First component</span>
           <div class="section-heading-copy">
             <h2>Own the authorization boundary.</h2>
-            <p>Amsonia Core packages the parts that are expensive to improvise later: tenant context, delegated RBAC, PostgreSQL row-level security, authenticated sessions, and an auditable policy history.</p>
+            <p>Amsonia Core packages the boundary that is expensive to retrofit later: tenant membership, delegated RBAC, signed PostgreSQL row-level security, authenticated administrator sessions, and an auditable policy history.</p>
           </div>
         </div>
 
@@ -93,7 +93,7 @@ const schemas = [{
             <p>Open-source foundation of the Amsonia product family, implemented in Go with PostgreSQL and a React management console.</p>
             <ul class="capability-list">
               <li>Tenant-first delegated authorization</li>
-              <li>Forced PostgreSQL row-level security</li>
+              <li>Signed context and forced PostgreSQL RLS</li>
               <li>Versioned roles and permission catalogs</li>
               <li>Argon2id authentication and rotating sessions</li>
               <li>Append-only policy audit events</li>
@@ -123,15 +123,15 @@ const schemas = [{
           <span class="eyebrow">Evaluate / Follow the evidence</span>
           <div class="section-heading-copy">
             <h2>Read the boundary before the promise.</h2>
-            <p>Every technical claim on this site is tied to public code, a versioned contract, a test, or a maintained document in Amsonia Core.</p>
+            <p>Every technical claim on this site is tied to public code, a versioned contract, a negative test, or a maintained document in Amsonia Core.</p>
           </div>
         </div>
         <div class="link-grid">
           <a class="link-card" href="/core/docs/getting-started">
-            <span>DOC / 01</span><h3>Start locally</h3><p>Bring up the least-privileged PostgreSQL roles, API, bootstrap administrator, and console.</p>
+            <span>DOC / 01</span><h3>Start locally</h3><p>Run the complete least-privileged PostgreSQL, API, and Console stack with one command.</p>
           </a>
           <a class="link-card" href="/core/security">
-            <span>SEC / 02</span><h3>Security model</h3><p>Understand signed tenant context, forced RLS, session behavior, and operational assumptions.</p>
+            <span>SEC / 02</span><h3>Security model</h3><p>Understand signed tenant context, forced RLS, negative tests, and operational assumptions.</p>
           </a>
           <a class="link-card" href="/core/api">
             <span>API / 03</span><h3>HTTP contract</h3><p>Inspect the versioned OpenAPI contract for authentication, tenants, roles, audit, and decisions.</p>
