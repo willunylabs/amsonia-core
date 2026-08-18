@@ -16,6 +16,7 @@ func TestStaticHandlerServesCleanRoutesAndRealNotFound(t *testing.T) {
 	writeTestFile(t, filepath.Join(root, "404.html"), "missing specimen")
 
 	handler := newStaticHandler(root, false)
+	t.Cleanup(func() { _ = handler.Close() })
 
 	tests := []struct {
 		path       string
@@ -50,6 +51,7 @@ func TestStaticHandlerSPAFallbackExcludesMissingFiles(t *testing.T) {
 	writeTestFile(t, filepath.Join(root, "robots.txt"), "User-agent: *\nAllow: /\n")
 
 	handler := newStaticHandler(root, true)
+	t.Cleanup(func() { _ = handler.Close() })
 
 	login := httptest.NewRecorder()
 	handler.ServeHTTP(login, httptest.NewRequest(http.MethodGet, "/login", nil))
@@ -74,6 +76,7 @@ func TestStaticHandlerHealthAndMethodGuard(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "index.html"), "home")
 	handler := newStaticHandler(root, false)
+	t.Cleanup(func() { _ = handler.Close() })
 
 	health := httptest.NewRecorder()
 	handler.ServeHTTP(health, httptest.NewRequest(http.MethodGet, "/healthz", nil))
@@ -85,6 +88,38 @@ func TestStaticHandlerHealthAndMethodGuard(t *testing.T) {
 	handler.ServeHTTP(post, httptest.NewRequest(http.MethodPost, "/", nil))
 	if post.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("POST status = %d, want %d", post.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestStaticHandlerRejectsTraversalAndEscapingSymlinks(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "404.html"), "not found")
+	writeTestFile(t, filepath.Join(outside, "secret.html"), "secret")
+	if err := os.Symlink(filepath.Join(outside, "secret.html"), filepath.Join(root, "escape.html")); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := newStaticHandler(root, false)
+	t.Cleanup(func() { _ = handler.Close() })
+
+	for _, requestPath := range []string{"/../secret.html", "/%2e%2e/secret.html", "/escape.html"} {
+		t.Run(requestPath, func(t *testing.T) {
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, requestPath, nil))
+			if response.Code != http.StatusNotFound {
+				t.Fatalf("status = %d, want %d", response.Code, http.StatusNotFound)
+			}
+			if strings.Contains(response.Body.String(), "secret") {
+				t.Fatal("response exposed a file outside the static root")
+			}
+		})
+	}
+
+	for _, requestPath := range []string{"relative.html", `/..\secret.html`, "/safe/../secret.html", "/safe/./file.html", "/bad\x00path"} {
+		if _, ok := cleanRequestPath(requestPath); ok {
+			t.Fatalf("cleanRequestPath(%q) accepted an unsafe path", requestPath)
+		}
 	}
 }
 

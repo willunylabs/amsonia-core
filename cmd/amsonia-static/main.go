@@ -8,13 +8,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"mime"
 	"net/http"
 	"os"
 	"os/signal"
 	"path"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -26,9 +26,12 @@ func main() {
 	spa := flag.Bool("spa", false, "fall back to index.html for extensionless routes")
 	flag.Parse()
 
+	handler := newStaticHandler(*root, *spa)
+	defer handler.Close()
+
 	server := &http.Server{
 		Addr:              *addr,
-		Handler:           newStaticHandler(*root, *spa),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
@@ -51,45 +54,62 @@ func main() {
 	}
 }
 
-func newStaticHandler(root string, spa bool) http.Handler {
-	absoluteRoot, err := filepath.Abs(root)
-	if err != nil {
-		panic(fmt.Sprintf("resolve static root: %v", err))
-	}
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			w.Header().Set("Allow", "GET, HEAD")
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-			return
-		}
-
-		if r.URL.Path == "/healthz" {
-			w.Header().Set("Cache-Control", "no-store")
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			w.WriteHeader(http.StatusOK)
-			if r.Method == http.MethodGet {
-				_, _ = io.WriteString(w, "ok\n")
-			}
-			return
-		}
-
-		fileName, found := resolveAsset(absoluteRoot, r.URL.Path, spa)
-		if !found {
-			serveNotFound(w, r, absoluteRoot)
-			return
-		}
-
-		serveAsset(w, r, fileName)
-	})
+type staticHandler struct {
+	root *os.Root
+	spa  bool
 }
 
-func resolveAsset(root, requestPath string, spa bool) (string, bool) {
-	cleanPath := path.Clean("/" + requestPath)
-	relativePath := strings.TrimPrefix(cleanPath, "/")
-	if relativePath == "." {
-		relativePath = ""
+type staticAsset struct {
+	name string
+	file *os.File
+	info fs.FileInfo
+}
+
+func newStaticHandler(root string, spa bool) *staticHandler {
+	safeRoot, err := os.OpenRoot(root)
+	if err != nil {
+		panic(fmt.Sprintf("open static root: %v", err))
 	}
+	return &staticHandler{root: safeRoot, spa: spa}
+}
+
+func (h *staticHandler) Close() error {
+	return h.root.Close()
+}
+
+func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	if r.URL.Path == "/healthz" {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		if r.Method == http.MethodGet {
+			_, _ = io.WriteString(w, "ok\n")
+		}
+		return
+	}
+
+	asset, found := resolveAsset(h.root, r.URL.Path, h.spa)
+	if !found {
+		serveNotFound(w, r, h.root)
+		return
+	}
+	defer asset.file.Close()
+
+	serveAsset(w, r, asset)
+}
+
+func resolveAsset(root *os.Root, requestPath string, spa bool) (staticAsset, bool) {
+	cleanPath, ok := cleanRequestPath(requestPath)
+	if !ok {
+		return staticAsset{}, false
+	}
+	relativePath := strings.TrimPrefix(cleanPath, "/")
 
 	candidates := make([]string, 0, 2)
 	if relativePath == "" {
@@ -97,13 +117,13 @@ func resolveAsset(root, requestPath string, spa bool) (string, bool) {
 	} else if path.Ext(relativePath) != "" {
 		candidates = append(candidates, relativePath)
 	} else {
-		candidates = append(candidates, filepath.Join(relativePath, "index.html"), relativePath+".html")
+		candidates = append(candidates, path.Join(relativePath, "index.html"), relativePath+".html")
 	}
 
 	for _, candidate := range candidates {
-		fileName, ok := existingFile(root, candidate)
+		asset, ok := existingFile(root, candidate)
 		if ok {
-			return fileName, true
+			return asset, true
 		}
 	}
 
@@ -111,23 +131,48 @@ func resolveAsset(root, requestPath string, spa bool) (string, bool) {
 		return existingFile(root, "index.html")
 	}
 
-	return "", false
+	return staticAsset{}, false
 }
 
-func existingFile(root, relativePath string) (string, bool) {
-	fileName := filepath.Clean(filepath.Join(root, relativePath))
-	if fileName != root && !strings.HasPrefix(fileName, root+string(filepath.Separator)) {
+func cleanRequestPath(requestPath string) (string, bool) {
+	if !strings.HasPrefix(requestPath, "/") || strings.ContainsRune(requestPath, '\x00') || strings.Contains(requestPath, `\`) {
 		return "", false
 	}
-	info, err := os.Stat(fileName)
+	for _, segment := range strings.Split(requestPath, "/") {
+		if segment == "." || segment == ".." {
+			return "", false
+		}
+	}
+
+	cleanPath := path.Clean(requestPath)
+	if cleanPath == "." {
+		cleanPath = "/"
+	}
+	relativePath := strings.TrimPrefix(cleanPath, "/")
+	if relativePath != "" && !fs.ValidPath(relativePath) {
+		return "", false
+	}
+	return cleanPath, true
+}
+
+func existingFile(root *os.Root, relativePath string) (staticAsset, bool) {
+	if !fs.ValidPath(relativePath) {
+		return staticAsset{}, false
+	}
+	file, err := root.Open(relativePath)
+	if err != nil {
+		return staticAsset{}, false
+	}
+	info, err := file.Stat()
 	if err != nil || !info.Mode().IsRegular() {
-		return "", false
+		file.Close()
+		return staticAsset{}, false
 	}
-	return fileName, true
+	return staticAsset{name: relativePath, file: file, info: info}, true
 }
 
-func serveAsset(w http.ResponseWriter, r *http.Request, fileName string) {
-	extension := strings.ToLower(filepath.Ext(fileName))
+func serveAsset(w http.ResponseWriter, r *http.Request, asset staticAsset) {
+	extension := strings.ToLower(path.Ext(asset.name))
 	if extension == ".html" {
 		w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 	} else if extension == ".xml" || extension == ".txt" {
@@ -138,33 +183,21 @@ func serveAsset(w http.ResponseWriter, r *http.Request, fileName string) {
 	if contentType := mime.TypeByExtension(extension); contentType != "" {
 		w.Header().Set("Content-Type", contentType)
 	}
-	http.ServeFile(w, r, fileName)
+	http.ServeContent(w, r, asset.name, asset.info.ModTime(), asset.file)
 }
 
-func serveNotFound(w http.ResponseWriter, r *http.Request, root string) {
-	notFoundFile, ok := existingFile(root, "404.html")
+func serveNotFound(w http.ResponseWriter, r *http.Request, root *os.Root) {
+	asset, ok := existingFile(root, "404.html")
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-
-	file, err := os.Open(notFoundFile)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	defer file.Close()
-
-	info, err := file.Stat()
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
+	defer asset.file.Close()
 
 	w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)
 	if r.Method == http.MethodGet {
-		_, _ = io.Copy(w, io.NewSectionReader(file, 0, info.Size()))
+		_, _ = io.Copy(w, io.NewSectionReader(asset.file, 0, asset.info.Size()))
 	}
 }
