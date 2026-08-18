@@ -135,6 +135,18 @@ if ! runuser -u postgres -- psql -p 5433 -d amsonia_core -Atqc 'SELECT EXISTS (S
   unset admin_json admin_email admin_password
 fi
 
+viewer_json="$(aws ssm get-parameter --name /amsonia/prod/demo-viewer --with-decryption --region us-east-1 --query Parameter.Value --output text)"
+viewer_email="$(VIEWER_JSON="${viewer_json}" python3 -c 'import json,os; print(json.loads(os.environ["VIEWER_JSON"])["email"])')"
+viewer_password="$(VIEWER_JSON="${viewer_json}" python3 -c 'import json,os; print(json.loads(os.environ["VIEWER_JSON"])["password"])')"
+set -a
+source /etc/amsonia-core/demo.env
+set +a
+AMSONIA_DEMO_VIEWER_EMAIL="${viewer_email}" \
+AMSONIA_DEMO_VIEWER_PASSWORD="${viewer_password}" \
+AMSONIA_DEMO_TENANT_NAME="Amsonia Core Demo" \
+  "${api_release}/amsonia" provision-demo-viewer
+unset viewer_json viewer_email viewer_password
+
 systemctl enable --now amsonia-core-api.service amsonia-core-web.service amsonia-site.service traefik.service
 systemctl restart amsonia-core-api.service amsonia-core-web.service amsonia-site.service traefik.service
 

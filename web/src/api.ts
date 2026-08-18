@@ -1,4 +1,4 @@
-import type { Account, AuditEvent, Member, Permission, Role, Session, Tenant } from "./types";
+import type { Account, AuditEvent, Capabilities, Member, Permission, Role, Session, Tenant } from "./types";
 
 const CONFIGURED_API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 const configuredURL = new URL(CONFIGURED_API_BASE || window.location.origin, window.location.origin);
@@ -97,6 +97,7 @@ export const api = {
   permissions: async () => (await request<{ items: Permission[] }>("/api/v1/permissions")).items,
   members: async (tenant: string) => (await request<{ items: Member[] }>(`/api/v1/tenants/${tenant}/members`)).items,
   roles: async (tenant: string) => (await request<{ items: Role[] }>(`/api/v1/tenants/${tenant}/roles`)).items,
+  capabilities: (tenant: string) => request<Capabilities>(`/api/v1/tenants/${tenant}/capabilities`),
   createRole: (tenant: string, input: { id: string; name: string; description: string; permissions: string[] }) => request<Role>(`/api/v1/tenants/${tenant}/roles`, { method: "POST", body: JSON.stringify(input) }),
   audit: async (tenant: string) => (await request<{ items: AuditEvent[] }>(`/api/v1/tenants/${tenant}/audit-events?limit=80`)).items,
   check: (input: object) => request<{ allowed: boolean; reason: string; effective_scope?: string }>("/api/v1/authorization/check", { method: "POST", body: JSON.stringify(input) })

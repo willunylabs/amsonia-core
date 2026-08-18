@@ -19,7 +19,7 @@ import {
   X
 } from "lucide-react";
 import { api, APIError, getToken } from "./api";
-import type { Account, AuditEvent, Member, Permission, Role, Tenant } from "./types";
+import type { Account, AuditEvent, Capabilities, Member, Permission, Role, Tenant } from "./types";
 
 type Section = "overview" | "members" | "roles" | "permissions" | "audit" | "check";
 
@@ -38,6 +38,9 @@ function friendlyError(error: unknown): string {
 }
 
 function Login({ onLogin }: { onLogin: (account: Account) => void }) {
+  const demoEmail = import.meta.env.VITE_PUBLIC_DEMO_VIEWER_EMAIL?.trim() ?? "";
+  const demoPassword = import.meta.env.VITE_PUBLIC_DEMO_VIEWER_PASSWORD ?? "";
+  const hasPublicDemo = Boolean(demoEmail && demoPassword);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -84,15 +87,20 @@ function Login({ onLogin }: { onLogin: (account: Account) => void }) {
           <header>
             <span className="folio">01 / CONSOLE</span>
             <h2>Welcome back</h2>
-            <p>Sign in with the administrator created by the operator CLI.</p>
+            <p>Sign in to explore the live tenant authorization workspace.</p>
           </header>
+          {hasPublicDemo ? <section className="demo-credentials" aria-label="Read-only demo credentials">
+            <div><span>PUBLIC DEMO</span><strong>Read-only tenant member</strong></div>
+            <dl><div><dt>Email</dt><dd><code>{demoEmail}</code></dd></div><div><dt>Password</dt><dd><code>{demoPassword}</code></dd></div></dl>
+            <button type="button" onClick={() => { setEmail(demoEmail); setPassword(demoPassword); setError(""); }}>Use demo credentials</button>
+          </section> : null}
           <label>Email<input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
           <label>Password<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
           {error ? <p className="form-error" role="alert">{error}</p> : null}
           <button className="primary-button" type="submit" disabled={busy}>
             {busy ? "Signing in…" : "Enter the console"}<ArrowRight size={17} />
           </button>
-          <p className="fine-print">No public registration. Accounts enter through the system administrator or a one-time tenant invitation.</p>
+          <p className="fine-print">The shared demo account can inspect one sample tenant but cannot create tenants, roles, grants, or members.</p>
         </form>
       </section>
     </main>
@@ -130,6 +138,7 @@ function Console({ account, onLogout }: { account: Account; onLogout: () => void
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [audit, setAudit] = useState<AuditEvent[]>([]);
+  const [capabilities, setCapabilities] = useState<Capabilities>({ permissions: {} });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<"tenant" | "role" | null>(null);
@@ -152,14 +161,15 @@ function Console({ account, onLogout }: { account: Account; onLogout: () => void
 
   const loadTenant = useCallback(async (id: string) => {
     if (!id) {
-      setMembers([]); setRoles([]); setAudit([]); return;
+      setMembers([]); setRoles([]); setAudit([]); setCapabilities({ permissions: {} }); return;
     }
     setError("");
     try {
-      const [memberItems, roleItems, auditItems] = await Promise.all([api.members(id), api.roles(id), api.audit(id)]);
+      const [memberItems, roleItems, auditItems, capabilityItems] = await Promise.all([api.members(id), api.roles(id), api.audit(id), api.capabilities(id)]);
       setMembers(memberItems);
       setRoles(roleItems);
       setAudit(auditItems);
+      setCapabilities(capabilityItems);
     } catch (cause) {
       setError(friendlyError(cause));
     }
@@ -198,25 +208,26 @@ function Console({ account, onLogout }: { account: Account; onLogout: () => void
       <main className="page">
         {error ? <div className="error-banner" role="alert">{error}<button onClick={() => { void loadGlobal(); void loadTenant(tenantID); }}>Retry</button></div> : null}
         {loading ? <div className="loading-card">Loading your authorization workspace…</div> : null}
-        {!loading && !selectedTenant ? <EmptyTenant onCreate={() => setModal("tenant")} /> : null}
-        {!loading && selectedTenant ? <SectionView section={section} tenant={selectedTenant} account={account} members={members} roles={roles} permissions={permissions} audit={audit} onCreateRole={() => setModal("role")} /> : null}
+        {!loading && selectedTenant && !capabilities.permissions["iam:role:manage"] ? <div className="readonly-banner"><ShieldCheck size={17} /><span><strong>Read-only demo.</strong> Server-side policy denies every administrative mutation for this account.</span></div> : null}
+        {!loading && !selectedTenant ? <EmptyTenant canCreate={account.system_admin} onCreate={() => setModal("tenant")} /> : null}
+        {!loading && selectedTenant ? <SectionView section={section} tenant={selectedTenant} account={account} members={members} roles={roles} permissions={permissions} audit={audit} capabilities={capabilities} onCreateRole={() => setModal("role")} /> : null}
       </main>
     </div>
-    {modal === "tenant" ? <CreateTenantModal onClose={() => setModal(null)} onCreated={async (tenant) => { setModal(null); await loadGlobal(); setTenantID(tenant.id); }} /> : null}
-    {modal === "role" && selectedTenant ? <CreateRoleModal tenant={selectedTenant} permissions={permissions} onClose={() => setModal(null)} onCreated={async () => { setModal(null); await loadTenant(selectedTenant.id); }} /> : null}
+    {modal === "tenant" && account.system_admin ? <CreateTenantModal onClose={() => setModal(null)} onCreated={async (tenant) => { setModal(null); await loadGlobal(); setTenantID(tenant.id); }} /> : null}
+    {modal === "role" && selectedTenant && capabilities.permissions["iam:role:manage"] ? <CreateRoleModal tenant={selectedTenant} permissions={permissions} onClose={() => setModal(null)} onCreated={async () => { setModal(null); await loadTenant(selectedTenant.id); }} /> : null}
   </div>;
 }
 
-function EmptyTenant({ onCreate }: { onCreate: () => void }) {
-  return <section className="empty-state"><div className="empty-orbit"><Building2 size={30} /></div><span className="eyebrow">First workspace</span><h1>Create your first tenant</h1><p>A tenant is the hard security boundary for members, roles, policy, and audit history.</p><button className="primary-button" onClick={onCreate}><Plus size={17} />Create tenant</button></section>;
+function EmptyTenant({ canCreate, onCreate }: { canCreate: boolean; onCreate: () => void }) {
+  return <section className="empty-state"><div className="empty-orbit"><Building2 size={30} /></div><span className="eyebrow">Tenant workspace</span><h1>{canCreate ? "Create your first tenant" : "No tenant assigned"}</h1><p>{canCreate ? "A tenant is the hard security boundary for members, roles, policy, and audit history." : "Ask a system administrator to assign this account to a tenant."}</p>{canCreate ? <button className="primary-button" onClick={onCreate}><Plus size={17} />Create tenant</button> : null}</section>;
 }
 
-type SectionProps = { section: Section; tenant: Tenant; account: Account; members: Member[]; roles: Role[]; permissions: Permission[]; audit: AuditEvent[]; onCreateRole: () => void };
+type SectionProps = { section: Section; tenant: Tenant; account: Account; members: Member[]; roles: Role[]; permissions: Permission[]; audit: AuditEvent[]; capabilities: Capabilities; onCreateRole: () => void };
 
 function SectionView(props: SectionProps) {
   switch (props.section) {
     case "members": return <MembersPage items={props.members} />;
-    case "roles": return <RolesPage items={props.roles} onCreate={props.onCreateRole} />;
+    case "roles": return <RolesPage items={props.roles} canCreate={Boolean(props.capabilities.permissions["iam:role:manage"])} onCreate={props.onCreateRole} />;
     case "permissions": return <PermissionsPage items={props.permissions} />;
     case "audit": return <AuditPage items={props.audit} />;
     case "check": return <PolicyLab tenant={props.tenant} account={props.account} permissions={props.permissions} />;
@@ -228,7 +239,7 @@ function PageHeader({ eyebrow, title, detail, action }: { eyebrow: string; title
   return <header className="page-header"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{detail}</p></div>{action}</header>;
 }
 
-function Overview({ tenant, members, roles, permissions, audit }: Omit<SectionProps, "section" | "account" | "onCreateRole">) {
+function Overview({ tenant, members, roles, permissions, audit }: Omit<SectionProps, "section" | "account" | "capabilities" | "onCreateRole">) {
   const latest = audit[0];
   return <>
     <PageHeader eyebrow="Authorization workspace" title={`Good ${new Date().getHours() < 12 ? "morning" : "afternoon"}.`} detail={`${tenant.name} is active. Here is the shape of its access model today.`} />
@@ -249,8 +260,8 @@ function MembersPage({ items }: { items: Member[] }) {
   return <><PageHeader eyebrow="Identity" title="Members" detail="Every principal with active membership in this tenant boundary." /><div className="table-card"><table><thead><tr><th>Member</th><th>Status</th><th>Joined</th></tr></thead><tbody>{items.map((member) => <tr key={member.account_id}><td><div className="identity-cell"><span className="avatar small">{member.email[0].toUpperCase()}</span><span><strong>{member.email}</strong><small>{member.account_id}</small></span></div></td><td><span className="pill positive">{member.status}</span></td><td>{new Date(member.joined_at).toLocaleDateString()}</td></tr>)}</tbody></table></div></>;
 }
 
-function RolesPage({ items, onCreate }: { items: Role[]; onCreate: () => void }) {
-  return <><PageHeader eyebrow="Policy building blocks" title="Roles" detail="Human-readable bundles with immutable history behind every change." action={<button className="primary-button compact" onClick={onCreate}><Plus size={16} />New role</button>} /><section className="role-grid">{items.map((role, index) => <article className="role-card" key={role.role_id}><span className="role-index">R-{String(index + 1).padStart(2, "0")}</span><ShieldCheck size={22} /><h2>{role.name}</h2><p>{role.description || "No description has been added yet."}</p><footer><code>{role.role_id}</code><span>v{role.version}</span></footer></article>)}</section></>;
+function RolesPage({ items, canCreate, onCreate }: { items: Role[]; canCreate: boolean; onCreate: () => void }) {
+  return <><PageHeader eyebrow="Policy building blocks" title="Roles" detail="Human-readable bundles with immutable history behind every change." action={canCreate ? <button className="primary-button compact" onClick={onCreate}><Plus size={16} />New role</button> : <span className="pill">Read only</span>} /><section className="role-grid">{items.map((role, index) => <article className="role-card" key={role.role_id}><span className="role-index">R-{String(index + 1).padStart(2, "0")}</span><ShieldCheck size={22} /><h2>{role.name}</h2><p>{role.description || "No description has been added yet."}</p><footer><code>{role.role_id}</code><span>v{role.version}</span></footer></article>)}</section></>;
 }
 
 function PermissionsPage({ items }: { items: Permission[] }) {

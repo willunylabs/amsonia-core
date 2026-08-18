@@ -22,6 +22,12 @@ Cloudflare DNS/proxy
 ```
 
 The repository-built `amsonia-static` binary serves both static applications.
+
+The public Console build receives `VITE_PUBLIC_DEMO_VIEWER_EMAIL` and
+`VITE_PUBLIC_DEMO_VIEWER_PASSWORD` at build time. These values are deliberately
+public and displayed on the login page. The matching operator seed is stored in
+`/amsonia/prod/demo-viewer`; it must never reuse the private system
+administrator credentials.
 The product site uses strict file resolution and returns a real 404 for unknown
 paths. The Console enables extensionless SPA fallback, while missing files such
 as `/sitemap.xml` still return a real 404.

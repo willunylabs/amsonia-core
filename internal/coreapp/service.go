@@ -87,6 +87,14 @@ type CreateTenantInput struct {
 	Name string
 }
 
+// ProvisionMemberInput is accepted only by an operator workflow authenticated
+// as a system administrator. It is intentionally not exposed through HTTP.
+type ProvisionMemberInput struct {
+	TenantID string
+	Email    string
+	Password string
+}
+
 type Service struct {
 	pool      *pgxpool.Pool
 	store     *postgres.Store
@@ -509,14 +517,8 @@ func (s *Service) CreateTenant(ctx context.Context, actor Account, input CreateT
 		OwnerSubjectID: amsonia.SubjectID(actor.ID),
 		OwnerRoleID:    ownerRoleID,
 		OwnerRoleName:  "Tenant owner",
-		Grants: []amsonia.RolePermissionGrant{
-			{RoleID: ownerRoleID, Permission: "iam:role:manage", Scope: amsonia.ScopeTenant},
-			{RoleID: ownerRoleID, Permission: "iam:grant:manage", Scope: amsonia.ScopeTenant},
-			{RoleID: ownerRoleID, Permission: "iam:role:assign", Scope: amsonia.ScopeTenant},
-			{RoleID: ownerRoleID, Permission: "iam:member:manage", Scope: amsonia.ScopeTenant},
-			{RoleID: ownerRoleID, Permission: "iam:audit:read", Scope: amsonia.ScopeTenant},
-		},
-		Metadata: amsonia.MutationMetadata{ReasonCode: "tenant_creation"},
+		Grants:         ownerGrants(ownerRoleID),
+		Metadata:       amsonia.MutationMetadata{ReasonCode: "tenant_creation"},
 	})
 	if err != nil {
 		_ = s.failCreatedTenant(ctx, actor.ID, tenant.ID)
@@ -544,6 +546,90 @@ func (s *Service) CreateTenant(ctx context.Context, actor Account, input CreateT
 	}
 	tenant.State = "active"
 	return tenant, nil
+}
+
+// ProvisionMember creates or resets one non-administrator tenant member. The
+// operation is reserved for trusted operator tooling; the public API has no
+// equivalent endpoint. Existing administrator identities cannot be reset.
+func (s *Service) ProvisionMember(ctx context.Context, actor Account, input ProvisionMemberInput) (Account, error) {
+	if !actor.SystemAdmin || amsonia.TenantID(input.TenantID).Validate() != nil {
+		return Account{}, amsonia.ErrForbidden
+	}
+	if err := s.RequireMembership(ctx, input.TenantID, actor.ID); err != nil {
+		return Account{}, err
+	}
+	normalized, err := normalizeEmail(input.Email)
+	if err != nil || !validBootstrapPassword(input.Password) {
+		return Account{}, amsonia.ErrInvalidInput
+	}
+	passwordHash, err := s.passwords.Hash(input.Password)
+	if err != nil {
+		return Account{}, amsonia.ErrInvalidInput
+	}
+	newAccountID, err := randomID("acc_", 18)
+	if err != nil {
+		return Account{}, fmt.Errorf("generate account id: %w", err)
+	}
+	now := s.now()
+	account := Account{}
+	err = s.store.RunTenant(ctx, amsonia.TenantID(input.TenantID), false, func(tx pgx.Tx) error {
+		var existing bool
+		err := tx.QueryRow(ctx, `
+			SELECT a.account_id, a.email, a.created_at,
+			       EXISTS (SELECT 1 FROM amsonia.system_administrators sa WHERE sa.account_id = a.account_id)
+			FROM amsonia.accounts a WHERE a.normalized_email = $1
+		`, normalized).Scan(&account.ID, &account.Email, &account.CreatedAt, &account.SystemAdmin)
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			account = Account{ID: newAccountID, Email: strings.TrimSpace(input.Email), CreatedAt: now}
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO amsonia.accounts
+				    (account_id, email, normalized_email, password_hash, created_at, updated_at)
+				VALUES ($1, $2, $3, $4, $5, $5)
+			`, account.ID, account.Email, normalized, passwordHash, now); err != nil {
+				return err
+			}
+		case err != nil:
+			return err
+		default:
+			existing = true
+		}
+		if existing {
+			if account.SystemAdmin {
+				return amsonia.ErrForbidden
+			}
+			if _, err := tx.Exec(ctx, `
+				UPDATE amsonia.accounts
+				SET email = $1, password_hash = $2, status = 'active', failed_login_count = 0,
+				    locked_until = NULL, updated_at = $3
+				WHERE account_id = $4
+			`, strings.TrimSpace(input.Email), passwordHash, now, account.ID); err != nil {
+				return err
+			}
+			account.Email = strings.TrimSpace(input.Email)
+			if _, err := tx.Exec(ctx, `
+				UPDATE amsonia.access_sessions SET revoked_at = COALESCE(revoked_at, $1) WHERE account_id = $2
+			`, now, account.ID); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `
+				UPDATE amsonia.refresh_sessions SET revoked_at = COALESCE(revoked_at, $1) WHERE account_id = $2
+			`, now, account.ID); err != nil {
+				return err
+			}
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO amsonia.tenant_memberships (tenant_id, account_id, status, joined_at)
+			VALUES ($1, $2, 'active', $3)
+			ON CONFLICT (tenant_id, account_id)
+			DO UPDATE SET status = 'active'
+		`, input.TenantID, account.ID, now)
+		return err
+	})
+	if err != nil {
+		return Account{}, err
+	}
+	return account, nil
 }
 
 func (s *Service) failCreatedTenant(ctx context.Context, accountID, tenantID string) error {

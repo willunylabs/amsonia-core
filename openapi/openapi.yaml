@@ -57,7 +57,7 @@ paths:
           content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   /api/v1/auth/login:
     post:
-      summary: Sign in an administrator
+      summary: Sign in an account
       tags: [Authentication]
       operationId: login
       security: []
@@ -263,6 +263,22 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /api/v1/tenants/{tenant_id}/capabilities:
+    get:
+      summary: Read effective console capabilities
+      tags: [Authorization]
+      operationId: getTenantCapabilities
+      description: Returns server-evaluated tenant permissions for the current account. Clients may use this for presentation; every protected endpoint still performs its own authorization check.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: Effective tenant-action permissions used by the Console.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Capabilities" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /api/v1/tenants/{tenant_id}/audit-events:
     get:
       summary: List tenant policy audit events
@@ -383,6 +399,13 @@ components:
       properties:
         key: { type: string }
         description: { type: string }
+    Capabilities:
+      type: object
+      required: [permissions]
+      properties:
+        permissions:
+          type: object
+          additionalProperties: { type: boolean }
     Role:
       type: object
       required: [tenant_id, role_id, name, description, version]
