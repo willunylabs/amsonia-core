@@ -50,7 +50,7 @@ ln -sfn "${site_release}" /opt/amsonia-site/current
 
 install -m 0755 "${bundle_root}/traefik" /usr/local/bin/traefik
 install -m 0644 "${bundle_root}/traefik-static.yml" /etc/traefik/traefik.yml
-install -m 0644 "${bundle_root}/traefik-demo-only.yml" /etc/traefik/dynamic/amsonia.yml
+install -m 0644 "${bundle_root}/traefik-dynamic.yml" /etc/traefik/dynamic/amsonia.yml
 install -m 0644 "${bundle_root}/traefik.service" /etc/systemd/system/traefik.service
 install -m 0644 "${bundle_root}/amsonia-core-postgres.service" /etc/systemd/system/amsonia-core-postgres.service
 install -m 0644 "${bundle_root}/amsonia-core-api.service" /etc/systemd/system/amsonia-core-api.service
@@ -124,6 +124,13 @@ ROLE_SQL
   chmod 0640 /etc/amsonia-core/demo.env
 fi
 
+# Apply every embedded migration on every release. Local peer authentication
+# keeps the migration authority out of the runtime environment file while the
+# API continues to use the least-privileged amsonia_runtime role.
+runuser -u postgres -- env \
+  'AMSONIA_MIGRATION_DSN=postgres://postgres@/amsonia_core?host=/var/run/postgresql&port=5433&sslmode=disable' \
+  "${api_release}/amsonia" migrate
+
 if ! runuser -u postgres -- psql -p 5433 -d amsonia_core -Atqc 'SELECT EXISTS (SELECT 1 FROM amsonia.system_administrators)' | grep -qx t; then
   admin_json="$(aws ssm get-parameter --name /amsonia/prod/demo-admin --with-decryption --region us-east-1 --query Parameter.Value --output text)"
   admin_email="$(ADMIN_JSON="${admin_json}" python3 -c 'import json,os; print(json.loads(os.environ["ADMIN_JSON"])["email"])')"
@@ -161,7 +168,9 @@ done
 test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8083/sitemap.xml)" = 404
 test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:8084/api/example)" = 404
 
-redirect_status="$(curl --silent --output /dev/null --write-out '%{http_code}' -H 'Host: demo.amsonia.dev' http://127.0.0.1/)"
+redirect_status="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --retry 20 --retry-connrefused --retry-delay 1 \
+  -H 'Host: demo.amsonia.dev' http://127.0.0.1/)"
 if [[ "${redirect_status}" != 301 && "${redirect_status}" != 308 ]]; then
   echo "unexpected origin redirect status: ${redirect_status}" >&2
   exit 1

@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/willunylabs/amsonia-core"
@@ -434,6 +435,78 @@ func TestPostgresTenantIsolation(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatalf("forged actor binding exposed %d tenants", count)
+	}
+}
+
+func TestPostgresSignedActorDiscoversOnlyOwnTenants(t *testing.T) {
+	store := setupPostgres(t)
+	admin := newPool(t, adminURL(t))
+	ctx := context.Background()
+	if _, err := admin.Exec(ctx, `
+		INSERT INTO amsonia.accounts (account_id, email, normalized_email, password_hash)
+		VALUES
+			('actor-a', 'a@example.invalid', 'a@example.invalid', 'not-used'),
+			('actor-b', 'b@example.invalid', 'b@example.invalid', 'not-used');
+		INSERT INTO amsonia.tenants (tenant_id, name, state, created_by)
+		VALUES
+			('tenant-a', 'Tenant A', 'active', 'actor-a'),
+			('tenant-b', 'Tenant B', 'active', 'actor-b');
+		INSERT INTO amsonia.tenant_memberships (tenant_id, account_id, status)
+		VALUES
+			('tenant-a', 'actor-a', 'active'),
+			('tenant-b', 'actor-b', 'active');
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	for actor, wantTenant := range map[string]string{
+		"actor-a": "tenant-a",
+		"actor-b": "tenant-b",
+	} {
+		t.Run(actor, func(t *testing.T) {
+			var tenants []string
+			err := store.RunActor(ctx, actor, func(tx pgx.Tx) error {
+				rows, err := tx.Query(ctx, `SELECT tenant_id FROM amsonia.list_account_tenants()`)
+				if err != nil {
+					return err
+				}
+				defer rows.Close()
+				for rows.Next() {
+					var tenant string
+					if err := rows.Scan(&tenant); err != nil {
+						return err
+					}
+					tenants = append(tenants, tenant)
+				}
+				return rows.Err()
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(tenants) != 1 || tenants[0] != wantTenant {
+				t.Fatalf("visible tenants = %v, want [%s]", tenants, wantTenant)
+			}
+		})
+	}
+
+	// A correctly signed actor with no membership still learns nothing.
+	if _, err := admin.Exec(ctx, `
+		INSERT INTO amsonia.accounts (account_id, email, normalized_email, password_hash)
+		VALUES ('actor-none', 'none@example.invalid', 'none@example.invalid', 'not-used')
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.RunActor(ctx, "actor-none", func(tx pgx.Tx) error {
+		var count int
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM amsonia.list_account_tenants()`).Scan(&count); err != nil {
+			return err
+		}
+		if count != 0 {
+			t.Fatalf("actor without membership discovered %d tenants", count)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
 	}
 }
 
