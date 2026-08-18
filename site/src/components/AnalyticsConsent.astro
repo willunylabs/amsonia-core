@@ -1,0 +1,73 @@
+---
+const gaId = import.meta.env.PUBLIC_GA_ID;
+---
+
+{gaId ? (
+  <>
+    <aside class="consent-card" data-consent-card hidden aria-label="Analytics preferences">
+      <p><strong>Useful signals, with consent.</strong> Amsonia uses GA4 to understand documentation and product journeys. No analytics loads until you choose.</p>
+      <div>
+        <button type="button" data-consent="denied">Necessary only</button>
+        <button type="button" class="consent-accept" data-consent="granted">Allow analytics</button>
+      </div>
+    </aside>
+    <script is:inline define:vars={{ gaId }}>
+      (() => {
+        const consentKey = 'amsonia-analytics-consent';
+        const card = document.querySelector('[data-consent-card]');
+        let loaded = false;
+
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+        window.gtag('consent', 'default', {
+          analytics_storage: 'denied',
+          ad_storage: 'denied',
+          ad_user_data: 'denied',
+          ad_personalization: 'denied'
+        });
+
+        const loadAnalytics = () => {
+          if (loaded) return;
+          loaded = true;
+          const script = document.createElement('script');
+          script.async = true;
+          script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`;
+          document.head.appendChild(script);
+          window.gtag('js', new Date());
+          window.gtag('config', gaId);
+        };
+
+        const updateConsent = (value) => {
+          localStorage.setItem(consentKey, value);
+          window.gtag('consent', 'update', {
+            analytics_storage: value,
+            ad_storage: 'denied',
+            ad_user_data: 'denied',
+            ad_personalization: 'denied'
+          });
+          if (value === 'granted') loadAnalytics();
+          if (card) card.hidden = true;
+        };
+
+        const stored = localStorage.getItem(consentKey);
+        if (stored === 'granted') updateConsent('granted');
+        else if (stored === 'denied') updateConsent('denied');
+        else if (card) card.hidden = false;
+
+        document.querySelectorAll('[data-consent]').forEach((button) => {
+          button.addEventListener('click', () => updateConsent(button.dataset.consent));
+        });
+
+        document.addEventListener('click', (event) => {
+          const link = event.target.closest('[data-cta-target]');
+          if (!link || typeof window.gtag !== 'function') return;
+          window.gtag('event', 'amsonia_cta_click', {
+            cta_target: link.dataset.ctaTarget,
+            source_hostname: window.location.hostname,
+            source_path: window.location.pathname
+          });
+        });
+      })();
+    </script>
+  </>
+) : null}

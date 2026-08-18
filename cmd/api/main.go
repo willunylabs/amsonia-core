@@ -79,7 +79,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	catalog, controls, err := coreCatalog()
+	catalog, controls, err := coreapp.CoreCatalog()
 	if err != nil {
 		return err
 	}
@@ -134,17 +134,4 @@ func decodeSecret(name string) ([]byte, error) {
 		return nil, fmt.Errorf("%s must be unpadded base64url encoding of at least 32 random bytes", name)
 	}
 	return secret, nil
-}
-
-func coreCatalog() (*amsonia.Catalog, amsonia.ControlPermissions, error) {
-	definitions := []amsonia.PermissionDefinition{
-		{Key: "iam:role:manage", Description: "Create, update, and retire tenant roles"},
-		{Key: "iam:grant:manage", Description: "Assign permissions to tenant roles"},
-		{Key: "iam:role:assign", Description: "Assign tenant roles to members"},
-		{Key: "iam:member:manage", Description: "Invite and manage tenant members"},
-		{Key: "iam:audit:read", Description: "Read tenant administration audit events"},
-	}
-	catalog, err := amsonia.NewCatalog(definitions)
-	controls := amsonia.ControlPermissions{ManageRoles: "iam:role:manage", ManageGrants: "iam:grant:manage", AssignRoles: "iam:role:assign"}
-	return catalog, controls, err
 }

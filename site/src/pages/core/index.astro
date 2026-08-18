@@ -1,0 +1,75 @@
+---
+import PageIntro from '../../components/PageIntro.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { absoluteUrl, amsoniaBrandReference, breadcrumbSchema, GITHUB_URL, publisherReference } from '../../lib/site';
+
+const title = 'Amsonia Core';
+const description = 'Amsonia Core is the Apache-2.0 Go foundation for tenant-safe delegated authorization, PostgreSQL row-level security, authenticated sessions, and policy audit.';
+const schemas = [
+  breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Core', href: '/core' }]),
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareSourceCode',
+    '@id': `${absoluteUrl('/core')}#source`,
+    name: 'Amsonia Core',
+    description,
+    url: absoluteUrl('/core'),
+    codeRepository: GITHUB_URL,
+    license: 'https://www.apache.org/licenses/LICENSE-2.0',
+    programmingLanguage: { '@type': 'ComputerLanguage', name: 'Go' },
+    runtimePlatform: ['Go 1.25.13+', 'PostgreSQL 16+', 'Node.js 22.15+'],
+    publisher: publisherReference,
+    isPartOf: amsoniaBrandReference
+  }
+];
+---
+
+<BaseLayout title={title} description={description} canonicalPath="/core" schemas={schemas}>
+  <main id="main-content">
+    <PageIntro eyebrow="Open-source component" index="CORE / 01" title="Amsonia Core" summary="The open-source foundation of the Amsonia product family: tenant-safe authorization that keeps policy, data boundaries, and operational evidence inside code you control." />
+    <div class="content-shell">
+      <div class="content-grid">
+        <aside class="content-aside">
+          <nav aria-label="Core sections">
+            <a href="#purpose">Purpose</a>
+            <a href="#capabilities">Capabilities</a>
+            <a href="#architecture">Architecture</a>
+            <a href="#boundary">Product boundary</a>
+            <a href="#evaluate">Evaluate</a>
+          </nav>
+        </aside>
+        <article class="prose">
+          <h2 id="purpose">Authorization is infrastructure.</h2>
+          <p>Amsonia Core treats tenant isolation and delegated access as security boundaries, not conventions left to each handler. It provides a standalone Go API, PostgreSQL adapter and migrations, an in-memory adapter for tests, an operator CLI, and a React administration console.</p>
+
+          <div class="fact-grid" id="capabilities">
+            <div class="fact-card"><span>01 / TENANCY</span><h3>Signed context</h3><p>Tenant context is bound per transaction and invalid context yields no tenant rows.</p></div>
+            <div class="fact-card"><span>02 / POLICY</span><h3>Delegated RBAC</h3><p>Permission catalogs, scoped grants, immutable role versions, and grant-cycle protection.</p></div>
+            <div class="fact-card"><span>03 / SESSION</span><h3>Admin identity</h3><p>Argon2id credentials, lockout, rotating refresh sessions, and one-time bootstrap.</p></div>
+            <div class="fact-card"><span>04 / EVIDENCE</span><h3>Audit history</h3><p>Append-only events make policy changes and authorization operations reviewable.</p></div>
+          </div>
+
+          <h2 id="architecture">Small surfaces. Explicit adapters.</h2>
+          <p>The reusable kernel is separated from storage and HTTP composition. Teams can start with the in-memory adapter, run the complete PostgreSQL implementation, or extend the published interfaces without importing the commercial application.</p>
+          <pre><code>cmd/api          standalone HTTP API
+cmd/amsonia      migrations and administrator CLI
+postgres         adapter, migrations, and RLS tests
+memory           in-memory adapter for tests
+internal/coreapp identity, session, tenant, and HTTP composition
+web              React management console
+openapi          versioned HTTP contract</code></pre>
+
+          <h2 id="boundary">Core is deliberately smaller than Amsonia.</h2>
+          <p>Core includes identity, sessions, tenants, memberships, roles, permissions, authorization decisions, and policy audit. Billing, commerce, AI, education, messaging, media, and white-label operations remain in the complete commercial product.</p>
+
+          <h2 id="evaluate">Evaluate the public evidence.</h2>
+          <div class="hero-actions">
+            <a class="button primary" href="/core/docs/getting-started" data-cta-target="docs">Getting started →</a>
+            <a class="button secondary" href="/core/security">Security model →</a>
+            <a class="button secondary" href={GITHUB_URL} data-cta-target="github">GitHub source ↗</a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </main>
+</BaseLayout>

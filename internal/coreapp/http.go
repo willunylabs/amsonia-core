@@ -52,6 +52,7 @@ func (api *API) Handler() http.Handler {
 	mux.Handle("POST /api/v1/authorization/check", api.auth(http.HandlerFunc(api.checkAuthorization)))
 	mux.Handle("GET /api/v1/tenants/{tenant_id}/members", api.tenant(http.HandlerFunc(api.listMembers)))
 	mux.Handle("GET /api/v1/tenants/{tenant_id}/roles", api.tenant(http.HandlerFunc(api.listRoles)))
+	mux.Handle("GET /api/v1/tenants/{tenant_id}/capabilities", api.tenant(http.HandlerFunc(api.capabilities)))
 	mux.Handle("POST /api/v1/tenants/{tenant_id}/roles", api.tenant(http.HandlerFunc(api.createRole)))
 	mux.Handle("GET /api/v1/tenants/{tenant_id}/audit-events", api.tenant(http.HandlerFunc(api.auditEvents)))
 	return api.securityHeaders(api.recover(api.requestLog(mux)))
@@ -329,7 +330,7 @@ func (api *API) listPermissions(response http.ResponseWriter, request *http.Requ
 }
 
 func (api *API) listMembers(response http.ResponseWriter, request *http.Request) {
-	if !api.requirePermission(response, request, "iam:member:manage") {
+	if !api.requirePermission(response, request, PermissionMemberRead) {
 		return
 	}
 	items, err := api.service.ListMembers(request.Context(), request.PathValue("tenant_id"))
@@ -341,7 +342,7 @@ func (api *API) listMembers(response http.ResponseWriter, request *http.Request)
 }
 
 func (api *API) listRoles(response http.ResponseWriter, request *http.Request) {
-	if !api.requirePermission(response, request, "iam:role:manage") {
+	if !api.requirePermission(response, request, PermissionRoleRead) {
 		return
 	}
 	items, err := api.service.ListRoles(request.Context(), request.PathValue("tenant_id"))
@@ -350,6 +351,29 @@ func (api *API) listRoles(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 	writeJSON(response, http.StatusOK, map[string]any{"items": items})
+}
+
+func (api *API) capabilities(response http.ResponseWriter, request *http.Request) {
+	permissions := []amsonia.PermissionKey{
+		PermissionRoleRead,
+		PermissionRoleManage,
+		PermissionGrantManage,
+		PermissionRoleAssign,
+		PermissionMemberRead,
+		PermissionMemberManage,
+		PermissionAuditRead,
+	}
+	items := make(map[amsonia.PermissionKey]bool, len(permissions))
+	for _, permission := range permissions {
+		allowed, err := api.permissionAllowed(request, permission)
+		if err != nil {
+			api.logger.Error("capability check failed", "tenant", request.PathValue("tenant_id"), "permission", permission, "error", err)
+			writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
+			return
+		}
+		items[permission] = allowed
+	}
+	writeJSON(response, http.StatusOK, map[string]any{"permissions": items})
 }
 
 func (api *API) createRole(response http.ResponseWriter, request *http.Request) {
@@ -389,6 +413,20 @@ func (api *API) auditEvents(response http.ResponseWriter, request *http.Request)
 }
 
 func (api *API) requirePermission(response http.ResponseWriter, request *http.Request, permission amsonia.PermissionKey) bool {
+	allowed, err := api.permissionAllowed(request, permission)
+	if err != nil {
+		api.logger.Error("permission check failed", "tenant", request.PathValue("tenant_id"), "permission", permission, "error", err)
+		writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
+		return false
+	}
+	if !allowed {
+		writeError(response, http.StatusForbidden, "forbidden", "You do not have permission to do that.")
+		return false
+	}
+	return true
+}
+
+func (api *API) permissionAllowed(request *http.Request, permission amsonia.PermissionKey) (bool, error) {
 	account := accountFromContext(request.Context())
 	tenantID := amsonia.TenantID(request.PathValue("tenant_id"))
 	decision, err := api.authorizer.Check(request.Context(), amsonia.CheckRequest{
@@ -398,15 +436,9 @@ func (api *API) requirePermission(response http.ResponseWriter, request *http.Re
 		Resource:   amsonia.ResourceContext{TenantID: tenantID},
 	})
 	if err != nil {
-		api.logger.Error("permission check failed", "tenant", tenantID, "permission", permission, "error", err)
-		writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
-		return false
+		return false, err
 	}
-	if !decision.Allowed {
-		writeError(response, http.StatusForbidden, "forbidden", "You do not have permission to do that.")
-		return false
-	}
-	return true
+	return decision.Allowed, nil
 }
 
 func (api *API) checkAuthorization(response http.ResponseWriter, request *http.Request) {

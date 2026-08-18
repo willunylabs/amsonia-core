@@ -8,7 +8,7 @@ SaaS products. It provides tenant isolation, delegated RBAC, administrator
 authentication, PostgreSQL row-level security, audit events, a versioned HTTP
 API, and a React management console.
 
-[Try the live demo](https://amsonia.dev) · [Read the Amsonia product overview](https://willuny.xyz/go-saas-boilerplate) · [View the API contract](openapi/openapi.yaml)
+[Visit Amsonia](https://amsonia.dev) · [Try the live demo](https://demo.amsonia.dev) · [Read the commercial product overview](https://willuny.xyz/amsonia) · [View the API contract](openapi/openapi.yaml)
 
 The demo shows the authorization console and its tenant, role, permission, and
 audit workflows. It is a technical preview, not a hosted production service.
@@ -51,6 +51,7 @@ not this open-source core.
 | `postgres` | PostgreSQL adapter, migrations, and RLS tests |
 | `internal/coreapp` | Identity, session, tenant, and HTTP composition |
 | `web` | React/Vite management console |
+| `site` | Astro product and technical website |
 | `openapi` | Versioned HTTP contract |
 | `ops` | Least-privileged database role provisioning |
 
@@ -110,7 +111,7 @@ in [SECURITY.md](SECURITY.md) and [docs/security-model.md](docs/security-model.m
 
 Amsonia Core is the reusable open-source authorization foundation. The complete
 Amsonia product adds production SaaS modules, managed upgrades, and broader
-operations tooling. See [willuny.xyz](https://willuny.xyz) for the product and
+operations tooling. See [willuny.xyz/amsonia](https://willuny.xyz/amsonia) for the product and
 architecture context:
 
 - [Go SaaS boilerplate source kit](https://willuny.xyz/go-saas-boilerplate)

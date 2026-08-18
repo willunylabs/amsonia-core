@@ -30,6 +30,8 @@ export type Member = {
 
 export type Permission = { key: string; description: string };
 
+export type Capabilities = { permissions: Record<string, boolean> };
+
 export type AuditEvent = {
   tenant_id: string;
   operation: string;

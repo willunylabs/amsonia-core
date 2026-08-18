@@ -1,0 +1,34 @@
+---
+import { COMMERCIAL_URL, GITHUB_URL } from '../lib/site';
+---
+
+<footer class="site-footer">
+  <div class="footer-lead">
+    <span class="specimen-number">A / 01</span>
+    <p>Amsonia is a product system for teams that want explicit infrastructure, inspectable boundaries, and source they can own.</p>
+  </div>
+  <div class="footer-grid">
+    <div>
+      <strong>Explore</strong>
+      <a href="/core">Amsonia Core</a>
+      <a href="/docs">Documentation</a>
+      <a href="/releases">Releases</a>
+    </div>
+    <div>
+      <strong>Evaluate</strong>
+      <a href={GITHUB_URL} data-cta-target="github">GitHub ↗</a>
+      <a href="https://demo.amsonia.dev" data-cta-target="demo">Live demo ↗</a>
+      <a href={COMMERCIAL_URL} data-cta-target="commercial">Commercial distribution ↗</a>
+    </div>
+    <div>
+      <strong>Published by</strong>
+      <a href="https://willuny.xyz">Willuny Labs ↗</a>
+      <a href="mailto:support@willuny.xyz">support@willuny.xyz</a>
+      <span>Apache-2.0 Core</span>
+    </div>
+  </div>
+  <div class="footer-base">
+    <span>© {new Date().getFullYear()} Willuny Labs LLC</span>
+    <span>AMSONIA.DEV / EN</span>
+  </div>
+</footer>

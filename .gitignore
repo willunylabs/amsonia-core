@@ -18,6 +18,9 @@
 /web/*.tsbuildinfo
 /web/vite.config.js
 /web/vite.config.d.ts
+/site/node_modules/
+/site/dist/
+/site/.astro/
 
 # Browser regression artifacts
 /.playwright-cli/

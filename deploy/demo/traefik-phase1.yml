@@ -1,0 +1,113 @@
+http:
+  middlewares:
+    amsonia-demo-security:
+      headers:
+        frameDeny: true
+        contentTypeNosniff: true
+        referrerPolicy: no-referrer
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        customResponseHeaders:
+          X-Robots-Tag: noindex
+    amsonia-origin-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  routers:
+    amsonia-demo-api:
+      entryPoints:
+        - websecure
+      rule: Host(`demo.amsonia.dev`) && (PathPrefix(`/api`) || Path(`/health`) || Path(`/readyz`))
+      priority: 100
+      middlewares:
+        - amsonia-demo-security
+      service: amsonia-core-api
+      tls:
+        certResolver: letsencrypt
+
+    amsonia-demo-api-http:
+      entryPoints:
+        - web
+      rule: Host(`demo.amsonia.dev`) && (PathPrefix(`/api`) || Path(`/health`) || Path(`/readyz`))
+      priority: 100
+      middlewares:
+        - amsonia-origin-https
+      service: noop@internal
+
+    amsonia-demo-web:
+      entryPoints:
+        - websecure
+      rule: Host(`demo.amsonia.dev`)
+      middlewares:
+        - amsonia-demo-security
+      service: amsonia-core-web
+      tls:
+        certResolver: letsencrypt
+
+    amsonia-demo-web-http:
+      entryPoints:
+        - web
+      rule: Host(`demo.amsonia.dev`)
+      middlewares:
+        - amsonia-origin-https
+      service: noop@internal
+
+    amsonia-legacy-api:
+      entryPoints:
+        - websecure
+      rule: Host(`amsonia.dev`) && (PathPrefix(`/api`) || Path(`/health`) || Path(`/readyz`))
+      priority: 100
+      middlewares:
+        - amsonia-demo-security
+      service: amsonia-core-api
+      tls:
+        certResolver: letsencrypt
+
+    amsonia-legacy-api-http:
+      entryPoints:
+        - web
+      rule: Host(`amsonia.dev`) && (PathPrefix(`/api`) || Path(`/health`) || Path(`/readyz`))
+      priority: 100
+      middlewares:
+        - amsonia-origin-https
+      service: noop@internal
+
+    amsonia-legacy-web:
+      entryPoints:
+        - websecure
+      rule: Host(`amsonia.dev`)
+      middlewares:
+        - amsonia-demo-security
+      service: amsonia-core-web
+      tls:
+        certResolver: letsencrypt
+
+    amsonia-legacy-web-http:
+      entryPoints:
+        - web
+      rule: Host(`amsonia.dev`)
+      middlewares:
+        - amsonia-origin-https
+      service: noop@internal
+
+  services:
+    amsonia-core-api:
+      loadBalancer:
+        passHostHeader: true
+        healthCheck:
+          path: /readyz
+          interval: 10s
+          timeout: 3s
+        servers:
+          - url: http://127.0.0.1:8082
+
+    amsonia-core-web:
+      loadBalancer:
+        passHostHeader: true
+        healthCheck:
+          path: /healthz
+          interval: 10s
+          timeout: 3s
+        servers:
+          - url: http://127.0.0.1:8083
