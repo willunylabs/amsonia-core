@@ -11,7 +11,7 @@ import {
   SITE_ORIGIN
 } from '../lib/site';
 
-const description = 'Amsonia is source-owned infrastructure for multi-tenant Go applications. Explore the Apache-2.0 Amsonia Core, documentation, releases, demo, and commercial source distribution.';
+const description = 'Source-owned infrastructure for multi-tenant Go applications. Explore Amsonia Core, docs, releases, live demo, and commercial distribution.';
 const schemas = [{
   '@context': 'https://schema.org',
   '@graph': [
@@ -19,7 +19,6 @@ const schemas = [{
       ...publisherReference,
       legalName: COMPANY_NAME,
       logo: `${SITE_ORIGIN}/amsonia-mark.svg`,
-      owns: { '@id': `${SITE_ORIGIN}/#product` }
     },
     {
       ...amsoniaBrandReference,
