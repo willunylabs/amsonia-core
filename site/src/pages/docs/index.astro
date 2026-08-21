@@ -3,12 +3,12 @@ import PageIntro from '../../components/PageIntro.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { breadcrumbSchema } from '../../lib/site';
 
-const description = 'Documentation entry point for the Amsonia product system, with Amsonia Core setup, API, security, and license references.';
+const description = 'Documentation entry point for the Amsonia product, with Amsonia Core setup, API, security, and license references.';
 ---
 
 <BaseLayout title="Amsonia Documentation" description={description} canonicalPath="/docs" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Docs', href: '/docs' }])]}>
   <main id="main-content">
-    <PageIntro eyebrow="Product family index" index="DOC / 00" title="Documentation" summary="One entry point for released Amsonia products. Today, the maintained public documentation set belongs to Amsonia Core." />
+    <PageIntro eyebrow="Product documentation" index="DOC / 00" title="Documentation" summary="One entry point for released Amsonia components. Today, the maintained public documentation set belongs to Amsonia Core." />
     <div class="content-shell">
       <section class="section">
         <div class="link-grid">

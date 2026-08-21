@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import {
   amsoniaBrandReference,
+  amsoniaProductReference,
   COMMERCIAL_URL,
   COMPANY_NAME,
   DEMO_URL,
@@ -18,11 +19,20 @@ const schemas = [{
       ...publisherReference,
       legalName: COMPANY_NAME,
       logo: `${SITE_ORIGIN}/amsonia-mark.svg`,
-      owns: { '@id': `${SITE_ORIGIN}/#brand` }
+      owns: { '@id': `${SITE_ORIGIN}/#product` }
     },
     {
       ...amsoniaBrandReference,
       logo: `${SITE_ORIGIN}/amsonia-mark.svg`
+    },
+    {
+      ...amsoniaProductReference,
+      description,
+      applicationCategory: 'DeveloperApplication',
+      operatingSystem: 'Self-hosted',
+      brand: { '@id': `${SITE_ORIGIN}/#brand` },
+      publisher: { '@id': 'https://willuny.com/#organization' },
+      hasPart: { '@id': `${SITE_ORIGIN}/core#source` }
     },
     {
       '@type': 'WebSite',
@@ -32,7 +42,7 @@ const schemas = [{
       description,
       inLanguage: 'en-US',
       publisher: { '@id': 'https://willuny.com/#organization' },
-      about: { '@id': `${SITE_ORIGIN}/#brand` }
+      about: { '@id': `${SITE_ORIGIN}/#product` }
     }
   ]
 }];
@@ -43,7 +53,7 @@ const schemas = [{
     <section class="hero">
       <div class="shell hero-inner">
         <div class="hero-copy">
-          <span class="eyebrow">Amsonia / Production system / Est. 2026</span>
+          <span class="eyebrow">Amsonia / Software product / Est. 2026</span>
           <h1>Amsonia</h1>
           <p class="hero-thesis">Source-owned infrastructure for multi-tenant Go applications.</p>
           <p class="hero-summary">
@@ -64,7 +74,7 @@ const schemas = [{
 
     <section class="band">
       <div class="shell brand-contract">
-        <div><span class="specimen-number">BRAND / 00</span></div>
+        <div><span class="specimen-number">PRODUCT / 00</span></div>
         <div>
           <h2>One inspectable security boundary.</h2>
           <p>Core keeps tenant membership, delegated policy, administrator sessions, audit history, and PostgreSQL row isolation in source you can run and review.</p>
@@ -90,7 +100,7 @@ const schemas = [{
           <article>
             <span class="specimen-number">CORE / APACHE-2.0</span>
             <h3>Amsonia<br />Core</h3>
-            <p>Open-source foundation of the Amsonia product family, implemented in Go with PostgreSQL and a React management console.</p>
+            <p>Open-source foundation inside Amsonia, implemented in Go with PostgreSQL and a React management console.</p>
             <ul class="capability-list">
               <li>Tenant-first delegated authorization</li>
               <li>Signed context and forced PostgreSQL RLS</li>

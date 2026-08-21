@@ -175,9 +175,9 @@ The project positioning and proof-first launch material are maintained in
 add a reproducible example, negative security test, integration guide, or
 measured operational result are especially useful.
 
-## Amsonia product system
+## Amsonia product
 
-Amsonia is the product system. Amsonia Core is its reusable open-source
+Amsonia is the product. Amsonia Core is its reusable open-source
 authorization foundation. Amsonia Source Distribution is the complete
 commercial Go + Next.js SaaS codebase published by Willuny Labs, adding
 production SaaS modules, updates, and broader operations tooling. See
