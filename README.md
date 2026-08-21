@@ -8,7 +8,7 @@ multi-tenant SaaS. It keeps tenant membership, delegated RBAC, administrator
 sessions, policy audit, and PostgreSQL row-level isolation in one source-owned
 system instead of leaving those boundaries to every handler.
 
-[Visit Amsonia](https://amsonia.dev) · [Try the live demo](https://demo.amsonia.dev) · [Read the commercial product overview](https://willuny.xyz/amsonia) · [View the API contract](openapi/openapi.yaml)
+[Visit Amsonia](https://amsonia.dev) · [Try the live demo](https://demo.amsonia.dev) · [Read about Amsonia Source Distribution](https://willuny.com/amsonia) · [View the API contract](openapi/openapi.yaml)
 
 The demo is a read-only technical preview of the authorization console. The
 repository is the product: the API, migrations, policy kernel, integration
@@ -16,8 +16,8 @@ tests, OpenAPI contract, and Console are all inspectable.
 
 Core focuses on identity, sessions, tenants, memberships, roles, permissions,
 authorization decisions, and policy audit. Billing, commerce, AI, education,
-messaging, and white-label operations belong to the complete Amsonia product,
-not this open-source core.
+messaging, and white-label operations belong to Amsonia Source Distribution,
+not this open-source Core.
 
 ## The problem it solves
 
@@ -175,19 +175,20 @@ The project positioning and proof-first launch material are maintained in
 add a reproducible example, negative security test, integration guide, or
 measured operational result are especially useful.
 
-## Amsonia product
+## Amsonia product system
 
-Amsonia Core is the reusable open-source authorization foundation. The complete
-Amsonia product adds production SaaS modules, managed upgrades, and broader
-operations tooling. See [willuny.xyz/amsonia](https://willuny.xyz/amsonia) for the product and
-architecture context:
+Amsonia is the product system. Amsonia Core is its reusable open-source
+authorization foundation. Amsonia Source Distribution is the complete
+commercial Go + Next.js SaaS codebase published by Willuny Labs, adding
+production SaaS modules, updates, and broader operations tooling. See
+[willuny.com/amsonia](https://willuny.com/amsonia) for the product and architecture context:
 
-- [Go SaaS boilerplate source kit](https://willuny.xyz/go-saas-boilerplate)
-- [Multi-tenant SaaS architecture](https://willuny.xyz/architecture)
-- [Multi-tenant foundations](https://willuny.xyz/features/multi-tenancy)
-- [Source package options](https://willuny.xyz/shop/products)
+- [Go SaaS boilerplate source kit](https://willuny.com/go-saas-boilerplate)
+- [Multi-tenant SaaS architecture](https://willuny.com/architecture)
+- [Multi-tenant foundations](https://willuny.com/features/multi-tenancy)
+- [Source package options](https://willuny.com/shop/products)
 
 ## License
 
-Amsonia Core is Apache-2.0. The complete Amsonia product and modules outside
+Amsonia Core is Apache-2.0. Amsonia Source Distribution and modules outside
 this repository are licensed separately.

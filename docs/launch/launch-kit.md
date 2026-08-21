@@ -18,7 +18,7 @@ another tenant's rows.
 **Honest boundary:** Core is not an identity provider or a general-purpose
 relationship graph. The host owns request authentication, active-tenant
 selection, business-resource loading, and the mapping from an operation to a
-permission. Commercial Amsonia modules are not Core features.
+permission. Amsonia Source Distribution modules are not Core features.
 
 ## Proof before distribution
 
