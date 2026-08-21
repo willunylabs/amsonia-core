@@ -50,6 +50,7 @@ for (const file of htmlFiles) {
   const html = readFileSync(file, 'utf8');
   assert.doesNotMatch(html, /willuny\.xyz|willunylabs\.com/i, `${file} must not publish a legacy Willuny domain`);
   assert.doesNotMatch(html, /Complete Amsonia|Commercial Amsonia|Amsonia Full/i, `${file} must use the accepted product names`);
+  assert.doesNotMatch(html, /mailto:|email-protection/i, `${file} must use the canonical contact page instead of an obfuscated email URL`);
   for (const match of html.matchAll(/href="(\/[^"]*)"/g)) {
     const href = match[1];
     const url = new URL(href, origin);
