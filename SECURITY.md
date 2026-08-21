@@ -6,7 +6,7 @@ Do **not** open a public issue for security vulnerabilities. Report them
 privately to the maintainers.
 
 - GitHub Security Advisory: https://github.com/willunylabs/amsonia-core/security/advisories/new
-- Email: security@willunylabs.com (PGP fingerprint available on request)
+- Email: security@willuny.com (PGP fingerprint available on request)
 
 You will receive an acknowledgment within 72 hours and a status update at least
 every 5 business days until resolution.
@@ -24,7 +24,7 @@ In scope:
 
 Out of scope:
 
-- the commercial willuny-go-admin International SaaS Starter product;
+- Amsonia Source Distribution, the commercial SaaS source product;
 - authentication systems outside the standalone Core API;
 
 ## Disclosure policy

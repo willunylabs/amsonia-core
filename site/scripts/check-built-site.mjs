@@ -7,7 +7,7 @@ const siteRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const distRoot = join(siteRoot, 'dist');
 const origin = 'https://amsonia.dev';
 const requiredRoutes = [
-  '/', '/core', '/core/docs', '/core/docs/getting-started', '/core/api',
+  '/', '/core', '/core/docs', '/core/docs/getting-started', '/core/docs/business-data-rls', '/core/api',
   '/core/security', '/core/license', '/docs', '/releases', '/open-source', '/about'
 ];
 
@@ -48,6 +48,8 @@ for (const route of requiredRoutes) {
 const htmlFiles = collectHtml(distRoot);
 for (const file of htmlFiles) {
   const html = readFileSync(file, 'utf8');
+  assert.doesNotMatch(html, /willuny\.xyz|willunylabs\.com/i, `${file} must not publish a legacy Willuny domain`);
+  assert.doesNotMatch(html, /Complete Amsonia|Commercial Amsonia|Amsonia Full/i, `${file} must use the accepted product names`);
   for (const match of html.matchAll(/href="(\/[^"]*)"/g)) {
     const href = match[1];
     const url = new URL(href, origin);
@@ -57,6 +59,10 @@ for (const file of htmlFiles) {
     assert.ok(existsSync(target) || existsSync(publicTarget), `${file} links to missing internal target: ${href}`);
   }
 }
+
+const homepage = readFileSync(pageFile('/'), 'utf8');
+assert.match(homepage, /https:\/\/willuny\.com\/#organization/, 'homepage publisher must use the canonical Willuny organization ID');
+assert.match(homepage, /Amsonia Source Distribution/, 'homepage must name the commercial product consistently');
 
 const sitemapFile = join(distRoot, 'sitemap.xml');
 assert.ok(existsSync(sitemapFile), 'sitemap.xml must be generated');

@@ -14,7 +14,7 @@ const description = 'Review the Amsonia Core HTTP API scope and its versioned Op
         <aside class="content-aside"><nav aria-label="API sections"><a href="#scope">Scope</a><a href="#sessions">Sessions</a><a href="#tenants">Tenants</a><a href="#policy">Policy</a><a href="#contract">OpenAPI</a></nav></aside>
         <article class="prose">
           <h2 id="scope">A narrow authorization surface.</h2>
-          <p>Core routes cover authentication and session refresh, tenants and memberships, permission catalogs and roles, audit events, and authorization checks. They do not expose the billing, commerce, AI, content, or messaging APIs from the complete product.</p>
+          <p>Core routes cover authentication and session refresh, tenants and memberships, permission catalogs and roles, audit events, and authorization checks. They do not expose the billing, commerce, AI, content, or messaging APIs from Amsonia Source Distribution.</p>
           <div class="fact-grid">
             <div class="fact-card" id="sessions"><span>AUTH / SESSION</span><h3>Rotating credentials</h3><p>Refresh credentials remain HttpOnly, SameSite=Strict cookies and are never returned in JSON.</p></div>
             <div class="fact-card" id="tenants"><span>TENANT / MEMBER</span><h3>Explicit scope</h3><p>Tenant membership and account discovery use separately controlled authorization paths.</p></div>

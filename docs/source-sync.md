@@ -1,7 +1,7 @@
 # Shared Source Synchronization
 
 Amsonia Core receives shared production source only through reviewed, exact
-export manifests. The complete product repositories remain the source mainline
+export manifests. The Amsonia Source Distribution repositories remain the source mainline
 for exported code. The public repository owns Core-only composition, contracts,
 migrations, documentation, examples, and releases.
 
@@ -83,7 +83,7 @@ go run ./cmd/core-sync --mode verify --destination-root . --provenance provenanc
 
 ## Ownership And Contributions
 
-Shared production code is maintained in the complete product repositories and
+Shared production code is maintained in the Amsonia Source Distribution repositories and
 exported only through their exact allowlists. Core-only composition, OpenAPI
 contracts, migrations, documentation, examples, and release metadata are owned
 by the public repository.

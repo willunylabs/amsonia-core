@@ -32,8 +32,10 @@ const schemas = [
         <aside class="content-aside">
           <nav aria-label="Core sections">
             <a href="#purpose">Purpose</a>
+            <a href="#fit">Fit</a>
             <a href="#capabilities">Capabilities</a>
             <a href="#architecture">Architecture</a>
+            <a href="#compare">Compare</a>
             <a href="#boundary">Product boundary</a>
             <a href="#evaluate">Evaluate</a>
           </nav>
@@ -41,6 +43,10 @@ const schemas = [
         <article class="prose">
           <h2 id="purpose">Authorization is infrastructure.</h2>
           <p>Amsonia Core treats tenant isolation and delegated access as security boundaries, not conventions left to each handler. It provides a standalone Go API, PostgreSQL adapter and migrations, an in-memory adapter for tests, an operator CLI, and a React administration console.</p>
+
+          <h2 id="fit">Built for one specific job.</h2>
+          <p>Core fits Go/PostgreSQL teams building multi-tenant SaaS that want RBAC and tenant storage isolation to share one inspectable, self-hosted boundary. The host still authenticates end users, selects the active tenant, loads business resources, and maps operations to permissions.</p>
+          <p>It is not an OAuth/OIDC identity provider, a general-purpose relationship graph, or a hosted authorization control plane. That narrower boundary is intentional.</p>
 
           <div class="fact-grid" id="capabilities">
             <div class="fact-card"><span>01 / TENANCY</span><h3>Signed context</h3><p>Tenant context is bound per transaction and invalid context yields no tenant rows.</p></div>
@@ -59,8 +65,25 @@ internal/coreapp identity, session, tenant, and HTTP composition
 web              React management console
 openapi          versioned HTTP contract</code></pre>
 
+          <h3>Protect application-owned rows</h3>
+          <p><code>postgres.Store.RunTenant</code> can also wrap host business-table queries when those tables opt into the same signed RLS policy. The public invoice example proves two-tenant reads without tenant predicates, rejected cross-tenant writes, and zero visible rows for forged context.</p>
+          <div class="hero-actions"><a class="button secondary" href="/core/docs/business-data-rls">Run the RLS proof →</a></div>
+
+          <h2 id="compare">Choose by boundary, not feature count.</h2>
+          <div class="comparison-table" role="region" aria-label="Authorization approach comparison" tabindex="0">
+            <table>
+              <thead><tr><th>Approach</th><th>Best fit</th><th>Data isolation</th></tr></thead>
+              <tbody>
+                <tr><th>Amsonia Core</th><td>Go SaaS tenant RBAC, sessions, audit</td><td>Signed context plus forced PostgreSQL RLS</td></tr>
+                <tr><th>Policy library</th><td>Application-specific RBAC or ABAC</td><td>Designed separately by the application</td></tr>
+                <tr><th>Relationship service</th><td>Fine-grained object graphs</td><td>Application database remains separate</td></tr>
+                <tr><th>Identity platform</th><td>Login, federation, user lifecycle</td><td>Depends on product and integration</td></tr>
+              </tbody>
+            </table>
+          </div>
+
           <h2 id="boundary">Core is deliberately smaller than Amsonia.</h2>
-          <p>Core includes identity, sessions, tenants, memberships, roles, permissions, authorization decisions, and policy audit. Billing, commerce, AI, education, messaging, media, and white-label operations remain in the complete commercial product.</p>
+          <p>Core includes identity, sessions, tenants, memberships, roles, permissions, authorization decisions, and policy audit. Billing, commerce, AI, education, messaging, media, and white-label operations remain in Amsonia Source Distribution.</p>
 
           <h2 id="evaluate">Evaluate the public evidence.</h2>
           <div class="hero-actions">

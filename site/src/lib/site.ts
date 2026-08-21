@@ -3,7 +3,7 @@ export const SITE_NAME = 'Amsonia';
 export const COMPANY_NAME = 'Willuny Labs LLC';
 export const GITHUB_URL = 'https://github.com/willunylabs/amsonia-core';
 export const DEMO_URL = 'https://demo.amsonia.dev';
-export const COMMERCIAL_URL = 'https://willuny.xyz/amsonia';
+export const COMMERCIAL_URL = 'https://willuny.com/amsonia';
 
 export const primaryNav = [
   { href: '/core', label: 'Core' },
@@ -35,9 +35,9 @@ export function breadcrumbSchema(items: Breadcrumb[]) {
 
 export const publisherReference = {
   '@type': 'Organization',
-  '@id': 'https://willuny.xyz/#organization',
+  '@id': 'https://willuny.com/#organization',
   name: COMPANY_NAME,
-  url: 'https://willuny.xyz/'
+  url: 'https://willuny.com/'
 };
 
 export const amsoniaBrandReference = {
