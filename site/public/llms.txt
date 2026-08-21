@@ -1,6 +1,6 @@
 # Amsonia
 
-Amsonia is a source-owned product system published by Willuny Labs. Amsonia Core is its Apache-2.0 foundation for tenant-safe delegated authorization in Go.
+Amsonia is a source-owned software product published by Willuny Labs. Amsonia Core is its Apache-2.0 foundation for tenant-safe delegated authorization in Go.
 
 - Product home: https://amsonia.dev/
 - Amsonia Core: https://amsonia.dev/core

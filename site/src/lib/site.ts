@@ -46,3 +46,10 @@ export const amsoniaBrandReference = {
   name: SITE_NAME,
   url: `${SITE_ORIGIN}/`
 };
+
+export const amsoniaProductReference = {
+  '@type': 'SoftwareApplication',
+  '@id': `${SITE_ORIGIN}/#product`,
+  name: SITE_NAME,
+  url: `${SITE_ORIGIN}/`
+};

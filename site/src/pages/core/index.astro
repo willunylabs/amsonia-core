@@ -1,7 +1,7 @@
 ---
 import PageIntro from '../../components/PageIntro.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { absoluteUrl, amsoniaBrandReference, breadcrumbSchema, GITHUB_URL, publisherReference } from '../../lib/site';
+import { absoluteUrl, amsoniaProductReference, breadcrumbSchema, GITHUB_URL, publisherReference } from '../../lib/site';
 
 const title = 'Amsonia Core';
 const description = 'Amsonia Core is the Apache-2.0 Go foundation for tenant-safe delegated authorization, PostgreSQL row-level security, authenticated sessions, and policy audit.';
@@ -19,14 +19,14 @@ const schemas = [
     programmingLanguage: { '@type': 'ComputerLanguage', name: 'Go' },
     runtimePlatform: ['Go 1.25.13+', 'PostgreSQL 16+', 'Node.js 22.15+'],
     publisher: publisherReference,
-    isPartOf: amsoniaBrandReference
+    isPartOf: amsoniaProductReference
   }
 ];
 ---
 
 <BaseLayout title={title} description={description} canonicalPath="/core" schemas={schemas}>
   <main id="main-content">
-    <PageIntro eyebrow="Open-source component" index="CORE / 01" title="Amsonia Core" summary="The open-source foundation of the Amsonia product family: tenant-safe authorization that keeps policy, data boundaries, and operational evidence inside code you control." />
+    <PageIntro eyebrow="Open-source component" index="CORE / 01" title="Amsonia Core" summary="The open-source foundation inside Amsonia: tenant-safe authorization that keeps policy, data boundaries, and operational evidence inside code you control." />
     <div class="content-shell">
       <div class="content-grid">
         <aside class="content-aside">

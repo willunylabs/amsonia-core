@@ -62,7 +62,12 @@ for (const file of htmlFiles) {
 
 const homepage = readFileSync(pageFile('/'), 'utf8');
 assert.match(homepage, /https:\/\/willuny\.com\/#organization/, 'homepage publisher must use the canonical Willuny organization ID');
+assert.match(homepage, /https:\/\/amsonia\.dev\/#product/, 'homepage must declare the canonical Amsonia product entity');
+assert.match(homepage, /PRODUCT \/ 00/, 'homepage must present Amsonia as the product');
 assert.match(homepage, /Amsonia Source Distribution/, 'homepage must name the commercial product consistently');
+
+const corePage = readFileSync(pageFile('/core'), 'utf8');
+assert.match(corePage, /https:\/\/amsonia\.dev\/#product/, 'Core must identify Amsonia as its parent product');
 
 const sitemapFile = join(distRoot, 'sitemap.xml');
 assert.ok(existsSync(sitemapFile), 'sitemap.xml must be generated');
