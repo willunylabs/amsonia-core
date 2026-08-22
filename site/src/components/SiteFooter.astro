@@ -1,5 +1,5 @@
 ---
-import { COMMERCIAL_URL, GITHUB_URL } from '../lib/site';
+import { COMPANY_ORIGIN, COMMERCIAL_URL, DEMO_URL, GITHUB_URL } from '../lib/site';
 ---
 
 <footer class="site-footer">
@@ -17,18 +17,18 @@ import { COMMERCIAL_URL, GITHUB_URL } from '../lib/site';
     <div>
       <strong>Evaluate</strong>
       <a href={GITHUB_URL} data-cta-target="github">GitHub ↗</a>
-      <a href="https://demo.amsonia.dev" data-cta-target="demo">Live demo ↗</a>
+      <a href={DEMO_URL} data-cta-target="demo">Live demo ↗</a>
       <a href={COMMERCIAL_URL} data-cta-target="commercial">Amsonia Source Distribution ↗</a>
     </div>
     <div>
       <strong>Published by</strong>
-      <a href="https://willuny.com">Willuny Labs ↗</a>
-      <a href="https://willuny.com/shop/contact">Contact Willuny ↗</a>
+      <a href={COMPANY_ORIGIN}>Willuny Labs ↗</a>
+      <a href={`${COMPANY_ORIGIN}/shop/contact`}>Contact Willuny ↗</a>
       <span>Apache-2.0 Core</span>
     </div>
   </div>
   <div class="footer-base">
     <span>© {new Date().getFullYear()} Willuny Labs LLC</span>
-    <span>AMSONIA.DEV / EN</span>
+    <span>AMSONIA / EN</span>
   </div>
 </footer>
