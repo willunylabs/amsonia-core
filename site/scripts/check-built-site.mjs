@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url';
 
 const siteRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const distRoot = join(siteRoot, 'dist');
-const origin = 'https://amsonia.dev';
+const origin = String(process.env.PUBLIC_SITE_ORIGIN || '').trim();
+assert.ok(origin, 'PUBLIC_SITE_ORIGIN is required for the site audit');
+const companyOrigin = String(process.env.PUBLIC_COMPANY_ORIGIN || '').trim();
+assert.ok(companyOrigin, 'PUBLIC_COMPANY_ORIGIN is required for the site audit');
 const requiredRoutes = [
   '/', '/core', '/core/docs', '/core/docs/getting-started', '/core/docs/business-data-rls', '/core/api',
   '/core/security', '/core/license', '/docs', '/releases', '/open-source', '/about'
@@ -62,13 +65,13 @@ for (const file of htmlFiles) {
 }
 
 const homepage = readFileSync(pageFile('/'), 'utf8');
-assert.match(homepage, /https:\/\/willuny\.com\/#organization/, 'homepage publisher must use the canonical Willuny organization ID');
-assert.match(homepage, /https:\/\/amsonia\.dev\/#product/, 'homepage must declare the canonical Amsonia product entity');
+assert.ok(homepage.includes(`${companyOrigin}/#organization`), 'homepage publisher must use the configured Willuny organization ID');
+assert.ok(homepage.includes(`${origin}/#product`), 'homepage must declare the configured Amsonia product entity');
 assert.match(homepage, /PRODUCT \/ 00/, 'homepage must present Amsonia as the product');
 assert.match(homepage, /Amsonia Source Distribution/, 'homepage must name the commercial product consistently');
 
 const corePage = readFileSync(pageFile('/core'), 'utf8');
-assert.match(corePage, /https:\/\/amsonia\.dev\/#product/, 'Core must identify Amsonia as its parent product');
+assert.ok(corePage.includes(`${origin}/#product`), 'Core must identify the configured Amsonia product as its parent');
 
 const sitemapFile = join(distRoot, 'sitemap.xml');
 assert.ok(existsSync(sitemapFile), 'sitemap.xml must be generated');
@@ -80,6 +83,6 @@ assert.doesNotMatch(sitemap, /demo\.amsonia\.dev|\/404|<loc>[^<]*\?/, 'sitemap m
 
 const robots = readFileSync(join(distRoot, 'robots.txt'), 'utf8');
 assert.match(robots, /User-agent: \*\s+Allow: \//, 'robots.txt must allow crawling');
-assert.match(robots, /Sitemap: https:\/\/amsonia\.dev\/sitemap\.xml/, 'robots.txt must advertise the canonical sitemap');
+assert.ok(robots.includes(`Sitemap: ${origin}/sitemap.xml`), 'robots.txt must advertise the configured canonical sitemap');
 
 console.log(`Amsonia site checks passed for ${requiredRoutes.length} routes and ${htmlFiles.length} HTML files.`);

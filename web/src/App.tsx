@@ -19,6 +19,7 @@ import {
   X
 } from "lucide-react";
 import { api, APIError, getToken } from "./api";
+import { COMMERCIAL_URL, SOURCE_URL } from "./config";
 import type { Account, AuditEvent, Capabilities, Member, Permission, Role, Tenant } from "./types";
 
 type Section = "overview" | "members" | "roles" | "permissions" | "audit" | "check";
@@ -72,9 +73,9 @@ function Login({ onLogin }: { onLogin: (account: Account) => void }) {
           <h1>Tenant access<br />you can own.</h1>
           <p>Explore multi-tenant authorization, RBAC, PostgreSQL row-level security, and audit history in the Amsonia Core demo.</p>
           <p className="fine-print">
-            <a href="https://github.com/willunylabs/amsonia-core" target="_blank" rel="noreferrer">Read the Apache-2.0 source on GitHub</a>
+            <a href={SOURCE_URL} target="_blank" rel="noreferrer">Read the Apache-2.0 source on GitHub</a>
             <span> · </span>
-            <a href="https://willuny.com/amsonia" target="_blank" rel="noreferrer">See Amsonia Source Distribution</a>
+            <a href={COMMERCIAL_URL} target="_blank" rel="noreferrer">See Amsonia Source Distribution</a>
           </p>
         </div>
         <div className="trust-strip">
@@ -192,7 +193,7 @@ function Console({ account, onLogout }: { account: Account; onLogout: () => void
       </nav>
       <div className="sidebar-meta">
         <div className="status-line"><span className="status-dot" />Core API connected</div>
-        <a href="https://willuny.com/amsonia" target="_blank" rel="noreferrer">Amsonia Source Distribution <ArrowRight size={13} /></a>
+        <a href={COMMERCIAL_URL} target="_blank" rel="noreferrer">Amsonia Source Distribution <ArrowRight size={13} /></a>
       </div>
     </aside>
     <div className="workspace">

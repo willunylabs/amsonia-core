@@ -1,5 +1,5 @@
 ---
-import { primaryNav } from '../lib/site';
+import { DEMO_URL, primaryNav } from '../lib/site';
 
 const currentPath = Astro.url.pathname;
 ---
@@ -19,7 +19,7 @@ const currentPath = Astro.url.pathname;
       ))}
     </nav>
 
-    <a class="header-demo" href="https://demo.amsonia.dev" data-cta-target="demo">
+    <a class="header-demo" href={DEMO_URL} data-cta-target="demo">
       Live demo <span aria-hidden="true">↗</span>
     </a>
   </div>

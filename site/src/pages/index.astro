@@ -30,7 +30,7 @@ const schemas = [{
       applicationCategory: 'DeveloperApplication',
       operatingSystem: 'Self-hosted',
       brand: { '@id': `${SITE_ORIGIN}/#brand` },
-      publisher: { '@id': 'https://willuny.com/#organization' },
+      publisher: { '@id': publisherReference['@id'] },
       hasPart: { '@id': `${SITE_ORIGIN}/core#source` }
     },
     {
@@ -40,7 +40,7 @@ const schemas = [{
       url: `${SITE_ORIGIN}/`,
       description,
       inLanguage: 'en-US',
-      publisher: { '@id': 'https://willuny.com/#organization' },
+      publisher: { '@id': publisherReference['@id'] },
       about: { '@id': `${SITE_ORIGIN}/#product` }
     }
   ]

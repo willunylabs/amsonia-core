@@ -1,9 +1,21 @@
-export const SITE_ORIGIN = 'https://amsonia.dev';
+function requiredURL(name: string, rawValue: string | undefined): string {
+  const value = String(rawValue || '').trim();
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('unsupported protocol');
+    return parsed.toString().replace(/\/$/, '');
+  } catch {
+    throw new Error(`${name} must be configured with an absolute HTTP(S) URL`);
+  }
+}
+
+export const SITE_ORIGIN = requiredURL('PUBLIC_SITE_ORIGIN', import.meta.env.PUBLIC_SITE_ORIGIN);
 export const SITE_NAME = 'Amsonia';
 export const COMPANY_NAME = 'Willuny Labs LLC';
-export const GITHUB_URL = 'https://github.com/willunylabs/amsonia-core';
-export const DEMO_URL = 'https://demo.amsonia.dev';
-export const COMMERCIAL_URL = 'https://willuny.com/amsonia';
+export const COMPANY_ORIGIN = requiredURL('PUBLIC_COMPANY_ORIGIN', import.meta.env.PUBLIC_COMPANY_ORIGIN);
+export const GITHUB_URL = requiredURL('PUBLIC_GITHUB_URL', import.meta.env.PUBLIC_GITHUB_URL);
+export const DEMO_URL = requiredURL('PUBLIC_DEMO_ORIGIN', import.meta.env.PUBLIC_DEMO_ORIGIN);
+export const COMMERCIAL_URL = requiredURL('PUBLIC_COMMERCIAL_URL', import.meta.env.PUBLIC_COMMERCIAL_URL);
 
 export const primaryNav = [
   { href: '/core', label: 'Core' },
@@ -35,9 +47,9 @@ export function breadcrumbSchema(items: Breadcrumb[]) {
 
 export const publisherReference = {
   '@type': 'Organization',
-  '@id': 'https://willuny.com/#organization',
+  '@id': `${COMPANY_ORIGIN}/#organization`,
   name: COMPANY_NAME,
-  url: 'https://willuny.com/'
+  url: `${COMPANY_ORIGIN}/`
 };
 
 export const amsoniaBrandReference = {
