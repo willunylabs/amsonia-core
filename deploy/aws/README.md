@@ -58,3 +58,32 @@ Keep at least two releases and retain each published artifact for 14 days:
 
 The database listens only on `127.0.0.1:5433`; the API and static origins bind
 only to `127.0.0.1:8082`, `127.0.0.1:8083`, and `127.0.0.1:8084`.
+
+## Static-site deployment
+
+`amsonia.dev` is released independently from the Demo API, Console, database,
+and Traefik configuration. A successful `CI` run for a push to `main`
+triggers `.github/workflows/deploy-site.yml`, which:
+
+1. checks out the exact CI commit;
+2. rebuilds and validates the Astro site;
+3. builds the ARM64 `amsonia-static` server;
+4. uploads an immutable, checksummed artifact to
+   `s3://h1-recon-results-336090301244-us-east-1/deployments/amsonia/site/`;
+5. invokes the constrained `AmsoniaDeploySite` SSM document; and
+6. verifies both the public site and that the Demo health endpoints remain
+   available.
+
+The host-side `/usr/local/sbin/deploy-amsonia-site` script is root-owned. It
+accepts artifacts only from the approved S3 prefix, rejects unsafe archive
+paths, atomically changes `/opt/amsonia-site/current`, restarts only
+`amsonia-site.service`, and restores the previous symlink on failed health
+checks. It never changes the Demo API, Console, PostgreSQL, or Traefik.
+
+GitHub uses OIDC rather than a stored AWS access key. The
+`amsonia-github-deploy-role` trust is restricted to:
+
+`repo:willunylabs/amsonia-core:environment:amsonia-production`
+
+Its policy can upload only the site artifact prefix and invoke only the
+`AmsoniaDeploySite` document against the dedicated Amsonia instance.

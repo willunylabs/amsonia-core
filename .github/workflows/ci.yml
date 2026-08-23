@@ -84,6 +84,48 @@ jobs:
         run: npm audit --audit-level=moderate
       - run: npm run check
 
+  deployment-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate host deployment script
+        run: |
+          test -x deploy/demo/deploy-amsonia-site.sh
+          bash -n deploy/demo/deploy-amsonia-site.sh
+      - name: Validate constrained AWS deployment contract
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          aws_root = Path("deploy/aws")
+          document = json.loads((aws_root / "amsonia-deploy-site-document.json").read_text())
+          trust = json.loads((aws_root / "amsonia-github-deploy-trust.json").read_text())
+          policy = json.loads((aws_root / "amsonia-github-deploy-policy.json").read_text())
+
+          command = document["mainSteps"][0]["inputs"]["runCommand"]
+          assert command == [
+              "/usr/local/sbin/deploy-amsonia-site "
+              "'{{ ArtifactUri }}' '{{ ReleaseSha }}' '{{ ArtifactSha256 }}'"
+          ]
+
+          conditions = trust["Statement"][0]["Condition"]["StringEquals"]
+          assert conditions["token.actions.githubusercontent.com:aud"] == "sts.amazonaws.com"
+          assert conditions["token.actions.githubusercontent.com:sub"] == (
+              "repo:willunylabs/amsonia-core:environment:amsonia-production"
+          )
+
+          send_statement = next(
+              item for item in policy["Statement"]
+              if item["Sid"] == "RunFixedSiteDeploymentDocument"
+          )
+          assert set(send_statement["Resource"]) == {
+              "arn:aws:ssm:us-east-1:336090301244:document/AmsoniaDeploySite",
+              "arn:aws:ec2:us-east-1:336090301244:instance/i-00e3d5d4c5c6b0dac",
+          }
+          assert "AWS-RunShellScript" not in json.dumps(policy)
+          PY
+
   postgres:
     runs-on: ubuntu-latest
     services:
