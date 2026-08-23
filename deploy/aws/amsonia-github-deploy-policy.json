@@ -1,0 +1,44 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublishVersionedSiteArtifact",
+      "Effect": "Allow",
+      "Action": [
+        "s3:AbortMultipartUpload",
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::h1-recon-results-336090301244-us-east-1/deployments/amsonia/site/*"
+    },
+    {
+      "Sid": "ListSiteArtifactPrefix",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::h1-recon-results-336090301244-us-east-1",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": "deployments/amsonia/site/*"
+        }
+      }
+    },
+    {
+      "Sid": "RunFixedSiteDeploymentDocument",
+      "Effect": "Allow",
+      "Action": "ssm:SendCommand",
+      "Resource": [
+        "arn:aws:ssm:us-east-1:336090301244:document/AmsoniaDeploySite",
+        "arn:aws:ec2:us-east-1:336090301244:instance/i-00e3d5d4c5c6b0dac"
+      ]
+    },
+    {
+      "Sid": "ReadDeploymentCommandStatus",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetCommandInvocation",
+        "ssm:ListCommandInvocations"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
