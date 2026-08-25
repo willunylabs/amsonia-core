@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const siteRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const styles = readFileSync(join(siteRoot, 'src', 'styles', 'global.css'), 'utf8');
-const mark = readFileSync(join(siteRoot, 'public', 'amsonia-mark.svg'), 'utf8');
+const mark = readFileSync(join(siteRoot, 'public', 'amsonia-mark-v2.svg'), 'utf8');
 const header = readFileSync(join(siteRoot, 'src', 'components', 'SiteHeader.astro'), 'utf8');
 const footer = readFileSync(join(siteRoot, 'src', 'components', 'SiteFooter.astro'), 'utf8');
 
@@ -27,7 +27,8 @@ assert.match(mark, /fill="#7f9d7c"/, 'Amsonia mark must keep the shared leaf col
 assert.match(mark, /<circle cx="32" cy="32" r="4\.2" fill="#f8fafc"\/>/, 'Amsonia mark must keep the shared center');
 
 for (const [name, source] of [['header', header], ['footer', footer]]) {
-  assert.ok(source.includes('/amsonia-mark.svg'), `${name} must use the canonical shared mark`);
+  assert.ok(source.includes('/amsonia-mark-v2.svg'), `${name} must use the versioned canonical shared mark`);
+  assert.ok(!source.includes('/amsonia-mark.svg'), `${name} must not restore the immutable cached v1 mark path`);
 }
 
 console.log('Amsonia visual system matches the shared Willuny brand contract.');
