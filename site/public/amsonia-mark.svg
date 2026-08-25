@@ -1,5 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Amsonia">
-  <rect width="64" height="64" rx="14" fill="#203b2e"/>
-  <path d="M17 41c2-13 9-22 19-25 6 8 10 17 11 27-8 6-20 6-30-2Z" fill="#d7ef72"/>
-  <path d="M25 39c4-7 9-12 17-16M33 32c-1-4-1-7 0-10M32 33c4 0 7 1 10 3" fill="none" stroke="#203b2e" stroke-width="3" stroke-linecap="round"/>
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Amsonia">
+  <g fill="#635bff">
+    <path d="M32 31C24.8 23.2 25.2 11.7 32 2.5C38.8 11.7 39.2 23.2 32 31Z"/>
+    <path d="M32 31C24.8 23.2 25.2 11.7 32 2.5C38.8 11.7 39.2 23.2 32 31Z" transform="rotate(72 32 32)"/>
+    <path d="M32 31C24.8 23.2 25.2 11.7 32 2.5C38.8 11.7 39.2 23.2 32 31Z" transform="rotate(144 32 32)"/>
+    <path d="M32 31C24.8 23.2 25.2 11.7 32 2.5C38.8 11.7 39.2 23.2 32 31Z" transform="rotate(216 32 32)"/>
+    <path d="M32 31C24.8 23.2 25.2 11.7 32 2.5C38.8 11.7 39.2 23.2 32 31Z" transform="rotate(288 32 32)"/>
+  </g>
+  <path d="M31 56.2C40.2 56.4 48.6 52.7 57.5 44C54.6 56.2 44.5 62.2 32 59.6C27.4 58.6 23.8 57.5 20.2 57.8C23.9 54.8 27.5 54.9 31 56.2Z" fill="#7f9d7c"/>
+  <circle cx="32" cy="32" r="4.2" fill="#f8fafc"/>
 </svg>
