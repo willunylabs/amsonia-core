@@ -4,8 +4,11 @@ import { COMPANY_ORIGIN, COMMERCIAL_URL, DEMO_URL, GITHUB_URL } from '../lib/sit
 
 <footer class="site-footer">
   <div class="footer-lead">
-    <span class="specimen-number">A / 01</span>
-    <p>Amsonia is a Willuny software product for teams that want explicit infrastructure, inspectable boundaries, and source they can own.</p>
+    <a class="footer-brand" href="/" aria-label="Amsonia home">
+      <img src="/amsonia-mark.svg" width="34" height="34" alt="" />
+      <span>Amsonia</span>
+    </a>
+    <p>Production-grade Go infrastructure with explicit boundaries, public evidence, and source your team can own.</p>
   </div>
   <div class="footer-grid">
     <div>
@@ -29,6 +32,6 @@ import { COMPANY_ORIGIN, COMMERCIAL_URL, DEMO_URL, GITHUB_URL } from '../lib/sit
   </div>
   <div class="footer-base">
     <span>© {new Date().getFullYear()} Willuny Labs LLC</span>
-    <span>AMSONIA / EN</span>
+    <a href={COMPANY_ORIGIN}>A Willuny Labs product ↗</a>
   </div>
 </footer>

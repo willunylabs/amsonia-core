@@ -8,9 +8,8 @@ const currentPath = Astro.url.pathname;
   <a class="skip-link" href="#main-content">Skip to main content</a>
   <div class="header-inner">
     <a class="wordmark" href="/" aria-label="Amsonia home">
-      <img src="/amsonia-mark.svg" width="38" height="38" alt="Amsonia" />
-      <span>AMSONIA</span>
-      <small>PRODUCT</small>
+      <img src="/amsonia-mark.svg" width="32" height="32" alt="" />
+      <span>Amsonia</span>
     </a>
 
     <nav aria-label="Primary navigation">
@@ -20,7 +19,20 @@ const currentPath = Astro.url.pathname;
     </nav>
 
     <a class="header-demo" href={DEMO_URL} data-cta-target="demo">
-      Live demo <span aria-hidden="true">↗</span>
+      Live demo
+      <svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16"><path d="M4 10h12M11 5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
     </a>
+
+    <details class="mobile-navigation">
+      <summary aria-label="Open navigation menu">
+        <svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+      </summary>
+      <nav aria-label="Mobile navigation">
+        {primaryNav.map((item) => (
+          <a href={item.href} aria-current={currentPath === item.href ? 'page' : undefined}>{item.label}</a>
+        ))}
+        <a href={DEMO_URL} data-cta-target="demo">Live demo ↗</a>
+      </nav>
+    </details>
   </div>
 </header>
