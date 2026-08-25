@@ -8,7 +8,8 @@ separate at `demo.amsonia.dev` and is not indexable.
 
 Amsonia uses the same production visual language as `willuny-go-ui`:
 
-- the shared five-petal Amsonia/Willuny mark from `public/amsonia-mark.svg`;
+- the shared five-petal Amsonia/Willuny mark from the versioned
+  `public/amsonia-mark-v2.svg` asset;
 - white and slate surfaces with the `#635bff` to `#7a73ff` brand gradient;
 - slate typography, indigo technical labels, subtle 56-pixel grid fields, and
   restrained borders and shadows;
@@ -41,3 +42,8 @@ geometry and visual tokens, builds the static site, checks canonical metadata
 and internal links, and rejects broken routes. Keep the shared logo, Open Graph
 image, global tokens, header, and footer changes in the same pull request so the
 production system cannot drift between surfaces.
+
+Public static assets are served with a one-year immutable cache policy. Never
+overwrite a published logo filename in place; increment the versioned filename
+and update every HTML, favicon, and structured-data reference in the same pull
+request.
