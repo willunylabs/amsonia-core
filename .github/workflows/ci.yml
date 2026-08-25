@@ -112,7 +112,8 @@ jobs:
           conditions = trust["Statement"][0]["Condition"]["StringEquals"]
           assert conditions["token.actions.githubusercontent.com:aud"] == "sts.amazonaws.com"
           assert conditions["token.actions.githubusercontent.com:sub"] == (
-              "repo:willunylabs/amsonia-core:environment:amsonia-production"
+              "repo:willunylabs@252529865/amsonia-core@1322524885:"
+              "environment:amsonia-production"
           )
 
           send_statement = next(

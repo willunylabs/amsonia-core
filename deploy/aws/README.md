@@ -83,7 +83,12 @@ checks. It never changes the Demo API, Console, PostgreSQL, or Traefik.
 GitHub uses OIDC rather than a stored AWS access key. The
 `amsonia-github-deploy-role` trust is restricted to:
 
-`repo:willunylabs/amsonia-core:environment:amsonia-production`
+`repo:willunylabs@252529865/amsonia-core@1322524885:environment:amsonia-production`
+
+The organization and repository IDs are part of the OIDC subject emitted by
+GitHub for this repository. Keeping them in the exact-match condition binds the
+role to the immutable Willuny Labs organization and Amsonia Core repository,
+as well as to the protected `amsonia-production` environment.
 
 Its policy can upload only the site artifact prefix and invoke only the
 `AmsoniaDeploySite` document against the dedicated Amsonia instance.
