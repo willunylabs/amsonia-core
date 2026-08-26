@@ -17,10 +17,12 @@ jobs:
         with:
           go-version: "1.25.13"
           cache: true
+      - name: Verify product repository identities
+        run: make check-product-identifiers
       - name: Verify exported source provenance
         run: |
-          go run ./cmd/core-sync --mode verify --destination-root . --provenance provenance/willuny-go-admin.json
-          go run ./cmd/core-sync --mode verify --destination-root . --provenance provenance/willuny-go-ui.json
+          go run ./cmd/core-sync --mode verify --destination-root . --provenance provenance/amsonia-server.json
+          go run ./cmd/core-sync --mode verify --destination-root . --provenance provenance/amsonia-web.json
       - name: Format check
         run: |
           test -z "$(gofmt -l .)"
