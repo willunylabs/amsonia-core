@@ -172,7 +172,7 @@ jobs:
 
           test "$(curl --silent --show-error --dump-header "${headers}" --output "${page}" --write-out '%{http_code}' \
             --retry 10 --retry-all-errors --retry-delay 2 "${PUBLIC_DEMO_ORIGIN}/")" = 200
-          grep -Eiq '^x-robots-tag: noindex\r?$' "${headers}"
+          grep -Eiq '^x-robots-tag:[[:space:]]*noindex' "${headers}"
           grep -Fq '<meta name="robots" content="noindex"' "${page}"
           grep -Fq 'content="#1d1b3f"' "${page}"
           grep -Fq 'href="/amsonia-mark-v2.svg"' "${page}"
