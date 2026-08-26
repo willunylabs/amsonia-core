@@ -14,7 +14,6 @@ export const SITE_NAME = 'Amsonia';
 export const COMPANY_NAME = 'Willuny Labs LLC';
 export const COMPANY_ORIGIN = requiredURL('PUBLIC_COMPANY_ORIGIN', import.meta.env.PUBLIC_COMPANY_ORIGIN);
 export const GITHUB_URL = requiredURL('PUBLIC_GITHUB_URL', import.meta.env.PUBLIC_GITHUB_URL);
-export const DEMO_URL = requiredURL('PUBLIC_DEMO_ORIGIN', import.meta.env.PUBLIC_DEMO_ORIGIN);
 export const COMMERCIAL_URL = requiredURL('PUBLIC_COMMERCIAL_URL', import.meta.env.PUBLIC_COMMERCIAL_URL);
 
 export const primaryNav = [

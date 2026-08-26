@@ -1,8 +1,10 @@
 # Amsonia product site
 
 The Astro site in this directory is the canonical public product and technical
-surface for Amsonia. It is deployed to `amsonia.dev`; the React Console remains
-separate at `demo.amsonia.dev` and is not indexable.
+surface for Amsonia. It is deployed to `amsonia.dev` and has no hosted-demo
+dependency. The historical Core Console at `demo.amsonia.dev` remains separate
+and `noindex` during replacement; the future commercial Platform demo is owned
+by the commercial repositories and Willuny site.
 
 ## Shared Willuny visual system
 
@@ -23,7 +25,8 @@ and botanical-specimen presentation is retired.
 
 ## Information boundary
 
-- `/` introduces the Amsonia product family and makes Core the first product.
+- `/` introduces the Amsonia product family and makes Core the first public
+  component.
 - `/core` and `/core/docs/*` contain evidence-backed open-source documentation.
 - `/docs` is the product-family documentation entry point.
 - commercial pricing, licensing, purchase, and company content remain on
