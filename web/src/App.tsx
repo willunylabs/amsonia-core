@@ -14,7 +14,6 @@ import {
   Plus,
   ScrollText,
   ShieldCheck,
-  Sparkles,
   UsersRound,
   X
 } from "lucide-react";
@@ -65,7 +64,7 @@ function Login({ onLogin }: { onLogin: (account: Account) => void }) {
     <main className="login-shell">
       <section className="login-story" aria-label="Product introduction">
         <div className="brand-lockup">
-          <div className="brand-mark" aria-hidden="true"><Sparkles size={20} /></div>
+          <img className="brand-mark" src="/amsonia-mark-v2.svg" alt="" />
           <span>AMSONIA CORE</span>
         </div>
         <div className="story-copy">
@@ -126,7 +125,7 @@ export function App() {
     api.me().then(setAccount).catch(() => void api.logout()).finally(() => setChecking(false));
   }, []);
 
-  if (checking) return <div className="boot-screen"><div className="brand-mark"><Sparkles size={20} /></div><span>Opening Amsonia Core…</span></div>;
+  if (checking) return <div className="boot-screen"><img className="brand-mark" src="/amsonia-mark-v2.svg" alt="" /><span>Opening Amsonia Core…</span></div>;
   if (!account) return <Login onLogin={setAccount} />;
   return <Console account={account} onLogout={() => setAccount(null)} />;
 }
@@ -186,7 +185,7 @@ function Console({ account, onLogout }: { account: Account; onLogout: () => void
 
   return <div className="console-shell">
     <aside className="sidebar">
-      <div className="brand-lockup"><div className="brand-mark"><Sparkles size={19} /></div><span>AMSONIA</span></div>
+      <div className="brand-lockup"><img className="brand-mark" src="/amsonia-mark-v2.svg" alt="" /><span>AMSONIA</span></div>
       <nav aria-label="Primary navigation">
         <span className="nav-label">Tenant console</span>
         {sections.map((item) => <button key={item.id} className={section === item.id ? "nav-item active" : "nav-item"} onClick={() => setSection(item.id)}><item.icon size={17} />{item.label}</button>)}
