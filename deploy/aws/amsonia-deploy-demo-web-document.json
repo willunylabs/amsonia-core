@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "2.2",
+  "description": "Deploy one validated Amsonia Demo Console artifact without touching the API, PostgreSQL, product site, or Traefik.",
+  "parameters": {
+    "ArtifactUri": {
+      "type": "String",
+      "description": "Versioned S3 URI for the Demo Console artifact.",
+      "allowedPattern": "^s3://h1-recon-results-336090301244-us-east-1/deployments/amsonia/demo-web/[0-9a-f]{40}/amsonia-demo-web-[0-9a-f]{40}\\.tar\\.gz$"
+    },
+    "ReleaseSha": {
+      "type": "String",
+      "description": "Lowercase Git commit SHA.",
+      "allowedPattern": "^[0-9a-f]{40}$"
+    },
+    "ArtifactSha256": {
+      "type": "String",
+      "description": "Lowercase SHA-256 digest for the artifact.",
+      "allowedPattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "mainSteps": [
+    {
+      "action": "aws:runShellScript",
+      "name": "deployDemoWeb",
+      "inputs": {
+        "timeoutSeconds": "300",
+        "runCommand": [
+          "/usr/local/sbin/deploy-amsonia-demo-web '{{ ArtifactUri }}' '{{ ReleaseSha }}' '{{ ArtifactSha256 }}'"
+        ]
+      }
+    }
+  ]
+}
