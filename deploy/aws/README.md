@@ -90,5 +90,28 @@ GitHub for this repository. Keeping them in the exact-match condition binds the
 role to the immutable Willuny Labs organization and Amsonia Core repository,
 as well as to the protected `amsonia-production` environment.
 
-Its policy can upload only the site artifact prefix and invoke only the
-`AmsoniaDeploySite` document against the dedicated Amsonia instance.
+## Demo Console deployment
+
+`demo.amsonia.dev` has an independent static Console release boundary. A
+successful `CI` run for a push to `main` also triggers
+`.github/workflows/deploy-demo-web.yml`, which:
+
+1. checks out the exact CI commit;
+2. rebuilds and validates the Vite Console with the public read-only Demo
+   credentials held in the `amsonia-production` GitHub environment;
+3. packages the Console and ARM64 `amsonia-static` server as an immutable,
+   checksummed artifact under
+   `s3://h1-recon-results-336090301244-us-east-1/deployments/amsonia/demo-web/`;
+4. invokes the constrained `AmsoniaDeployDemoWeb` SSM document; and
+5. verifies the public noindex, robots, missing sitemap, Demo API health, and
+   product-site isolation contracts.
+
+The root-owned `/usr/local/sbin/deploy-amsonia-demo-web` script accepts only
+the Demo artifact prefix, rejects unsafe archive entries, atomically switches
+`/opt/amsonia-core-demo-web/current`, and restarts only
+`amsonia-core-web.service`. A failed health check restores the previous Console
+symlink without changing the API, database, product site, or Traefik.
+
+The GitHub deployment role can publish only the separate `site` and `demo-web`
+artifact prefixes and can invoke only `AmsoniaDeploySite` and
+`AmsoniaDeployDemoWeb` against the dedicated Amsonia instance.

@@ -1,0 +1,187 @@
+name: Deploy Amsonia Demo
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-amsonia-demo-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: amsonia-production
+    timeout-minutes: 20
+    env:
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      INSTANCE_ID: ${{ vars.AMSONIA_EC2_INSTANCE_ID }}
+      ARTIFACT_BUCKET: ${{ vars.AMSONIA_ARTIFACT_BUCKET }}
+      ARTIFACT_PREFIX: ${{ vars.AMSONIA_DEMO_WEB_ARTIFACT_PREFIX }}
+      PUBLIC_SITE_ORIGIN: ${{ vars.PUBLIC_SITE_ORIGIN }}
+      PUBLIC_DEMO_ORIGIN: ${{ vars.PUBLIC_DEMO_ORIGIN }}
+      VITE_GITHUB_URL: ${{ vars.PUBLIC_GITHUB_URL }}
+      VITE_COMMERCIAL_URL: ${{ vars.PUBLIC_COMMERCIAL_URL }}
+      VITE_PUBLIC_DEMO_VIEWER_EMAIL: ${{ secrets.DEMO_VIEWER_EMAIL }}
+      VITE_PUBLIC_DEMO_VIEWER_PASSWORD: ${{ secrets.DEMO_VIEWER_PASSWORD }}
+
+    steps:
+      - name: Validate deployment configuration
+        run: |
+          set -euo pipefail
+          [[ "${RELEASE_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          test -n "${AWS_REGION}"
+          test -n "${INSTANCE_ID}"
+          test -n "${ARTIFACT_BUCKET}"
+          test -n "${ARTIFACT_PREFIX}"
+          test -n "${PUBLIC_SITE_ORIGIN}"
+          test -n "${PUBLIC_DEMO_ORIGIN}"
+          test -n "${VITE_GITHUB_URL}"
+          test -n "${VITE_COMMERCIAL_URL}"
+          test -n "${VITE_PUBLIC_DEMO_VIEWER_EMAIL}"
+          test -n "${VITE_PUBLIC_DEMO_VIEWER_PASSWORD}"
+          test -n "${{ vars.AWS_DEPLOY_ROLE_ARN }}"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.25.13"
+          cache: true
+
+      - name: Build and validate Demo Console
+        working-directory: web
+        run: |
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm run test
+          npm run build
+
+      - name: Build static server
+        run: |
+          set -euo pipefail
+          mkdir -p release/web
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+            go build -trimpath -ldflags='-s -w' -o release/amsonia-static ./cmd/amsonia-static
+          cp -a web/dist/. release/web/
+          test -x release/amsonia-static
+          test -s release/web/index.html
+          test -s release/web/robots.txt
+          test -s release/web/amsonia-mark-v2.svg
+          test ! -e release/web/sitemap.xml
+          grep -Fq 'content="#1d1b3f"' release/web/index.html
+          grep -Fq 'href="/amsonia-mark-v2.svg"' release/web/index.html
+
+      - name: Package immutable release
+        id: artifact
+        run: |
+          set -euo pipefail
+          artifact_name="amsonia-demo-web-${RELEASE_SHA}.tar.gz"
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -C release -czf "${artifact_name}" amsonia-static web
+          artifact_sha256="$(sha256sum "${artifact_name}" | awk '{print $1}')"
+          artifact_key="${ARTIFACT_PREFIX}/${RELEASE_SHA}/${artifact_name}"
+          artifact_uri="s3://${ARTIFACT_BUCKET}/${artifact_key}"
+          echo "name=${artifact_name}" >>"${GITHUB_OUTPUT}"
+          echo "sha256=${artifact_sha256}" >>"${GITHUB_OUTPUT}"
+          echo "key=${artifact_key}" >>"${GITHUB_OUTPUT}"
+          echo "uri=${artifact_uri}" >>"${GITHUB_OUTPUT}"
+
+      - name: Configure short-lived AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: amsonia-demo-${{ github.run_id }}
+
+      - name: Upload versioned artifact
+        run: |
+          aws s3 cp "${{ steps.artifact.outputs.name }}" "${{ steps.artifact.outputs.uri }}" \
+            --only-show-errors
+
+      - name: Deploy through constrained SSM document
+        id: deploy
+        run: |
+          set -euo pipefail
+          parameters="$(jq -cn \
+            --arg uri "${{ steps.artifact.outputs.uri }}" \
+            --arg release "${RELEASE_SHA}" \
+            --arg digest "${{ steps.artifact.outputs.sha256 }}" \
+            '{ArtifactUri:[$uri],ReleaseSha:[$release],ArtifactSha256:[$digest]}')"
+          command_id="$(aws ssm send-command \
+            --instance-ids "${INSTANCE_ID}" \
+            --document-name AmsoniaDeployDemoWeb \
+            --parameters "${parameters}" \
+            --comment "Deploy Amsonia Demo Console ${RELEASE_SHA}" \
+            --query 'Command.CommandId' \
+            --output text)"
+          echo "command_id=${command_id}" >>"${GITHUB_OUTPUT}"
+
+          for attempt in {1..60}; do
+            status="$(aws ssm get-command-invocation \
+              --command-id "${command_id}" \
+              --instance-id "${INSTANCE_ID}" \
+              --query Status \
+              --output text 2>/dev/null || true)"
+            case "${status}" in
+              Success)
+                break
+                ;;
+              Failed|Cancelled|TimedOut|Cancelling)
+                aws ssm get-command-invocation \
+                  --command-id "${command_id}" \
+                  --instance-id "${INSTANCE_ID}" \
+                  --query '{Status:Status,StatusDetails:StatusDetails,ResponseCode:ResponseCode,StandardErrorContent:StandardErrorContent}' \
+                  --output json
+                exit 1
+                ;;
+            esac
+            if [[ "${attempt}" -eq 60 ]]; then
+              echo "SSM deployment did not finish within five minutes" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Verify public Demo and product-site isolation
+        run: |
+          set -euo pipefail
+          page="$(mktemp)"
+          headers="$(mktemp)"
+          trap 'rm -f "${page}" "${headers}"' EXIT
+
+          test "$(curl --silent --show-error --dump-header "${headers}" --output "${page}" --write-out '%{http_code}' \
+            --retry 10 --retry-all-errors --retry-delay 2 "${PUBLIC_DEMO_ORIGIN}/")" = 200
+          grep -Eiq '^x-robots-tag: noindex\r?$' "${headers}"
+          grep -Fq '<meta name="robots" content="noindex"' "${page}"
+          grep -Fq 'content="#1d1b3f"' "${page}"
+          grep -Fq 'href="/amsonia-mark-v2.svg"' "${page}"
+
+          for route in /robots.txt /health /readyz /amsonia-mark-v2.svg; do
+            test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+              --retry 10 --retry-all-errors --retry-delay 2 "${PUBLIC_DEMO_ORIGIN}${route}")" = 200
+          done
+          test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --retry 10 --retry-all-errors --retry-delay 2 "${PUBLIC_DEMO_ORIGIN}/sitemap.xml")" = 404
+          test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --retry 10 --retry-all-errors --retry-delay 2 "${PUBLIC_SITE_ORIGIN}/")" = 200
