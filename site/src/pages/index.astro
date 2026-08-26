@@ -5,13 +5,12 @@ import {
   amsoniaProductReference,
   COMMERCIAL_URL,
   COMPANY_NAME,
-  DEMO_URL,
   GITHUB_URL,
   publisherReference,
   SITE_ORIGIN
 } from '../lib/site';
 
-const description = 'Source-owned infrastructure for multi-tenant Go applications. Explore Amsonia Core, docs, releases, live demo, and commercial distribution.';
+const description = 'Source-owned infrastructure for multi-tenant Go applications. Explore Amsonia Core, its documentation, security model, releases, and commercial product boundary.';
 const schemas = [{
   '@context': 'https://schema.org',
   '@graph': [
@@ -61,7 +60,7 @@ const schemas = [{
           <div class="hero-actions">
             <a class="button primary" href={GITHUB_URL} data-cta-target="github">GitHub source <span aria-hidden="true">↗</span></a>
             <a class="button secondary" href="/core/docs/getting-started" data-cta-target="docs">Documentation <span aria-hidden="true">→</span></a>
-            <a class="button quiet" href={DEMO_URL} data-cta-target="demo">Live demo <span aria-hidden="true">↗</span></a>
+            <a class="button quiet" href="/core/security">Security model <span aria-hidden="true">→</span></a>
           </div>
         </div>
         <div class="hero-specimen" aria-label="Amsonia Core product summary">
@@ -124,7 +123,7 @@ const schemas = [{
             </ul>
             <div class="hero-actions">
               <a class="button primary" href="/core">Explore Core <span aria-hidden="true">→</span></a>
-              <a class="button secondary" href={DEMO_URL} data-cta-target="demo">Open Console <span aria-hidden="true">↗</span></a>
+              <a class="button secondary" href="/core/docs/getting-started">Run locally <span aria-hidden="true">→</span></a>
             </div>
           </article>
           <aside class="boundary-note">
@@ -132,7 +131,7 @@ const schemas = [{
               <span class="eyebrow">Scope boundary</span>
               <h3>Precise by design.</h3>
               <p>Core covers identity, sessions, tenants, memberships, roles, permissions, authorization decisions, and policy audit.</p>
-              <p>Billing, commerce, AI, education, messaging, and white-label operations belong to Amsonia Source Distribution—not this repository.</p>
+              <p>Billing, commerce, AI, education, messaging, and white-label operations belong to Amsonia Platform—not this repository.</p>
             </div>
             <code>core.status = "open-source"<br />core.license = "Apache-2.0"<br />publisher = "Willuny Labs"</code>
           </aside>
@@ -172,8 +171,8 @@ const schemas = [{
         <h2>Build beyond Core.</h2>
       </div>
       <div>
-        <p>Amsonia Source Distribution adds the wider Go + Next.js SaaS application and operations layer. Pricing, licensing, purchase, and support live with the publisher at Willuny Labs.</p>
-        <a class="button" href={COMMERCIAL_URL} data-cta-target="commercial">Amsonia Source Distribution <span aria-hidden="true">↗</span></a>
+        <p>Amsonia Platform is the commercial Go + Next.js SaaS starter kit, composed of Amsonia Server and Amsonia Console. Its demo, pricing, licensing, purchase, and support live with Willuny Labs.</p>
+        <a class="button" href={COMMERCIAL_URL} data-cta-target="commercial">Explore Amsonia Platform <span aria-hidden="true">↗</span></a>
       </div>
     </section>
   </main>

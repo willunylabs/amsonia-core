@@ -32,7 +32,6 @@ jobs:
       PUBLIC_SITE_ORIGIN: ${{ vars.PUBLIC_SITE_ORIGIN }}
       PUBLIC_COMPANY_ORIGIN: ${{ vars.PUBLIC_COMPANY_ORIGIN }}
       PUBLIC_GITHUB_URL: ${{ vars.PUBLIC_GITHUB_URL }}
-      PUBLIC_DEMO_ORIGIN: ${{ vars.PUBLIC_DEMO_ORIGIN }}
       PUBLIC_COMMERCIAL_URL: ${{ vars.PUBLIC_COMMERCIAL_URL }}
       PUBLIC_GA_ID: ${{ vars.PUBLIC_GA_ID }}
 
@@ -48,7 +47,6 @@ jobs:
           test -n "${PUBLIC_SITE_ORIGIN}"
           test -n "${PUBLIC_COMPANY_ORIGIN}"
           test -n "${PUBLIC_GITHUB_URL}"
-          test -n "${PUBLIC_DEMO_ORIGIN}"
           test -n "${PUBLIC_COMMERCIAL_URL}"
           test -n "${{ vars.AWS_DEPLOY_ROLE_ARN }}"
 
@@ -156,7 +154,7 @@ jobs:
             sleep 5
           done
 
-      - name: Verify public site and Demo isolation
+      - name: Verify public Core site
         run: |
           set -euo pipefail
           for route in / /core /core/docs/getting-started /robots.txt /sitemap.xml; do
@@ -167,7 +165,3 @@ jobs:
             test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
               --retry 10 --retry-all-errors --retry-delay 2 "${PUBLIC_SITE_ORIGIN}${route}")" = 404
           done
-          test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-            --retry 10 --retry-all-errors --retry-delay 2 "${PUBLIC_DEMO_ORIGIN}/health")" = 200
-          test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-            --retry 10 --retry-all-errors --retry-delay 2 "${PUBLIC_DEMO_ORIGIN}/readyz")" = 200

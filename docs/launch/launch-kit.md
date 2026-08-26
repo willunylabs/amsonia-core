@@ -18,19 +18,19 @@ another tenant's rows.
 **Honest boundary:** Core is not an identity provider or a general-purpose
 relationship graph. The host owns request authentication, active-tenant
 selection, business-resource loading, and the mapping from an operation to a
-permission. Amsonia Source Distribution modules are not Core features.
+permission. Amsonia Platform modules are not Core features.
 
 ## Proof before distribution
 
 Do not launch a claim until a new user can verify it without private context:
 
 - `make demo` succeeds from a clean clone.
-- The live read-only demo is available and its credentials are visible on the
-  login screen, not buried in a social post.
+- The local stack starts from a clean clone and its sample credentials are
+  documented beside the command that creates them.
 - The business-table RLS example shows two tenants, no tenant predicate in the
   select query, a rejected cross-tenant write, and a negative forged-context
   integration test.
-- README, website, tagged release, OpenAPI contract, and demo describe the same
+- README, website, tagged release, OpenAPI contract, and local stack describe the same
   product boundary.
 - A maintainer is ready to answer issues for at least 48 hours after launch.
 
@@ -81,7 +81,7 @@ valuable than generic praise.
 > only the signed tenant's row and rejects a cross-tenant insert. Integration
 > tests also try forged session settings.
 >
-> You can run the full stack with `make demo`, or use the read-only live demo.
+> You can run the complete Core stack locally with `make demo`. The hosted commercial product demo is not evidence of Core scope.
 > This is not an IdP or a Zanzibar-style relationship graph. It is aimed at Go
 > SaaS teams that want tenant RBAC and PostgreSQL isolation in source they own.
 > I would especially value review of the RLS model and the boundaries that
@@ -119,7 +119,7 @@ valuable than generic praise.
 
 - 不是“又一个后台模板”，而是把租户成员、委托式 RBAC、管理员会话、审计和数据库行隔离放进同一个可测试边界。
 - 核心证据是一个双租户发票表示例：查询不写租户过滤条件，RLS 仍只返回当前签名租户的数据；跨租户写入直接由 PostgreSQL 拒绝。
-- `make demo` 可从干净仓库启动完整栈，线上 Demo 只有只读权限。
+- `make demo` 可从干净仓库启动完整 Core 栈；商业产品的线上 Demo 不属于 Core 的能力范围。
 - 希望获得的反馈：事务边界是否符合 Go 服务习惯、接入现有项目还缺什么、哪些能力不应该进入 Core。
 
 ## First two engineering articles
@@ -143,7 +143,7 @@ with flat role-name checks without claiming universal superiority.
 Review weekly for the first month:
 
 - clean-clone attempts that reach a healthy local stack;
-- demo-to-GitHub and docs-to-GitHub CTA clicks;
+- docs-to-GitHub and release-to-GitHub CTA clicks;
 - unique repository cloners and repeat visitors;
 - setup failures grouped by step;
 - issues or discussions containing a real integration question;

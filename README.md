@@ -8,15 +8,15 @@ multi-tenant SaaS. It keeps tenant membership, delegated RBAC, administrator
 sessions, policy audit, and PostgreSQL row-level isolation in one source-owned
 system instead of leaving those boundaries to every handler.
 
-[Visit Amsonia](https://amsonia.dev) · [Try the live demo](https://demo.amsonia.dev) · [Read about Amsonia Source Distribution](https://willuny.com/amsonia) · [View the API contract](openapi/openapi.yaml)
+[Visit Amsonia](https://amsonia.dev) · [Read the documentation](https://amsonia.dev/core/docs/getting-started) · [Explore Amsonia Platform](https://willuny.com/amsonia) · [View the API contract](openapi/openapi.yaml)
 
-The demo is a read-only technical preview of the authorization console. The
-repository is the product: the API, migrations, policy kernel, integration
-tests, OpenAPI contract, and Console are all inspectable.
+Core is evaluated from the repository: the API, migrations, policy kernel,
+integration tests, OpenAPI contract, local stack, and Console are all
+inspectable.
 
 Core focuses on identity, sessions, tenants, memberships, roles, permissions,
 authorization decisions, and policy audit. Billing, commerce, AI, education,
-messaging, and white-label operations belong to Amsonia Source Distribution,
+messaging, and white-label operations belong to Amsonia Platform,
 not this open-source Core.
 
 ## The problem it solves
@@ -178,7 +178,7 @@ measured operational result are especially useful.
 ## Amsonia product
 
 Amsonia is the product. Amsonia Core is its reusable open-source
-authorization foundation. Amsonia Source Distribution is the complete
+authorization foundation. Amsonia Platform is the complete
 commercial Go + Next.js SaaS codebase published by Willuny Labs, adding
 production SaaS modules, updates, and broader operations tooling. See
 [willuny.com/amsonia](https://willuny.com/amsonia) for the product and architecture context:
@@ -190,5 +190,5 @@ production SaaS modules, updates, and broader operations tooling. See
 
 ## License
 
-Amsonia Core is Apache-2.0. Amsonia Source Distribution and modules outside
+Amsonia Core is Apache-2.0. Amsonia Platform and modules outside
 this repository are licensed separately.

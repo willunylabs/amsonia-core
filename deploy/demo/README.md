@@ -84,8 +84,9 @@ The `traefik-phase1.yml` and `traefik-demo-only.yml` files document the staged
 rollout options and can support a hostname-scoped rollback, but they are not
 active in production.
 
-The Demo Console is continuously deployed by
-`.github/workflows/deploy-demo-web.yml` after CI succeeds on `main`. It uses the
+The legacy Core Demo Console is no longer continuously deployed. The retained
+`.github/workflows/deploy-demo-web.yml` is manual-only while the commercial
+Amsonia Platform demo is prepared in the commercial repositories. It uses the
 host-side `deploy-amsonia-demo-web.sh` contract and the
 `AmsoniaDeployDemoWeb` SSM document to switch only the Console release. The
 public read-only account values come from the `DEMO_VIEWER_EMAIL` and

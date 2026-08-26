@@ -1,9 +1,7 @@
-name: Deploy Amsonia Demo
+name: Deploy Legacy Core Demo (manual only)
 
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,16 +13,11 @@ concurrency:
 
 jobs:
   deploy:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main' &&
-      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     environment: amsonia-production
     timeout-minutes: 20
     env:
-      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+      RELEASE_SHA: ${{ github.sha }}
       AWS_REGION: ${{ vars.AWS_REGION }}
       INSTANCE_ID: ${{ vars.AMSONIA_EC2_INSTANCE_ID }}
       ARTIFACT_BUCKET: ${{ vars.AMSONIA_ARTIFACT_BUCKET }}
@@ -55,7 +48,7 @@ jobs:
 
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
 
       - uses: actions/setup-node@v7
         with:

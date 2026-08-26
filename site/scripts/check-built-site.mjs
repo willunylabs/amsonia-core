@@ -53,6 +53,7 @@ for (const file of htmlFiles) {
   const html = readFileSync(file, 'utf8');
   assert.doesNotMatch(html, /willuny\.xyz|willunylabs\.com/i, `${file} must not publish a legacy Willuny domain`);
   assert.doesNotMatch(html, /Complete Amsonia|Commercial Amsonia|Amsonia Full/i, `${file} must use the accepted product names`);
+  assert.doesNotMatch(html, /demo\.amsonia\.dev|data-cta-target="demo"|Live demo/i, `${file} must not present the commercial demo as Core evidence`);
   assert.doesNotMatch(html, /mailto:|email-protection/i, `${file} must use the canonical contact page instead of an obfuscated email URL`);
   for (const match of html.matchAll(/href="(\/[^"]*)"/g)) {
     const href = match[1];
@@ -68,7 +69,7 @@ const homepage = readFileSync(pageFile('/'), 'utf8');
 assert.ok(homepage.includes(`${companyOrigin}/#organization`), 'homepage publisher must use the configured Willuny organization ID');
 assert.ok(homepage.includes(`${origin}/#product`), 'homepage must declare the configured Amsonia product entity');
 assert.match(homepage, /PRODUCT \/ 00/, 'homepage must present Amsonia as the product');
-assert.match(homepage, /Amsonia Source Distribution/, 'homepage must name the commercial product consistently');
+assert.match(homepage, /Amsonia Platform/, 'homepage must name the commercial product consistently');
 
 const corePage = readFileSync(pageFile('/core'), 'utf8');
 assert.ok(corePage.includes(`${origin}/#product`), 'Core must identify the configured Amsonia product as its parent');

@@ -67,7 +67,6 @@ jobs:
       PUBLIC_SITE_ORIGIN: https://product.example.test
       PUBLIC_COMPANY_ORIGIN: https://company.example.test
       PUBLIC_GITHUB_URL: https://source.example.test/project
-      PUBLIC_DEMO_ORIGIN: https://demo.example.test
       PUBLIC_COMMERCIAL_URL: https://company.example.test/product
     defaults:
       run:
