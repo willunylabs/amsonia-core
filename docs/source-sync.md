@@ -7,8 +7,8 @@ migrations, documentation, examples, and releases.
 
 ## Manifests
 
-- Backend: `willuny-go-admin/amsonia-core.export.json`
-- Frontend: `willuny-go-ui/amsonia-core.export.json`
+- Backend: `amsonia-server/amsonia-core.export.json`
+- Frontend: `amsonia-web/amsonia-core.export.json`
 
 Every path not listed in a manifest is denied. Export manifests must not use
 wildcards, symlinks, absolute paths, traversal, credentials, customer
@@ -34,7 +34,7 @@ go run ./cmd/core-sync \
   --source-root "$ADMIN_ROOT" \
   --destination-root . \
   --source-commit "$ADMIN_SHA" \
-  --provenance provenance/willuny-go-admin.json
+  --provenance provenance/amsonia-server.json
 
 go run ./cmd/core-sync \
   --mode sync \
@@ -42,7 +42,7 @@ go run ./cmd/core-sync \
   --source-root "$UI_ROOT" \
   --destination-root . \
   --source-commit "$UI_SHA" \
-  --provenance provenance/willuny-go-ui.json
+  --provenance provenance/amsonia-web.json
 ```
 
 Review every generated diff. Synchronization never commits, pushes, merges, or
@@ -62,7 +62,7 @@ go run ./cmd/core-sync \
   --source-root "$ADMIN_ROOT" \
   --destination-root . \
   --source-commit "$ADMIN_SHA" \
-  --provenance provenance/willuny-go-admin.json
+  --provenance provenance/amsonia-server.json
 
 go run ./cmd/core-sync \
   --mode check \
@@ -70,15 +70,15 @@ go run ./cmd/core-sync \
   --source-root "$UI_ROOT" \
   --destination-root . \
   --source-commit "$UI_SHA" \
-  --provenance provenance/willuny-go-ui.json
+  --provenance provenance/amsonia-web.json
 ```
 
 Public CI verifies committed destination files against their provenance without
 access to the source repositories:
 
 ```bash
-go run ./cmd/core-sync --mode verify --destination-root . --provenance provenance/willuny-go-admin.json
-go run ./cmd/core-sync --mode verify --destination-root . --provenance provenance/willuny-go-ui.json
+go run ./cmd/core-sync --mode verify --destination-root . --provenance provenance/amsonia-server.json
+go run ./cmd/core-sync --mode verify --destination-root . --provenance provenance/amsonia-web.json
 ```
 
 ## Ownership And Contributions

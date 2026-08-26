@@ -1,4 +1,4 @@
-.PHONY: check demo demo-down demo-status go-check web-check site-check postgres-check
+.PHONY: check check-product-identifiers demo demo-down demo-status go-check web-check site-check postgres-check
 
 demo:
 	go run ./cmd/amsonia-local up
@@ -9,7 +9,10 @@ demo-down:
 demo-status:
 	go run ./cmd/amsonia-local status
 
-check: go-check web-check site-check
+check: check-product-identifiers go-check web-check site-check
+
+check-product-identifiers:
+	bash scripts/check-product-identifiers.sh
 
 go-check:
 	test -z "$$(gofmt -l -- $$(find . -path './web/node_modules' -prune -o -name '*.go' -print))"

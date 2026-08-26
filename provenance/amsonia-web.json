@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_repository": "github.com/willunylabs/willuny-go-ui",
+  "source_repository": "github.com/willunylabs/amsonia-web",
   "source_commit": "1301b788b1354f2506c26944a36cd036748a1502",
   "license": "Apache-2.0",
   "entries": [

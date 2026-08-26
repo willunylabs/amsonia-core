@@ -8,7 +8,7 @@ by the commercial repositories and Willuny site.
 
 ## Shared Willuny visual system
 
-Amsonia uses the same production visual language as `willuny-go-ui`:
+Amsonia uses the same production visual language as `amsonia-web`:
 
 - the shared five-petal Amsonia/Willuny mark from the versioned
   `public/amsonia-mark-v2.svg` asset;

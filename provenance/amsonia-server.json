@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_repository": "github.com/willunylabs/willuny-go-admin",
+  "source_repository": "github.com/willunylabs/amsonia-server",
   "source_commit": "2116857a1986052c7ff4f6e7bcc27b2d3b0d0171",
   "license": "Apache-2.0",
   "entries": [
