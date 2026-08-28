@@ -91,10 +91,13 @@ jobs:
       - uses: actions/checkout@v7
       - name: Validate host deployment script
         run: |
-          test -x deploy/demo/deploy-amsonia-site.sh
-          test -x deploy/demo/deploy-amsonia-demo-web.sh
-          bash -n deploy/demo/deploy-amsonia-site.sh
-          bash -n deploy/demo/deploy-amsonia-demo-web.sh
+          test -x deploy/site/deploy-amsonia-site.sh
+          bash -n deploy/site/deploy-amsonia-site.sh
+          grep -Fq 'replacement: https://willuny.com/admin/login' deploy/site/traefik-dynamic.yml
+          grep -Fq 'X-Robots-Tag: noindex' deploy/site/traefik-dynamic.yml
+          ! grep -Eq '127\.0\.0\.1:(8082|8083|5433)|amsonia-core-(api|web|postgres)' deploy/site/traefik-dynamic.yml
+          test ! -e .github/workflows/deploy-demo-web.yml
+          test ! -e deploy/aws/amsonia-deploy-demo-web-document.json
       - name: Validate constrained AWS deployment contract
         run: |
           python3 - <<'PY'
@@ -103,7 +106,6 @@ jobs:
 
           aws_root = Path("deploy/aws")
           site_document = json.loads((aws_root / "amsonia-deploy-site-document.json").read_text())
-          demo_document = json.loads((aws_root / "amsonia-deploy-demo-web-document.json").read_text())
           trust = json.loads((aws_root / "amsonia-github-deploy-trust.json").read_text())
           policy = json.loads((aws_root / "amsonia-github-deploy-policy.json").read_text())
 
@@ -112,12 +114,6 @@ jobs:
               "/usr/local/sbin/deploy-amsonia-site "
               "'{{ ArtifactUri }}' '{{ ReleaseSha }}' '{{ ArtifactSha256 }}'"
           ]
-          demo_command = demo_document["mainSteps"][0]["inputs"]["runCommand"]
-          assert demo_command == [
-              "/usr/local/sbin/deploy-amsonia-demo-web "
-              "'{{ ArtifactUri }}' '{{ ReleaseSha }}' '{{ ArtifactSha256 }}'"
-          ]
-
           conditions = trust["Statement"][0]["Condition"]["StringEquals"]
           assert conditions["token.actions.githubusercontent.com:aud"] == "sts.amazonaws.com"
           assert conditions["token.actions.githubusercontent.com:sub"] == (
@@ -133,22 +129,8 @@ jobs:
               "arn:aws:ssm:us-east-1:336090301244:document/AmsoniaDeploySite",
               "arn:aws:ec2:us-east-1:336090301244:instance/i-00e3d5d4c5c6b0dac",
           }
-          demo_send_statement = next(
-              item for item in policy["Statement"]
-              if item["Sid"] == "RunFixedDemoWebDeploymentDocument"
-          )
-          assert set(demo_send_statement["Resource"]) == {
-              "arn:aws:ssm:us-east-1:336090301244:document/AmsoniaDeployDemoWeb",
-              "arn:aws:ec2:us-east-1:336090301244:instance/i-00e3d5d4c5c6b0dac",
-          }
-          demo_artifact_statement = next(
-              item for item in policy["Statement"]
-              if item["Sid"] == "PublishVersionedDemoWebArtifact"
-          )
-          assert demo_artifact_statement["Resource"] == (
-              "arn:aws:s3:::h1-recon-results-336090301244-us-east-1/"
-              "deployments/amsonia/demo-web/*"
-          )
+          assert "demo-web" not in json.dumps(policy)
+          assert "AmsoniaDeployDemoWeb" not in json.dumps(policy)
           assert "AWS-RunShellScript" not in json.dumps(policy)
           PY
 

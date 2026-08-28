@@ -1,68 +1,67 @@
 http:
   middlewares:
-    amsonia-demo-security:
+    amsonia-site-security:
       headers:
         frameDeny: true
         contentTypeNosniff: true
-        referrerPolicy: no-referrer
+        referrerPolicy: strict-origin-when-cross-origin
         stsSeconds: 31536000
         stsIncludeSubdomains: true
+    amsonia-demo-retired-security:
+      headers:
         customResponseHeaders:
           X-Robots-Tag: noindex
+    amsonia-demo-commercial-redirect:
+      redirectRegex:
+        regex: ^https?://demo\.amsonia\.dev/.*$
+        replacement: https://willuny.com/admin/login
+        permanent: false
     amsonia-origin-https:
       redirectScheme:
         scheme: https
         permanent: true
 
   routers:
-    amsonia-core-api:
+    amsonia-demo-retired:
       entryPoints:
         - websecure
-      rule: Host(`demo.amsonia.dev`) && (PathPrefix(`/api`) || Path(`/health`) || Path(`/readyz`))
+      rule: Host(`demo.amsonia.dev`)
       middlewares:
-        - amsonia-demo-security
-      service: amsonia-core-api
+        - amsonia-demo-retired-security
+        - amsonia-demo-commercial-redirect
+      service: noop@internal
       tls:
         certResolver: letsencrypt
 
-    amsonia-core-api-http:
+    amsonia-demo-retired-http:
       entryPoints:
         - web
-      rule: Host(`demo.amsonia.dev`) && (PathPrefix(`/api`) || Path(`/health`) || Path(`/readyz`))
+      rule: Host(`demo.amsonia.dev`)
       middlewares:
-        - amsonia-origin-https
+        - amsonia-demo-retired-security
+        - amsonia-demo-commercial-redirect
       service: noop@internal
 
-    amsonia-core-web:
+    amsonia-site:
       entryPoints:
         - websecure
-      rule: Host(`demo.amsonia.dev`)
+      rule: Host(`amsonia.dev`)
       middlewares:
-        - amsonia-demo-security
-      service: amsonia-core-web
+        - amsonia-site-security
+      service: amsonia-site
       tls:
         certResolver: letsencrypt
 
-    amsonia-core-web-http:
+    amsonia-site-http:
       entryPoints:
         - web
-      rule: Host(`demo.amsonia.dev`)
+      rule: Host(`amsonia.dev`)
       middlewares:
         - amsonia-origin-https
       service: noop@internal
 
   services:
-    amsonia-core-api:
-      loadBalancer:
-        passHostHeader: true
-        healthCheck:
-          path: /readyz
-          interval: 10s
-          timeout: 3s
-        servers:
-          - url: http://127.0.0.1:8082
-
-    amsonia-core-web:
+    amsonia-site:
       loadBalancer:
         passHostHeader: true
         healthCheck:
@@ -70,4 +69,4 @@ http:
           interval: 10s
           timeout: 3s
         servers:
-          - url: http://127.0.0.1:8083
+          - url: http://127.0.0.1:8084

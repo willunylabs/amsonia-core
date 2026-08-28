@@ -2,9 +2,8 @@
 
 The Astro site in this directory is the canonical public product and technical
 surface for Amsonia. It is deployed to `amsonia.dev` and has no hosted-demo
-dependency. The historical Core Console at `demo.amsonia.dev` remains separate
-and `noindex` during replacement; the future commercial Platform demo is owned
-by the commercial repositories and Willuny site.
+dependency. Core has no independent hosted Demo. The commercial Platform demo
+is owned by the commercial repositories and the Willuny company site.
 
 ## Shared Willuny visual system
 
