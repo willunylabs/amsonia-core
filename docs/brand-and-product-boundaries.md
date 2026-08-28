@@ -25,7 +25,7 @@ from confusing the company, product, open-source component, and commercial offer
 | Product | `https://amsonia.dev` | Product positioning, technical evaluation, docs, and releases |
 | Core | `https://amsonia.dev/core` | Open-source component overview and documentation |
 | Repository | `https://github.com/willunylabs/amsonia-core` | Source, releases, issues, and contribution |
-| Commercial demo | `https://demo.amsonia.dev` | Read-only Amsonia Platform evaluation; always excluded from indexing |
+| Commercial demo | `https://demo.amsonia.dev` | Non-indexable entry point owned by the commercial Amsonia repositories; currently redirects to the commercial login |
 | Commercial product | `https://willuny.com/amsonia` | Platform scope, licensing, purchase, delivery, and support |
 
 ## Publishing rules

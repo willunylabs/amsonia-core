@@ -7,16 +7,7 @@
       "Action": [
         "s3:GetObject"
       ],
-      "Resource": "arn:aws:s3:::h1-recon-results-336090301244-us-east-1/deployments/amsonia/*"
-    },
-    {
-      "Sid": "ReadAmsoniaRuntimeParameters",
-      "Effect": "Allow",
-      "Action": [
-        "ssm:GetParameter",
-        "ssm:GetParameters"
-      ],
-      "Resource": "arn:aws:ssm:us-east-1:336090301244:parameter/amsonia/prod/*"
+      "Resource": "arn:aws:s3:::h1-recon-results-336090301244-us-east-1/deployments/amsonia/site/*"
     }
   ]
 }
