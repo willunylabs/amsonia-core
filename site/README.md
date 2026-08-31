@@ -28,8 +28,9 @@ and botanical-specimen presentation is retired.
   component.
 - `/core` and `/core/docs/*` contain evidence-backed open-source documentation.
 - `/docs` is the product-family documentation entry point.
-- commercial pricing, licensing, purchase, and company content remain on
-  `willuny.com`.
+- product positioning, pricing, and purchase explanations remain indexable on
+  `amsonia.dev`; transaction CTAs enter the non-indexable Amsonia app;
+- company, publisher, blog, legal, and support content remain on `willuny.com`.
 - unreleased Amsonia products do not receive indexable placeholder pages.
 
 ## Local checks
@@ -49,3 +50,6 @@ Public static assets are served with a one-year immutable cache policy. Never
 overwrite a published logo filename in place; increment the versioned filename
 and update every HTML, favicon, and structured-data reference in the same pull
 request.
+
+`site/public/_headers` carries the matching Cloudflare Pages edge policy. Keep
+it aligned with the current origin security and immutable-asset contract.

@@ -52,7 +52,7 @@ Keep at least two releases and retain each published artifact for 14 days:
 
 The static origin binds only to `127.0.0.1:8084`.
 
-## Static-site deployment
+## Static-site deployment and migration
 
 `amsonia.dev` is released independently from Traefik configuration. A
 successful `CI` run for a push to `main`
@@ -84,3 +84,8 @@ as well as to the protected `amsonia-production` environment.
 
 The GitHub deployment role can publish only the `site` artifact prefix and can
 invoke only `AmsoniaDeploySite` against the dedicated Amsonia instance.
+
+This AWS origin remains the production and rollback path while the static build
+is validated on Cloudflare Pages. See `deploy/cloudflare/README.md`. Do not stop
+or terminate `amsonia-prod` until the Pages custom-domain cutover has completed
+its observation window and the retirement is approved separately.
