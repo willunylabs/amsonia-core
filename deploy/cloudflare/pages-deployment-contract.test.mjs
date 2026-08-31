@@ -22,6 +22,9 @@ test('Pages deployment retains real 404s and security headers', () => {
   const headers = read('site/public/_headers');
 
   assert.match(workflow, /deployment-probe-not-found/);
+  assert.match(workflow, /wait_for_status 200/);
+  assert.match(workflow, /wait_for_status 404/);
+  assert.match(workflow, /for attempt in \$\(seq 1 15\)/);
   assert.match(headers, /Strict-Transport-Security: max-age=31536000; includeSubDomains/);
   assert.match(headers, /X-Content-Type-Options: nosniff/);
   assert.match(headers, /X-Frame-Options: DENY/);
