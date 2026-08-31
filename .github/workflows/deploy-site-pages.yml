@@ -77,13 +77,34 @@ jobs:
         run: |
           set -euo pipefail
           pages_origin="https://${CLOUDFLARE_PAGES_PROJECT}.pages.dev"
+
+          wait_for_status() {
+            local expected_status="$1"
+            local route="$2"
+            local actual_status=""
+
+            for attempt in $(seq 1 15); do
+              actual_status="$(curl --silent --show-error --output /dev/null \
+                --write-out '%{http_code}' --max-time 15 \
+                "${pages_origin}${route}" || true)"
+              if [[ "${actual_status}" == "${expected_status}" ]]; then
+                echo "verified ${route}: ${actual_status}"
+                return 0
+              fi
+
+              echo "waiting for ${route}: expected ${expected_status}, got ${actual_status:-curl-error} (attempt ${attempt}/15)"
+              sleep 2
+            done
+
+            echo "::error::${route} did not return ${expected_status}; last status was ${actual_status:-curl-error}"
+            return 1
+          }
+
           for route in / /core /core/docs/getting-started /robots.txt /sitemap.xml; do
-            test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-              --retry 10 --retry-all-errors --retry-delay 2 "${pages_origin}${route}")" = 200
+            wait_for_status 200 "${route}"
           done
           for route in /api/example /deployment-probe-not-found; do
-            test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-              --retry 10 --retry-all-errors --retry-delay 2 "${pages_origin}${route}")" = 404
+            wait_for_status 404 "${route}"
           done
 
       - name: Deployment summary
