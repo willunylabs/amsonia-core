@@ -21,12 +21,12 @@ from confusing the company, product, open-source component, and commercial offer
 
 | Surface | Canonical URL | Purpose |
 | --- | --- | --- |
-| Company | `https://willuny.com` | Company, portfolio, publisher trust, legal, and transactions |
+| Company | `https://willuny.com` | Company, portfolio, publisher trust, blog, legal, and support |
 | Product | `https://amsonia.dev` | Product positioning, technical evaluation, docs, and releases |
 | Core | `https://amsonia.dev/core` | Open-source component overview and documentation |
 | Repository | `https://github.com/willunylabs/amsonia-core` | Source, releases, issues, and contribution |
-| Commercial demo | `https://demo.amsonia.dev` | Non-indexable entry point owned by the commercial Amsonia repositories; currently redirects to the commercial login |
-| Commercial product | `https://willuny.com/amsonia` | Platform scope, licensing, purchase, delivery, and support |
+| Commercial app | `https://app.amsonia.dev` | Non-indexable checkout, account, delivery, and Console entry point |
+| Product API | `https://api.amsonia.dev` | Non-indexable Amsonia tenant API served by the shared Willuny platform |
 
 ## Publishing rules
 
@@ -36,8 +36,9 @@ from confusing the company, product, open-source component, and commercial offer
    Amsonia Console for its two delivered application surfaces.
 4. Never imply that commercial-only modules are part of the Apache-2.0 Core.
 5. Never publish an unreleased component as an available product.
-6. Product explanations live on Amsonia; company and transaction explanations
-   live on Willuny; code and contribution instructions live on GitHub.
+6. Product and purchase explanations live on the Amsonia product site; company,
+   publisher, blog, legal, and support content live on Willuny; transactions live
+   in the Amsonia app; code and contribution instructions live on GitHub.
 7. Do not duplicate the same body copy across the product and company domains.
 8. Core documentation and navigation must not present the hosted Platform demo as
    a Core demo; Core evaluation happens through source, docs, tests, and local run.

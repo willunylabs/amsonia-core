@@ -89,6 +89,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Validate Cloudflare Pages shadow contract
+        run: node --test deploy/cloudflare/pages-deployment-contract.test.mjs
       - name: Validate host deployment script
         run: |
           test -x deploy/site/deploy-amsonia-site.sh
