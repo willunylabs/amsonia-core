@@ -37,7 +37,7 @@ createuser --login --no-superuser --no-createdb \
           <p>Run migrations as the database owner, then install the least-privileged grants using the checked-in role-provisioning script. Store binding secrets outside the repository.</p>
 
           <h3>Migrate, bootstrap, and start</h3>
-          <pre><code>export AMSONIA_MIGRATION_DSN='postgres://db_owner@127.0.0.1:5432/amsonia_core?sslmode=disable'
+          <pre><code><!--email_off-->export AMSONIA_MIGRATION_DSN='postgres://db_owner@127.0.0.1:5432/amsonia_core?sslmode=disable'<!--/email_off-->
 go run ./cmd/amsonia migrate
 go run ./cmd/amsonia bootstrap-admin
 go run ./cmd/api</code></pre>
