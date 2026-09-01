@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import {
+  absoluteUrl,
   amsoniaBrandReference,
   amsoniaProductReference,
   COMMERCIAL_URL,
@@ -17,11 +18,11 @@ const schemas = [{
     {
       ...publisherReference,
       legalName: COMPANY_NAME,
-      logo: `${SITE_ORIGIN}/amsonia-mark-v2.svg`,
+      logo: absoluteUrl('/amsonia-mark-v2.svg'),
     },
     {
       ...amsoniaBrandReference,
-      logo: `${SITE_ORIGIN}/amsonia-mark-v2.svg`
+      logo: absoluteUrl('/amsonia-mark-v2.svg')
     },
     {
       ...amsoniaProductReference,
@@ -30,7 +31,7 @@ const schemas = [{
       operatingSystem: 'Self-hosted',
       brand: { '@id': `${SITE_ORIGIN}/#brand` },
       publisher: { '@id': publisherReference['@id'] },
-      hasPart: { '@id': `${SITE_ORIGIN}/core#source` }
+      hasPart: { '@id': `${absoluteUrl('/core')}#source` }
     },
     {
       '@type': 'WebSite',
@@ -59,8 +60,8 @@ const schemas = [{
           </p>
           <div class="hero-actions">
             <a class="button primary" href={GITHUB_URL} data-cta-target="github">GitHub source <span aria-hidden="true">↗</span></a>
-            <a class="button secondary" href="/core/docs/getting-started" data-cta-target="docs">Documentation <span aria-hidden="true">→</span></a>
-            <a class="button quiet" href="/core/security">Security model <span aria-hidden="true">→</span></a>
+            <a class="button secondary" href="/core/docs/getting-started/" data-cta-target="docs">Documentation <span aria-hidden="true">→</span></a>
+            <a class="button quiet" href="/core/security/">Security model <span aria-hidden="true">→</span></a>
           </div>
         </div>
         <div class="hero-specimen" aria-label="Amsonia Core product summary">
@@ -79,7 +80,7 @@ const schemas = [{
             <div><span>03</span><strong>Inspectable</strong><small>Versioned policy evidence</small></div>
             <div><span>04</span><strong>Source-owned</strong><small>Apache-2.0 foundation</small></div>
           </div>
-          <a class="hero-product-link" href="/core">Explore Amsonia Core <span aria-hidden="true">→</span></a>
+          <a class="hero-product-link" href="/core/">Explore Amsonia Core <span aria-hidden="true">→</span></a>
         </div>
       </div>
     </section>
@@ -122,8 +123,8 @@ const schemas = [{
               <li>Versioned HTTP and OpenAPI contract</li>
             </ul>
             <div class="hero-actions">
-              <a class="button primary" href="/core">Explore Core <span aria-hidden="true">→</span></a>
-              <a class="button secondary" href="/core/docs/getting-started">Run locally <span aria-hidden="true">→</span></a>
+              <a class="button primary" href="/core/">Explore Core <span aria-hidden="true">→</span></a>
+              <a class="button secondary" href="/core/docs/getting-started/">Run locally <span aria-hidden="true">→</span></a>
             </div>
           </article>
           <aside class="boundary-note">
@@ -149,16 +150,16 @@ const schemas = [{
           </div>
         </div>
         <div class="link-grid">
-          <a class="link-card" href="/core/docs/getting-started">
+          <a class="link-card" href="/core/docs/getting-started/">
             <span>DOC / 01</span><h3>Start locally</h3><p>Run the complete least-privileged PostgreSQL, API, and Console stack with one command.</p>
           </a>
-          <a class="link-card" href="/core/security">
+          <a class="link-card" href="/core/security/">
             <span>SEC / 02</span><h3>Security model</h3><p>Understand signed tenant context, forced RLS, negative tests, and operational assumptions.</p>
           </a>
-          <a class="link-card" href="/core/api">
+          <a class="link-card" href="/core/api/">
             <span>API / 03</span><h3>HTTP contract</h3><p>Inspect the versioned OpenAPI contract for authentication, tenants, roles, audit, and decisions.</p>
           </a>
-          <a class="link-card" href="/releases">
+          <a class="link-card" href="/releases/">
             <span>REL / 04</span><h3>Release history</h3><p>Follow the public tags and release notes instead of relying on an unversioned feature list.</p>
           </a>
         </div>
