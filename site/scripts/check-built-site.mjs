@@ -81,6 +81,13 @@ assert.match(homepage, /Amsonia Platform/, 'homepage must name the commercial pr
 const corePage = readFileSync(pageFile('/core'), 'utf8');
 assert.ok(corePage.includes(`${origin}/#product`), 'Core must identify the configured Amsonia product as its parent');
 
+const gettingStartedPage = readFileSync(pageFile('/core/docs/getting-started'), 'utf8');
+assert.match(
+  gettingStartedPage,
+  /<!--email_off-->export AMSONIA_MIGRATION_DSN='postgres:\/\/db_owner@127\.0\.0\.1:5432\/amsonia_core\?sslmode=disable'<!--\/email_off-->/,
+  'the database DSN example must opt out of Cloudflare email-address rewriting'
+);
+
 const sitemapFile = join(distRoot, 'sitemap.xml');
 assert.ok(existsSync(sitemapFile), 'sitemap.xml must be generated');
 const sitemap = readFileSync(sitemapFile, 'utf8');
