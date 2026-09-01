@@ -29,7 +29,9 @@ function collectHtml(directory) {
 }
 
 function canonicalFor(route) {
-  return new URL(route, origin).toString();
+  const url = new URL(route, origin);
+  if (url.pathname !== '/' && !url.pathname.endsWith('/')) url.pathname += '/';
+  return url.toString();
 }
 
 for (const route of requiredRoutes) {
@@ -59,6 +61,10 @@ for (const file of htmlFiles) {
     const href = match[1];
     const url = new URL(href, origin);
     if (url.origin !== origin || url.pathname.startsWith('/_astro/')) continue;
+    const lastSegment = url.pathname.split('/').at(-1) || '';
+    if (url.pathname !== '/' && !lastSegment.includes('.')) {
+      assert.ok(url.pathname.endsWith('/'), `${file} links to a redirecting internal route: ${href}`);
+    }
     const target = url.pathname === '/404' ? pageFile('/404') : pageFile(url.pathname);
     const publicTarget = join(distRoot, normalize(url.pathname).replace(/^\//, ''));
     assert.ok(existsSync(target) || existsSync(publicTarget), `${file} links to missing internal target: ${href}`);
@@ -68,11 +74,19 @@ for (const file of htmlFiles) {
 const homepage = readFileSync(pageFile('/'), 'utf8');
 assert.ok(homepage.includes(`${companyOrigin}/#organization`), 'homepage publisher must use the configured Willuny organization ID');
 assert.ok(homepage.includes(`${origin}/#product`), 'homepage must declare the configured Amsonia product entity');
+assert.ok(homepage.includes(`${origin}/core/#source`), 'homepage must reference the canonical Core source entity');
 assert.match(homepage, /PRODUCT \/ 00/, 'homepage must present Amsonia as the product');
 assert.match(homepage, /Amsonia Platform/, 'homepage must name the commercial product consistently');
 
 const corePage = readFileSync(pageFile('/core'), 'utf8');
 assert.ok(corePage.includes(`${origin}/#product`), 'Core must identify the configured Amsonia product as its parent');
+
+const gettingStartedPage = readFileSync(pageFile('/core/docs/getting-started'), 'utf8');
+assert.match(
+  gettingStartedPage,
+  /<!--email_off-->export AMSONIA_MIGRATION_DSN='postgres:\/\/db_owner@127\.0\.0\.1:5432\/amsonia_core\?sslmode=disable'<!--\/email_off-->/,
+  'the database DSN example must opt out of Cloudflare email-address rewriting'
+);
 
 const sitemapFile = join(distRoot, 'sitemap.xml');
 assert.ok(existsSync(sitemapFile), 'sitemap.xml must be generated');

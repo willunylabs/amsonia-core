@@ -37,7 +37,7 @@ createuser --login --no-superuser --no-createdb \
           <p>Run migrations as the database owner, then install the least-privileged grants using the checked-in role-provisioning script. Store binding secrets outside the repository.</p>
 
           <h3>Migrate, bootstrap, and start</h3>
-          <pre><code>export AMSONIA_MIGRATION_DSN='postgres://db_owner@127.0.0.1:5432/amsonia_core?sslmode=disable'
+          <pre><code><!--email_off-->export AMSONIA_MIGRATION_DSN='postgres://db_owner@127.0.0.1:5432/amsonia_core?sslmode=disable'<!--/email_off-->
 go run ./cmd/amsonia migrate
 go run ./cmd/amsonia bootstrap-admin
 go run ./cmd/api</code></pre>
@@ -51,7 +51,7 @@ VITE_API_PROXY_TARGET='http://127.0.0.1:8080' npm --prefix web run dev</code></p
           <h2 id="verify">Run the quality gates</h2>
           <pre><code>make check</code></pre>
           <p>Then run the host business-table proof to verify that PostgreSQL, not a forgotten handler predicate, rejects cross-tenant access.</p>
-          <div class="hero-actions"><a class="button primary" href="/core/docs/business-data-rls">Run the RLS proof →</a><a class="button secondary" href="https://github.com/willunylabs/amsonia-core/blob/main/docs/getting-started.md" data-cta-target="github">Full repository guide ↗</a><a class="button secondary" href="/core/security">Security model →</a></div>
+          <div class="hero-actions"><a class="button primary" href="/core/docs/business-data-rls/">Run the RLS proof →</a><a class="button secondary" href="https://github.com/willunylabs/amsonia-core/blob/main/docs/getting-started.md" data-cta-target="github">Full repository guide ↗</a><a class="button secondary" href="/core/security/">Security model →</a></div>
         </article>
       </div>
     </div>
