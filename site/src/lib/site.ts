@@ -17,11 +17,11 @@ export const GITHUB_URL = requiredURL('PUBLIC_GITHUB_URL', import.meta.env.PUBLI
 export const COMMERCIAL_URL = requiredURL('PUBLIC_COMMERCIAL_URL', import.meta.env.PUBLIC_COMMERCIAL_URL);
 
 export const primaryNav = [
-  { href: '/core', label: 'Core' },
-  { href: '/docs', label: 'Docs' },
-  { href: '/releases', label: 'Releases' },
-  { href: '/open-source', label: 'Open source' },
-  { href: '/about', label: 'About' }
+  { href: '/core/', label: 'Core' },
+  { href: '/docs/', label: 'Docs' },
+  { href: '/releases/', label: 'Releases' },
+  { href: '/open-source/', label: 'Open source' },
+  { href: '/about/', label: 'About' }
 ];
 
 export type Breadcrumb = {
@@ -29,7 +29,15 @@ export type Breadcrumb = {
   href: string;
 };
 
-export const absoluteUrl = (path: string) => new URL(path, SITE_ORIGIN).toString();
+export function absoluteUrl(path: string): string {
+  const url = new URL(path, SITE_ORIGIN);
+  const lastSegment = url.pathname.split('/').at(-1) || '';
+  const isFile = lastSegment.includes('.');
+  if (url.pathname !== '/' && !url.pathname.endsWith('/') && !isFile) {
+    url.pathname += '/';
+  }
+  return url.toString();
+}
 
 export function breadcrumbSchema(items: Breadcrumb[]) {
   return {
