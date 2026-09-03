@@ -1,9 +1,9 @@
 # Amsonia product site
 
-The Astro site in this directory is the canonical public product and technical
-surface for Amsonia. It is deployed to `amsonia.dev` and has no hosted-demo
-dependency. Core has no independent hosted Demo. The commercial Platform demo
-is owned by the commercial repositories and the Willuny company site.
+The Astro site in this directory is the canonical public product surface for
+Amsonia. It is deployed to `amsonia.dev` and has no hosted-demo dependency.
+Amsonia Platform transactions and any future read-only demo are operated by the
+commercial repositories, outside this indexable static site.
 
 ## Shared Willuny visual system
 
@@ -24,14 +24,16 @@ and botanical-specimen presentation is retired.
 
 ## Information boundary
 
-- `/` introduces the Amsonia product family and makes Core the first public
-  component.
-- `/core` and `/core/docs/*` contain evidence-backed open-source documentation.
+- `/` introduces the Amsonia product family and its Platform and Next products.
+- `/platform` owns the commercial Go + Next.js, multi-tenant product narrative.
+- `/next` owns the open-source, single-tenant Next.js product narrative.
 - `/docs` is the product-family documentation entry point.
 - product positioning, pricing, and purchase explanations remain indexable on
   `amsonia.dev`; transaction CTAs enter the non-indexable Amsonia app;
 - company, publisher, blog, legal, and support content remain on `willuny.com`.
 - unreleased Amsonia products do not receive indexable placeholder pages.
+- retired `/core/*` and `/releases` site routes redirect to the external GitHub
+  repository and are excluded from the sitemap.
 
 ## Local checks
 

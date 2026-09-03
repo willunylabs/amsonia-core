@@ -1,0 +1,14 @@
+---
+import TopicPage from '../../components/TopicPage.astro';
+import { breadcrumbSchema } from '../../lib/site';
+const description = 'Understand Stripe billing in Amsonia Platform across checkout, verified webhooks, idempotency, subscriptions, invoices, tenant-aware fulfillment, and reconciliation.';
+---
+<TopicPage eyebrow="Platform capability" index="FEATURE / 03" title="Stripe billing continues after checkout" summary="Reliable billing connects verified payment events to subscription state, invoices, fulfillment, reconciliation, and tenant-aware operations." description={description} canonicalPath="/features/stripe-billing" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Platform', href: '/platform' }, { name: 'Stripe billing', href: '/features/stripe-billing' }])]}
+  sections={[
+    { id: 'checkout', title: 'Create checkout on the server', paragraphs: ['The server selects trusted products and prices, creates the provider session, and constrains allowed return URLs. Browser input does not determine the authoritative amount, fulfillment rule, or tenant.', 'Provider credentials remain server-side and are supplied by the buyer for the deployed product.'] },
+    { id: 'webhooks', title: 'Verify before changing state', paragraphs: ['Webhook signatures are verified against the raw request before payment or subscription state changes. Event handling is idempotent because providers retry and delivery order is not a business guarantee.', 'The application records enough provider and internal identity to reconcile an event without treating redirect success as proof of payment.'] },
+    { id: 'lifecycle', title: 'Model the subscription lifecycle', paragraphs: ['A production flow covers creation, payment status, renewal, cancellation, resumption, invoice access, failed payment handling, and reconciliation. Product access follows accepted server-side state transitions.', 'Fulfillment may include digital delivery or repository access, but each mechanism needs explicit retry, audit, and revocation behavior.'] },
+    { id: 'scope', title: 'Keep billing tenant-aware', paragraphs: ['Catalog synchronization, checkout, subscriptions, invoices, ledgers, and fulfillment preserve tenant context. One tenant must not select another tenant’s product configuration or observe its provider records.', 'Amsonia supplies a foundation for these flows. Buyers still configure Stripe, taxes, pricing, customer communication, refunds, and jurisdiction-specific obligations.'] }
+  ]}
+  relatedLinks={[{ href: '/platform/', label: 'Platform', description: 'See billing in the complete product foundation.' }, { href: '/security/', label: 'Security', description: 'Review secret and webhook boundaries.' }, { href: '/license/', label: 'Commercial license', description: 'Separate product licensing from customer billing.' }, { href: '/architecture/', label: 'Architecture', description: 'Trace server-owned billing decisions.' }]}
+/>

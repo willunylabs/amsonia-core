@@ -154,13 +154,15 @@ jobs:
             sleep 5
           done
 
-      - name: Verify public Core site
+      - name: Verify public Amsonia site
         run: |
           set -euo pipefail
-          for route in / /core /core/docs/getting-started /robots.txt /sitemap.xml; do
+          for route in / /platform /next /robots.txt /sitemap.xml; do
             test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
               --retry 10 --retry-all-errors --retry-delay 2 "${PUBLIC_SITE_ORIGIN}${route}")" = 200
           done
+          test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --retry 10 --retry-all-errors --retry-delay 2 "${PUBLIC_SITE_ORIGIN}/core")" = 301
           for route in /api/example /deployment-probe-not-found; do
             test "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
               --retry 10 --retry-all-errors --retry-delay 2 "${PUBLIC_SITE_ORIGIN}${route}")" = 404

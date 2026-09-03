@@ -1,0 +1,30 @@
+---
+import TopicPage from '../components/TopicPage.astro';
+import { breadcrumbSchema, COMMERCIAL_URL, softwareProductSchema } from '../lib/site';
+
+const description = 'Evaluate a Go SaaS boilerplate with Next.js, multi-tenancy, RBAC, Stripe billing, administration, source ownership, and self-hosted deployment boundaries.';
+const product = softwareProductSchema({ name: 'Amsonia Platform', path: '/platform', description, license: 'Commercial source license', isAccessibleForFree: false });
+---
+
+<TopicPage
+  eyebrow="Go SaaS boilerplate / Buyer guide"
+  index="GUIDE / GO-01"
+  title="What a Go SaaS boilerplate should own"
+  summary="A production-oriented starter is not defined by its homepage. Evaluate the request boundary, tenant model, authorization, billing lifecycle, operations, and what your team receives after purchase."
+  description={description}
+  canonicalPath="/go-saas-boilerplate"
+  schemas={[product, breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Go SaaS boilerplate', href: '/go-saas-boilerplate' }])]}
+  sections={[
+    { id: 'fit', title: 'When Go is the right boundary', paragraphs: ['A Go backend is useful when the product benefits from explicit service boundaries, predictable deployment artifacts, server-owned business rules, and a language well suited to concurrent application work. It also creates an operational cost: the frontend and API become separate runtimes.', 'Choose a Go + Next.js starter because the product needs that split today, not because a second runtime sounds more enterprise. A single Next.js application is the more honest choice for many early products.'] },
+    { id: 'tenancy', title: 'Tenancy before feature count', paragraphs: ['Multi-tenancy affects identity, authorization, database access, background jobs, cache keys, files, webhooks, and administration. A tenant_id column on a few tables is not a complete isolation model.', 'A useful Go SaaS foundation makes tenant context explicit at trusted server boundaries and keeps cross-tenant negative tests permanent as the domain grows.'] },
+    { id: 'auth', title: 'Authorization stays server-side', paragraphs: ['RBAC should describe which action an identity may perform inside a tenant, while tenant membership describes where that identity may operate. The API must enforce both; hiding a navigation item in Next.js is only interface behavior.', 'The implementation should make delegated authorization, tenant context, and PostgreSQL row-level security assumptions testable rather than burying them in interface conventions.'] },
+    { id: 'billing', title: 'Billing is a lifecycle', paragraphs: ['A checkout page is the beginning of billing, not the end. Review webhook signature verification, idempotency, subscription transitions, invoices, reconciliation, fulfillment, and how every operation stays tenant-aware.', 'Provider secrets and fulfillment decisions belong on the server. The browser should never become the authority for payment state.'] },
+    { id: 'ownership', title: 'Know what source ownership includes', paragraphs: ['A source-code license should state the repositories or artifacts delivered, permitted commercial use, repository-user limits, update period, support boundary, and exclusions. It should also be clear whether hosting or custom implementation is included.', 'Amsonia Platform is a commercial source package. The buyer controls customization and deployment; Willuny Labs remains the seller and support boundary for the selected package.'] }
+  ]}
+  relatedLinks={[
+    { href: '/platform/', label: 'Amsonia Platform', description: 'Evaluate the commercial Go + Next.js product.' },
+    { href: '/features/multi-tenancy/', label: 'Multi-tenancy', description: 'Inspect the cross-cutting tenant boundary.' },
+    { href: '/compare/platform-vs-next/', label: 'Platform vs Next', description: 'Decide whether two runtimes are justified.' },
+    { href: COMMERCIAL_URL, label: 'Source packages', description: 'Review the current commercial catalog.' }
+  ]}
+/>

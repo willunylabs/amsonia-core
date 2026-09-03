@@ -10,8 +10,11 @@ assert.ok(origin, 'PUBLIC_SITE_ORIGIN is required for the site audit');
 const companyOrigin = String(process.env.PUBLIC_COMPANY_ORIGIN || '').trim();
 assert.ok(companyOrigin, 'PUBLIC_COMPANY_ORIGIN is required for the site audit');
 const requiredRoutes = [
-  '/', '/core', '/core/docs', '/core/docs/getting-started', '/core/docs/business-data-rls', '/core/api',
-  '/core/security', '/core/license', '/docs', '/releases', '/open-source', '/about'
+  '/', '/products', '/platform', '/platform/docs', '/platform/docs/quickstart', '/platform/docs/deployment',
+  '/platform/docs/billing', '/platform/changelog', '/platform/roadmap', '/next', '/compare/platform-vs-next',
+  '/go-saas-boilerplate', '/best-go-saas-boilerplates',
+  '/features/multi-tenancy', '/features/rbac', '/features/stripe-billing', '/architecture', '/security', '/pricing', '/license',
+  '/docs', '/open-source', '/about'
 ];
 
 function pageFile(route) {
@@ -54,8 +57,9 @@ const htmlFiles = collectHtml(distRoot);
 for (const file of htmlFiles) {
   const html = readFileSync(file, 'utf8');
   assert.doesNotMatch(html, /willuny\.xyz|willunylabs\.com/i, `${file} must not publish a legacy Willuny domain`);
-  assert.doesNotMatch(html, /Complete Amsonia|Commercial Amsonia|Amsonia Full/i, `${file} must use the accepted product names`);
-  assert.doesNotMatch(html, /demo\.amsonia\.dev|data-cta-target="demo"|Live demo/i, `${file} must not present the commercial demo as Core evidence`);
+  assert.doesNotMatch(html, /Complete Amsonia|Commercial Amsonia|Amsonia Full/, `${file} must use the accepted product names`);
+  assert.doesNotMatch(html, /demo\.amsonia\.dev|data-cta-target="demo"|Live demo/i, `${file} must not present an unverified hosted demo as product evidence`);
+  assert.doesNotMatch(html, /Amsonia Core/i, `${file} must keep Core outside the product-site narrative`);
   assert.doesNotMatch(html, /mailto:|email-protection/i, `${file} must use the canonical contact page instead of an obfuscated email URL`);
   for (const match of html.matchAll(/href="(\/[^"]*)"/g)) {
     const href = match[1];
@@ -73,20 +77,12 @@ for (const file of htmlFiles) {
 
 const homepage = readFileSync(pageFile('/'), 'utf8');
 assert.ok(homepage.includes(`${companyOrigin}/#organization`), 'homepage publisher must use the configured Willuny organization ID');
-assert.ok(homepage.includes(`${origin}/#product`), 'homepage must declare the configured Amsonia product entity');
-assert.ok(homepage.includes(`${origin}/core/#source`), 'homepage must reference the canonical Core source entity');
-assert.match(homepage, /PRODUCT \/ 00/, 'homepage must present Amsonia as the product');
+assert.ok(homepage.includes(`${origin}/#product-family`), 'homepage must declare the configured Amsonia product family');
+assert.ok(homepage.includes(`${origin}/platform/#software`), 'homepage must reference Amsonia Platform');
+assert.ok(homepage.includes(`${origin}/next/#software`), 'homepage must reference Amsonia Next');
+assert.match(homepage, /FAMILY \/ 00/, 'homepage must present Amsonia as the product family');
 assert.match(homepage, /Amsonia Platform/, 'homepage must name the commercial product consistently');
-
-const corePage = readFileSync(pageFile('/core'), 'utf8');
-assert.ok(corePage.includes(`${origin}/#product`), 'Core must identify the configured Amsonia product as its parent');
-
-const gettingStartedPage = readFileSync(pageFile('/core/docs/getting-started'), 'utf8');
-assert.match(
-  gettingStartedPage,
-  /<!--email_off-->export AMSONIA_MIGRATION_DSN='postgres:\/\/db_owner@127\.0\.0\.1:5432\/amsonia_core\?sslmode=disable'<!--\/email_off-->/,
-  'the database DSN example must opt out of Cloudflare email-address rewriting'
-);
+assert.match(homepage, /Amsonia Next/, 'homepage must name the Next.js product consistently');
 
 const sitemapFile = join(distRoot, 'sitemap.xml');
 assert.ok(existsSync(sitemapFile), 'sitemap.xml must be generated');
@@ -95,6 +91,13 @@ for (const route of requiredRoutes) {
   assert.ok(sitemap.includes(`<loc>${canonicalFor(route)}</loc>`), `sitemap missing ${route}`);
 }
 assert.doesNotMatch(sitemap, /demo\.amsonia\.dev|\/404|<loc>[^<]*\?/, 'sitemap must contain only clean indexable URLs');
+assert.doesNotMatch(sitemap, /\/core(?:\/|<)|\/releases(?:\/|<)/, 'sitemap must exclude retired Core and release routes');
+
+const redirectsFile = join(distRoot, '_redirects');
+assert.ok(existsSync(redirectsFile), 'Cloudflare Pages redirects must be generated');
+const redirects = readFileSync(redirectsFile, 'utf8');
+assert.match(redirects, /^\/core\s+https:\/\/github\.com\/willunylabs\/amsonia-core\s+301$/m, 'the retired Core root must redirect to GitHub');
+assert.match(redirects, /^\/core\/\*\s+https:\/\/github\.com\/willunylabs\/amsonia-core\s+301$/m, 'retired Core descendants must redirect to GitHub');
 
 const robots = readFileSync(join(distRoot, 'robots.txt'), 'utf8');
 assert.match(robots, /User-agent: \*\s+Allow: \//, 'robots.txt must allow crawling');

@@ -1,5 +1,5 @@
 ---
-import { GITHUB_URL, primaryNav } from '../lib/site';
+import { COMMERCIAL_URL, primaryNav } from '../lib/site';
 
 const currentPath = Astro.url.pathname;
 ---
@@ -18,8 +18,8 @@ const currentPath = Astro.url.pathname;
       ))}
     </nav>
 
-    <a class="header-demo" href={GITHUB_URL} data-cta-target="github">
-      GitHub source
+    <a class="header-demo" href={COMMERCIAL_URL} data-cta-target="commercial">
+      View source packages
       <svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16"><path d="M4 10h12M11 5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
     </a>
 
@@ -31,7 +31,7 @@ const currentPath = Astro.url.pathname;
         {primaryNav.map((item) => (
           <a href={item.href} aria-current={currentPath === item.href ? 'page' : undefined}>{item.label}</a>
         ))}
-        <a href={GITHUB_URL} data-cta-target="github">GitHub source ↗</a>
+        <a href={COMMERCIAL_URL} data-cta-target="commercial">View source packages ↗</a>
       </nav>
     </details>
   </div>

@@ -1,0 +1,22 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageIntro from '../components/PageIntro.astro';
+import { AMSONIA_NEXT_GITHUB_URL, breadcrumbSchema, COMMERCIAL_URL } from '../lib/site';
+
+const description = 'Compare Amsonia Platform and Amsonia Next by stack, tenancy model, license, operating boundary, and the type of SaaS product each one fits.';
+---
+
+<BaseLayout title="Amsonia Products" description={description} canonicalPath="/products" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Products', href: '/products' }])]}>
+  <main id="main-content">
+    <PageIntro eyebrow="Product family" index="PRODUCTS / 00" title="Two foundations. One ownership principle." summary="Pick the product that matches your architecture today. Platform is a commercial multi-tenant Go + Next.js system; Next is a focused open-source Next.js starter." />
+    <div class="content-shell">
+      <section class="section">
+        <div class="product-grid">
+          <article class="product-card product-card-featured"><span class="specimen-number">01 / COMMERCIAL</span><h2>Amsonia Platform</h2><p class="product-lede">For technical founders and small teams building a multi-tenant B2B SaaS with a Go API and Next.js surfaces.</p><ul class="capability-list"><li>Go + Next.js</li><li>Multi-tenant</li><li>Commercial source license</li><li>Billing and operations</li></ul><div class="hero-actions"><a class="button primary" href="/platform/">Evaluate Platform →</a><a class="button secondary" href={COMMERCIAL_URL} data-cta-target="commercial">Source packages ↗</a></div></article>
+          <article class="product-card"><span class="specimen-number">02 / MIT</span><h2>Amsonia Next</h2><p class="product-lede">For a single-tenant product that wants Auth.js, PostgreSQL, billing, admin, and account flows in one Next.js codebase.</p><ul class="capability-list"><li>Next.js 16</li><li>Single-tenant</li><li>MIT license</li><li>Stripe + Lemon Squeezy</li></ul><div class="hero-actions"><a class="button primary" href="/next/">Explore Next →</a><a class="button secondary" href={AMSONIA_NEXT_GITHUB_URL} data-cta-target="github">GitHub source ↗</a></div></article>
+        </div>
+      </section>
+      <section class="decision-strip"><div><span class="eyebrow">Fast decision</span><h2>Need tenant isolation and a Go service?</h2></div><div><p>Choose Platform. If one Next.js runtime and one product tenant fit the problem, start with Next.</p><a class="button secondary" href="/compare/platform-vs-next/">Open the full comparison →</a></div></section>
+    </div>
+  </main>
+</BaseLayout>

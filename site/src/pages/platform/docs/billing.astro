@@ -1,0 +1,14 @@
+---
+import TopicPage from '../../../components/TopicPage.astro';
+import { breadcrumbSchema } from '../../../lib/site';
+const description = 'Evaluate and configure Amsonia Platform billing with server-created checkout, verified and idempotent webhooks, tenant-aware state, subscriptions, invoices, and fulfillment.';
+---
+<TopicPage eyebrow="Platform docs / Billing" index="DOC / 03" title="Operate billing as a product domain" summary="Configure buyer-owned providers around server-authoritative checkout, webhook, subscription, invoice, ledger, reconciliation, and fulfillment flows." description={description} canonicalPath="/platform/docs/billing" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Platform', href: '/platform' }, { name: 'Docs', href: '/platform/docs' }, { name: 'Billing', href: '/platform/docs/billing' }])]}
+  sections={[
+    { id: 'configure', title: 'Configure the buyer’s provider account', paragraphs: ['Use the buyer’s products, prices, tax configuration, branding, callback origins, and credentials. Development and production provider accounts must stay separate.', 'Platform provides integration surfaces; it does not decide the buyer’s pricing, taxes, refund policy, or regulatory obligations.'] },
+    { id: 'checkout', title: 'Keep checkout server-authoritative', paragraphs: ['The server resolves the trusted offer and creates the checkout session. Return URLs are allow-listed, and browser input cannot become the authority for amount, entitlement, or tenant.', 'A successful browser redirect is user experience, not proof that payment and fulfillment completed.'] },
+    { id: 'events', title: 'Verify and process provider events', paragraphs: ['Verify webhook signatures against the raw request, persist provider event identity, and make handlers idempotent. Retries and delivery reordering are expected conditions.', 'Subscription and payment transitions update internal state through accepted server-side rules, with enough evidence for later reconciliation.'] },
+    { id: 'fulfillment', title: 'Make fulfillment recoverable', paragraphs: ['Digital delivery or repository access needs explicit retry, audit, revocation, and operator recovery paths. A completed payment must not be lost because a downstream provider was temporarily unavailable.', 'Test duplicate events, delayed events, failed fulfillment, cancellation, refund, and cross-tenant attempts before production use.'] }
+  ]}
+  relatedLinks={[{ href: '/features/stripe-billing/', label: 'Billing overview', description: 'Review the public lifecycle model.' }, { href: '/security/', label: 'Payment security', description: 'Confirm secret and authority boundaries.' }, { href: '/platform/docs/quickstart/', label: 'Quickstart', description: 'Use isolated development configuration.' }, { href: '/platform/', label: 'Platform', description: 'Return to the product overview.' }]}
+/>

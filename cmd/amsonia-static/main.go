@@ -94,6 +94,11 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if target, ok := legacyExternalRedirect(r.URL.Path); ok {
+		http.Redirect(w, r, target, http.StatusMovedPermanently)
+		return
+	}
+
 	asset, found := resolveAsset(h.root, r.URL.Path, h.spa)
 	if !found {
 		serveNotFound(w, r, h.root)
@@ -102,6 +107,17 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer asset.file.Close()
 
 	serveAsset(w, r, asset)
+}
+
+func legacyExternalRedirect(requestPath string) (string, bool) {
+	switch {
+	case requestPath == "/releases" || requestPath == "/releases/":
+		return "https://github.com/willunylabs/amsonia-core/releases", true
+	case requestPath == "/core" || strings.HasPrefix(requestPath, "/core/"):
+		return "https://github.com/willunylabs/amsonia-core", true
+	default:
+		return "", false
+	}
 }
 
 func resolveAsset(root *os.Root, requestPath string, spa bool) (staticAsset, bool) {

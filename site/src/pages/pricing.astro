@@ -1,0 +1,18 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageIntro from '../components/PageIntro.astro';
+import { breadcrumbSchema, COMMERCIAL_URL } from '../lib/site';
+const description = 'Understand Amsonia pricing: Amsonia Next is MIT-licensed open source, while Amsonia Platform is sold through commercial source-code packages by Willuny Labs.';
+---
+<BaseLayout title="Amsonia Pricing" description={description} canonicalPath="/pricing" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Pricing', href: '/pricing' }])]}>
+  <main id="main-content">
+    <PageIntro eyebrow="Pricing and distribution" index="PRICE / 01" title="Open source or commercial source" summary="The products use different licenses because they solve different problems. Review the scope first; the transaction catalog controls current Platform package prices and terms." />
+    <div class="content-shell">
+      <section class="section"><div class="product-grid">
+        <article class="product-card"><span class="specimen-number">AMSONIA NEXT / MIT</span><h2>Free and open source</h2><p class="product-lede">Clone, modify, and use Amsonia Next under the MIT License. Hosting, provider fees, maintenance, and your product operations remain yours.</p><div class="hero-actions"><a class="button primary" href="/next/">Explore Next →</a><a class="button secondary" href="/license/">Read the license boundary →</a></div></article>
+        <article class="product-card product-card-featured"><span class="specimen-number">AMSONIA PLATFORM / COMMERCIAL</span><h2>Source packages</h2><p class="product-lede">Platform is purchased under a commercial source license. Package price, repository access, permitted users, updates, support, and fulfillment are defined in the current catalog.</p><div class="hero-actions"><a class="button primary" href={COMMERCIAL_URL} data-cta-target="commercial">View current packages ↗</a><a class="button secondary" href="/platform/docs/">Evaluate first →</a></div></article>
+      </div></section>
+      <section class="publication-note"><span class="eyebrow">Before purchase</span><h2>Price is only one boundary.</h2><p>Confirm the product fit, license rights, included repositories or artifacts, update period, support scope, and buyer responsibilities. A source package does not include managed hosting or unlimited implementation unless the selected offer explicitly says so.</p></section>
+    </div>
+  </main>
+</BaseLayout>

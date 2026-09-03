@@ -100,9 +100,10 @@ jobs:
             return 1
           }
 
-          for route in / /core /core/docs/getting-started /robots.txt /sitemap.xml; do
+          for route in / /platform /next /robots.txt /sitemap.xml; do
             wait_for_status 200 "${route}"
           done
+          wait_for_status 200 "/core"
           for route in /api/example /deployment-probe-not-found; do
             wait_for_status 404 "${route}"
           done

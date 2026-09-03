@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageIntro from '../components/PageIntro.astro';
+import { AMSONIA_NEXT_GITHUB_URL, breadcrumbSchema, softwareProductSchema } from '../lib/site';
+
+const description = 'Amsonia Next is an MIT-licensed, open-source Next.js 16 SaaS starter with Auth.js, Drizzle, PostgreSQL, billing providers, admin, and account flows.';
+const schema = softwareProductSchema({ name: 'Amsonia Next', path: '/next', description, license: 'https://opensource.org/license/mit', isAccessibleForFree: true });
+---
+
+<BaseLayout title="Open-source Next.js SaaS Starter" description={description} canonicalPath="/next" schemas={[schema, breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Next', href: '/next' }])]}>
+  <main id="main-content">
+    <PageIntro eyebrow="Amsonia Next / Open source / MIT" index="NEXT / 02" title="A focused Next.js SaaS starter you can own." summary="Start with Next.js 16, Auth.js, Drizzle, PostgreSQL, billing, admin, and account flows in one open-source codebase. The open-source edition is single-tenant by design." />
+    <div class="content-shell">
+      <section class="section compact-section"><div class="metric-grid"><div><span>Framework</span><strong>Next.js 16</strong><p>App Router and full-stack TypeScript.</p></div><div><span>Data</span><strong>Drizzle</strong><p>PostgreSQL with explicit migrations.</p></div><div><span>Identity</span><strong>Auth.js</strong><p>Credentials, magic links, Google, and GitHub.</p></div><div><span>License</span><strong>MIT</strong><p>Use, modify, and ship the source.</p></div></div></section>
+      <section class="section split-section"><div><span class="eyebrow">Useful on day one</span><h2>More than a landing-page template.</h2><p>The repository includes the product loops that usually sit behind the homepage.</p></div><div class="stack-list"><article><span>01</span><h3>Account lifecycle</h3><p>Registration, login, recovery, verification, session management, export, and deletion paths.</p></article><article><span>02</span><h3>Provider-based billing</h3><p>Stripe and Lemon Squeezy support behind a billing abstraction, with webhook and ledger flows.</p></article><article><span>03</span><h3>Administration</h3><p>An admin entry, privileged audit stream, subscription operations, and role-aware routing.</p></article><article><span>04</span><h3>Product surface</h3><p>Localized marketing routes, an MDX blog, metadata, sitemap, robots, and Open Graph foundations.</p></article></div></section>
+      <section class="publication-note"><span class="eyebrow">Deliberate boundary</span><h2>Single-tenant means single-tenant.</h2><p>Amsonia Next does not imply organization isolation it does not provide. Choose it when one application tenant fits your product. If customer organizations, workspace scoping, delegated RBAC, and a separate Go service are requirements, evaluate Platform instead.</p><div class="hero-actions"><a class="button primary" href={AMSONIA_NEXT_GITHUB_URL} data-cta-target="github">View source on GitHub ↗</a><a class="button secondary" href="/compare/platform-vs-next/">Compare with Platform →</a></div></section>
+      <section class="related-section"><span class="eyebrow">Open-source path</span><h2>Inspect before adopting.</h2><div class="link-grid"><a class="link-card" href={AMSONIA_NEXT_GITHUB_URL}><span>GITHUB / 01</span><h3>Read the repository</h3><p>Review the README, source tree, setup instructions, license, and version history.</p></a><a class="link-card" href="/open-source/"><span>OSS / 02</span><h3>Open-source boundary</h3><p>Understand what the MIT-licensed starter includes and what operators still own.</p></a><a class="link-card" href="/compare/platform-vs-next/"><span>FIT / 03</span><h3>Choose the right fit</h3><p>Compare stack, tenancy, licensing, and operating complexity.</p></a><a class="link-card" href="/about/"><span>FAMILY / 04</span><h3>Why Amsonia</h3><p>Understand the product family and its relationship to Willuny Labs.</p></a></div></section>
+    </div>
+  </main>
+</BaseLayout>

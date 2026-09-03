@@ -1,0 +1,13 @@
+---
+import TopicPage from '../../components/TopicPage.astro';
+import { breadcrumbSchema } from '../../lib/site';
+const description = 'Review factual Amsonia Platform product-evaluation and documentation changes without treating the public changelog as a delivery promise or source release ledger.';
+---
+<TopicPage eyebrow="Platform changelog" index="CHANGE / 01" title="Product and documentation changes" summary="This public log records changes to the evaluation surface. Delivered source releases retain their own version and migration notes." description={description} canonicalPath="/platform/changelog" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Platform', href: '/platform' }, { name: 'Changelog', href: '/platform/changelog' }])]}
+  sections={[
+    { id: '2026-09-03', title: 'September 3, 2026 — product-family boundary', paragraphs: ['Established Amsonia Platform and Amsonia Next as separate products under one family. Moved Platform product, feature, pricing, license, architecture, security, and documentation ownership to the product site.', 'Retired non-product pages from the public content surface while keeping engineering repositories available as external GitHub links.'] },
+    { id: '2026-07-29', title: 'July 29, 2026 — commercial evaluation baseline', paragraphs: ['Published focused multi-tenancy, RBAC, Stripe billing, architecture, security, pricing, license, documentation, and roadmap material.', 'Connected product evaluation with the commercial source-package path while keeping transaction pages outside the indexable product content surface.'] },
+    { id: 'release-notes', title: 'Source release notes remain authoritative', paragraphs: ['This page does not describe every code commit, database migration, or compatibility change. Buyers should use the versioned release notes and migration instructions delivered with the commercial source package.', 'A public roadmap item is not a commitment, and a documentation date is not a source release version.'] }
+  ]}
+  relatedLinks={[{ href: '/platform/roadmap/', label: 'Roadmap', description: 'Review direction without delivery promises.' }, { href: '/platform/docs/', label: 'Platform docs', description: 'Read the current evaluation boundary.' }, { href: '/architecture/', label: 'Architecture', description: 'Inspect the current system model.' }, { href: '/platform/', label: 'Platform', description: 'Return to the product overview.' }]}
+/>

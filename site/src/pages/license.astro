@@ -1,0 +1,13 @@
+---
+import TopicPage from '../components/TopicPage.astro';
+import { breadcrumbSchema, COMMERCIAL_URL } from '../lib/site';
+const description = 'Understand the license boundary between the MIT-licensed Amsonia Next product and commercial-source Amsonia Platform packages.';
+---
+<TopicPage eyebrow="License boundary" index="LICENSE / 01" title="Two products. Explicit rights." summary="Amsonia is a product family, not a shared license. The open-source repository and delivered commercial package carry different terms." description={description} canonicalPath="/license" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'License', href: '/license' }])]}
+  sections={[
+    { id: 'next', title: 'Amsonia Next — MIT', paragraphs: ['Amsonia Next is distributed under the MIT License. The repository license text controls the grant and conditions.', 'The license permits broad use, modification, distribution, sublicensing, and sale while requiring preservation of the copyright and permission notice. It provides the software without warranty.'] },
+    { id: 'platform', title: 'Amsonia Platform — commercial source', paragraphs: ['Platform source is delivered under the commercial terms attached to the purchased package. Those terms define permitted use, company or repository-user scope, updates, support, distribution restrictions, and other rights.', 'The transaction catalog and accepted agreement control. This overview is product guidance, not a substitute for the license text.'] },
+    { id: 'operations', title: 'Licenses do not operate the product', paragraphs: ['Open-source and commercial-source rights do not include cloud hosting, database service, email delivery, payment-provider fees, tax handling, maintenance, security review, or compliance work unless an offer explicitly includes them.', 'Buyers remain responsible for the dependencies, infrastructure, data, and modifications in their deployed product.'] }
+  ]}
+  relatedLinks={[{ href: '/next/', label: 'Amsonia Next', description: 'Review the MIT-licensed product scope.' }, { href: '/open-source/', label: 'Open-source boundary', description: 'Inspect the public product and its operating responsibilities.' }, { href: '/platform/', label: 'Amsonia Platform', description: 'Evaluate the commercial source product.' }, { href: COMMERCIAL_URL, label: 'Current packages', description: 'Review transaction-specific commercial terms.' }]}
+/>

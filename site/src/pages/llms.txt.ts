@@ -1,19 +1,20 @@
 import type { APIRoute } from 'astro';
-import { COMMERCIAL_URL, SITE_ORIGIN } from '../lib/site';
+import { AMSONIA_NEXT_GITHUB_URL, COMMERCIAL_URL, SITE_ORIGIN } from '../lib/site';
 
 export const GET: APIRoute = () => {
   const content = [
     '# Amsonia',
     '',
-    'Amsonia is a technical product family for modern Go applications.',
+    'Amsonia is a product family for source-owned SaaS foundations.',
     '',
     `- Product home: ${SITE_ORIGIN}/`,
-    `- Amsonia Core: ${SITE_ORIGIN}/core`,
+    `- Products: ${SITE_ORIGIN}/products`,
+    `- Amsonia Platform: ${SITE_ORIGIN}/platform`,
+    `- Amsonia Next: ${SITE_ORIGIN}/next`,
+    `- Amsonia Next source: ${AMSONIA_NEXT_GITHUB_URL}`,
     `- Documentation: ${SITE_ORIGIN}/docs`,
-    `- Getting started: ${SITE_ORIGIN}/core/docs/getting-started`,
-    `- API contract: ${SITE_ORIGIN}/core/api`,
-    `- Security model: ${SITE_ORIGIN}/core/security`,
-    `- Releases: ${SITE_ORIGIN}/releases`,
+    `- Platform architecture: ${SITE_ORIGIN}/architecture`,
+    `- Platform security: ${SITE_ORIGIN}/security`,
     `- Commercial distribution: ${COMMERCIAL_URL}`,
     '',
     'This file is a convenience index for developer tools. Canonical HTML pages and sitemap.xml remain the authoritative public sources.',
