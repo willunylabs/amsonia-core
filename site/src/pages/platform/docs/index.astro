@@ -1,0 +1,28 @@
+---
+import TopicPage from '../../../components/TopicPage.astro';
+import { breadcrumbSchema, COMMERCIAL_URL } from '../../../lib/site';
+
+const description = 'Evaluate Amsonia Platform as a commercial Go and Next.js source-code SaaS foundation: scope, architecture, buyer responsibilities, delivery, and support boundaries.';
+---
+
+<TopicPage
+  eyebrow="Platform documentation"
+  index="PLATFORM / DOCS"
+  title="Amsonia Platform evaluation guide"
+  summary="A concise guide to what the source package provides, what the buyer owns, and which evidence to review before choosing the commercial foundation."
+  description={description}
+  canonicalPath="/platform/docs"
+  schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Platform', href: '/platform' }, { name: 'Docs', href: '/platform/docs' }])]}
+  sections={[
+    { id: 'scope', title: 'Product scope', paragraphs: ['Amsonia Platform is a Go + Next.js SaaS application foundation delivered as source code. It connects identity, tenant and workspace boundaries, roles and permissions, billing, customer flows, administration, and deployment foundations.', 'It is intended for technical founders and small product teams building a paid, multi-tenant B2B product. It is not a hosted service or a no-code application builder.'] },
+    { id: 'delivery', title: 'Source delivery', paragraphs: ['The commercial purchase grants source access under the applicable package and license terms. The exact catalog controls current price, repository-user limits, update period, support, and fulfillment.', 'Before purchase, review the product page, license boundary, architecture, security assumptions, and source package listing together. Marketing summaries do not replace the transaction terms.'] },
+    { id: 'buyer', title: 'Buyer responsibilities', paragraphs: ['The buyer configures provider credentials, branding, business rules, infrastructure, observability, backups, and the production security posture. Every deployment requires its own review because product data, integrations, and regulatory context differ.', 'Platform supplies implementation foundations, not compliance certification, legal advice, managed operations, or unlimited custom development.'] },
+    { id: 'evaluation', title: 'Evaluation path', paragraphs: ['Start with the architecture and multi-tenancy pages. Review billing if the product will sell subscriptions or digital access. Verify each published claim against the maintained product code and documentation available with the package.', 'If the product does not need Go or multiple customer organizations, compare Platform with the smaller open-source Amsonia Next boundary before buying.'] }
+  ]}
+  relatedLinks={[
+    { href: '/architecture/', label: 'Architecture', description: 'Review runtime and deployment boundaries.' },
+    { href: '/license/', label: 'License', description: 'Separate commercial rights from open-source licenses.' },
+    { href: '/security/', label: 'Security', description: 'Understand supplied controls and buyer-owned risk.' },
+    { href: COMMERCIAL_URL, label: 'Source packages', description: 'Continue to the current transaction catalog.' }
+  ]}
+/>

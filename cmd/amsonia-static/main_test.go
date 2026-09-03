@@ -12,7 +12,6 @@ import (
 func TestStaticHandlerServesCleanRoutesAndRealNotFound(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "index.html"), "home")
-	writeTestFile(t, filepath.Join(root, "core", "index.html"), "core")
 	writeTestFile(t, filepath.Join(root, "404.html"), "missing specimen")
 
 	handler := newStaticHandler(root, false)
@@ -24,8 +23,6 @@ func TestStaticHandlerServesCleanRoutesAndRealNotFound(t *testing.T) {
 		body       string
 	}{
 		{path: "/", statusCode: http.StatusOK, body: "home"},
-		{path: "/core", statusCode: http.StatusOK, body: "core"},
-		{path: "/core/", statusCode: http.StatusOK, body: "core"},
 		{path: "/api/v1/tenants", statusCode: http.StatusNotFound, body: "missing specimen"},
 		{path: "/sitemap.xml", statusCode: http.StatusNotFound, body: "missing specimen"},
 	}
@@ -40,6 +37,35 @@ func TestStaticHandlerServesCleanRoutesAndRealNotFound(t *testing.T) {
 			}
 			if !strings.Contains(response.Body.String(), test.body) {
 				t.Fatalf("body = %q, want substring %q", response.Body.String(), test.body)
+			}
+		})
+	}
+}
+
+func TestStaticHandlerRedirectsRetiredCorePages(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "404.html"), "missing specimen")
+	handler := newStaticHandler(root, false)
+	t.Cleanup(func() { _ = handler.Close() })
+
+	tests := []struct {
+		path     string
+		location string
+	}{
+		{path: "/core", location: "https://github.com/willunylabs/amsonia-core"},
+		{path: "/core/docs/getting-started", location: "https://github.com/willunylabs/amsonia-core"},
+		{path: "/releases", location: "https://github.com/willunylabs/amsonia-core/releases"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.path, func(t *testing.T) {
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, test.path, nil))
+			if response.Code != http.StatusMovedPermanently {
+				t.Fatalf("status = %d, want %d", response.Code, http.StatusMovedPermanently)
+			}
+			if location := response.Header().Get("Location"); location != test.location {
+				t.Fatalf("Location = %q, want %q", location, test.location)
 			}
 		})
 	}

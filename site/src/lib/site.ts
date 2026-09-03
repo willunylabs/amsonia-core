@@ -15,13 +15,14 @@ export const COMPANY_NAME = 'Willuny Labs LLC';
 export const COMPANY_ORIGIN = requiredURL('PUBLIC_COMPANY_ORIGIN', import.meta.env.PUBLIC_COMPANY_ORIGIN);
 export const GITHUB_URL = requiredURL('PUBLIC_GITHUB_URL', import.meta.env.PUBLIC_GITHUB_URL);
 export const COMMERCIAL_URL = requiredURL('PUBLIC_COMMERCIAL_URL', import.meta.env.PUBLIC_COMMERCIAL_URL);
+export const AMSONIA_NEXT_GITHUB_URL = 'https://github.com/willunylabs/amsonia-next';
 
 export const primaryNav = [
-  { href: '/core/', label: 'Core' },
+  { href: '/platform/', label: 'Platform' },
+  { href: '/next/', label: 'Next' },
+  { href: '/compare/platform-vs-next/', label: 'Compare' },
   { href: '/docs/', label: 'Docs' },
-  { href: '/releases/', label: 'Releases' },
-  { href: '/open-source/', label: 'Open source' },
-  { href: '/about/', label: 'About' }
+  { href: '/open-source/', label: 'Open source' }
 ];
 
 export type Breadcrumb = {
@@ -67,8 +68,38 @@ export const amsoniaBrandReference = {
 };
 
 export const amsoniaProductReference = {
-  '@type': 'SoftwareApplication',
-  '@id': `${SITE_ORIGIN}/#product`,
+  '@type': 'ProductGroup',
+  '@id': `${SITE_ORIGIN}/#product-family`,
   name: SITE_NAME,
   url: `${SITE_ORIGIN}/`
 };
+
+export function softwareProductSchema({
+  name,
+  path,
+  description,
+  license,
+  isAccessibleForFree
+}: {
+  name: string;
+  path: string;
+  description: string;
+  license: string;
+  isAccessibleForFree: boolean;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    '@id': `${absoluteUrl(path)}#software`,
+    name,
+    url: absoluteUrl(path),
+    description,
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Self-hosted',
+    license,
+    isAccessibleForFree,
+    brand: { '@id': `${SITE_ORIGIN}/#brand` },
+    publisher: { '@id': publisherReference['@id'] },
+    isPartOf: { '@id': `${SITE_ORIGIN}/#product-family` }
+  };
+}

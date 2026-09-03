@@ -1,0 +1,65 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageIntro from './PageIntro.astro';
+
+type Section = {
+  id: string;
+  title: string;
+  paragraphs: string[];
+  bullets?: string[];
+};
+
+type LinkItem = {
+  href: string;
+  label: string;
+  description: string;
+};
+
+interface Props {
+  eyebrow: string;
+  index: string;
+  title: string;
+  summary: string;
+  description: string;
+  canonicalPath: string;
+  sections: Section[];
+  relatedLinks?: LinkItem[];
+  schemas?: Record<string, unknown>[];
+}
+
+const { eyebrow, index, title, summary, description, canonicalPath, sections, relatedLinks = [], schemas = [] } = Astro.props;
+---
+
+<BaseLayout title={title} description={description} canonicalPath={canonicalPath} schemas={schemas}>
+  <main id="main-content">
+    <PageIntro eyebrow={eyebrow} index={index} title={title} summary={summary} />
+    <div class="content-shell">
+      <div class="content-grid">
+        <aside class="content-aside">
+          <nav aria-label={`${title} sections`}>
+            {sections.map((section) => <a href={`#${section.id}`}>{section.title}</a>)}
+          </nav>
+        </aside>
+        <article class="prose">
+          {sections.map((section) => (
+            <section>
+              <h2 id={section.id}>{section.title}</h2>
+              {section.paragraphs.map((paragraph) => <p>{paragraph}</p>)}
+              {section.bullets && <ul>{section.bullets.map((bullet) => <li>{bullet}</li>)}</ul>}
+            </section>
+          ))}
+          <slot />
+        </article>
+      </div>
+      {relatedLinks.length > 0 && (
+        <section class="related-section" aria-labelledby="related-title">
+          <span class="eyebrow">Continue evaluating</span>
+          <h2 id="related-title">Follow the product boundary.</h2>
+          <div class="link-grid">
+            {relatedLinks.map((item) => <a class="link-card" href={item.href}><span>RELATED</span><h3>{item.label}</h3><p>{item.description}</p></a>)}
+          </div>
+        </section>
+      )}
+    </div>
+  </main>
+</BaseLayout>

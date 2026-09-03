@@ -1,20 +1,21 @@
 ---
 import PageIntro from '../components/PageIntro.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { breadcrumbSchema, GITHUB_URL } from '../lib/site';
+import { AMSONIA_NEXT_GITHUB_URL, breadcrumbSchema, GITHUB_URL } from '../lib/site';
 
-const description = 'Explore released Amsonia open-source software. Amsonia Core is the Apache-2.0 foundation for tenant-safe authorization in Go.';
+const description = 'Explore Amsonia Next, the MIT-licensed open-source Next.js 16 SaaS starter with Auth.js, Drizzle, PostgreSQL, billing, admin, and account flows.';
 ---
 
 <BaseLayout title="Amsonia Open Source" description={description} canonicalPath="/open-source" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Open source', href: '/open-source' }])]}>
   <main id="main-content">
-    <PageIntro eyebrow="Released source" index="OSS / 00" title="Open source" summary="This index lists only Amsonia components with public source and an explicit license. Today that list contains Amsonia Core." />
+    <PageIntro eyebrow="Released source" index="OSS / 00" title="Open source" summary="Amsonia Next is the product family&rsquo;s open-source entry: a focused, MIT-licensed Next.js SaaS starter with an explicit single-tenant boundary." />
     <div class="content-shell">
       <section class="section">
         <div class="core-grid">
-          <article><span class="specimen-number">01 / APACHE-2.0 / GO</span><h3>Amsonia<br />Core</h3><p>A tenant-safe delegated authorization foundation with PostgreSQL RLS, versioned roles, authenticated sessions, policy audit, OpenAPI, and a React Console.</p><div class="hero-actions"><a class="button primary" href="/core/">Product page →</a><a class="button secondary" href={GITHUB_URL} data-cta-target="github">Source ↗</a></div></article>
-          <aside class="boundary-note"><div><span class="eyebrow">Publication rule</span><h3>Public means inspectable.</h3><p>An Amsonia component is described as open source only when the repository, license, version history, security reporting path, and documentation are publicly available.</p></div><code>released_components = ["core"]</code></aside>
+          <article><span class="specimen-number">01 / MIT / NEXT.JS</span><h3>Amsonia<br />Next</h3><p>An open-source, single-tenant SaaS starter with Next.js 16, Auth.js, Drizzle, PostgreSQL, and provider-based billing.</p><div class="hero-actions"><a class="button primary" href="/next/">Product page →</a><a class="button secondary" href={AMSONIA_NEXT_GITHUB_URL} data-cta-target="github">GitHub source ↗</a></div></article>
+          <aside class="boundary-note"><div><span class="eyebrow">Publication rule</span><h3>Public means inspectable.</h3><p>The repository, license, setup instructions, version history, and implementation must be available before an Amsonia product is described as open source.</p></div><code>amsonia_next.license = "MIT"<br />amsonia_next.tenancy = "single"</code></aside>
         </div>
+        <p class="external-repository-link">Additional engineering repositories remain on <a href={GITHUB_URL} data-cta-target="github">GitHub ↗</a> and do not create separate product pages here.</p>
       </section>
     </div>
   </main>

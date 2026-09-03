@@ -1,21 +1,22 @@
 ---
 import PageIntro from '../../components/PageIntro.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { breadcrumbSchema } from '../../lib/site';
+import { AMSONIA_NEXT_GITHUB_URL, breadcrumbSchema } from '../../lib/site';
 
-const description = 'Documentation entry point for the Amsonia product, with Amsonia Core setup, API, security, and license references.';
+const description = 'Documentation entry point for the commercial Amsonia Platform source foundation and the open-source Amsonia Next SaaS starter.';
 ---
 
 <BaseLayout title="Amsonia Documentation" description={description} canonicalPath="/docs" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Docs', href: '/docs' }])]}>
   <main id="main-content">
-    <PageIntro eyebrow="Product documentation" index="DOC / 00" title="Documentation" summary="One entry point for released Amsonia components. Today, the maintained public documentation set belongs to Amsonia Core." />
+    <PageIntro eyebrow="Product documentation" index="DOC / 00" title="Documentation" summary="Start with the product boundary, then follow the implementation evidence. Platform evaluation lives here; open-source setup stays with each public repository." />
     <div class="content-shell">
       <section class="section">
         <div class="link-grid">
-          <a class="link-card" href="/core/docs/"><span>CORE / DOCS</span><h3>Core docs</h3><p>Setup requirements, security assumptions, API contract, and repository references.</p></a>
-          <a class="link-card" href="/core/docs/getting-started/"><span>CORE / START</span><h3>Getting started</h3><p>Bring up the database roles, migrations, administrator, API, and console.</p></a>
-          <a class="link-card" href="/core/api/"><span>CORE / API</span><h3>API contract</h3><p>Read the scope and inspect the versioned OpenAPI source.</p></a>
-          <a class="link-card" href="/core/security/"><span>CORE / SECURITY</span><h3>Security model</h3><p>Review tenant bindings, forced RLS, credentials, and operating boundaries.</p></a>
+          <a class="link-card" href="/platform/docs/"><span>PLATFORM / DOCS</span><h3>Platform guide</h3><p>Understand the commercial source package, system boundaries, buyer responsibilities, and evaluation path.</p></a>
+          <a class="link-card" href="/next/"><span>NEXT / OVERVIEW</span><h3>Next product page</h3><p>Evaluate the single-tenant boundary, included flows, stack, and license.</p></a>
+          <a class="link-card" href={AMSONIA_NEXT_GITHUB_URL}><span>NEXT / README</span><h3>Next repository docs</h3><p>Continue to the setup instructions, source tree, scripts, and version history on GitHub.</p></a>
+          <a class="link-card" href="/architecture/"><span>PLATFORM / ARCH</span><h3>Architecture</h3><p>Review the Go, Next.js, PostgreSQL, and deployment boundaries.</p></a>
+          <a class="link-card" href="/security/"><span>PLATFORM / SECURITY</span><h3>Security model</h3><p>Separate supplied implementation controls from buyer-owned operations.</p></a>
         </div>
       </section>
     </div>

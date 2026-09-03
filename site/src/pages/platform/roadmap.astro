@@ -1,0 +1,13 @@
+---
+import TopicPage from '../../components/TopicPage.astro';
+import { breadcrumbSchema } from '../../lib/site';
+const description = 'Review Amsonia Platform direction across current product clarity, technical evidence, buyer activation, and conditional future delivery without date promises.';
+---
+<TopicPage eyebrow="Platform roadmap" index="ROADMAP / 01" title="Direction without delivery promises" summary="The roadmap communicates present priorities for evaluation. It is not a contract, release schedule, or commitment to unreleased capabilities." description={description} canonicalPath="/platform/roadmap" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Platform', href: '/platform' }, { name: 'Roadmap', href: '/platform/roadmap' }])]}
+  sections={[
+    { id: 'now', title: 'Now — clarity and safe migration', paragraphs: ['Consolidate Platform product content under the Amsonia product site, preserve exact redirects from the company site, and keep the transaction application non-indexable.', 'Maintain accurate multi-tenancy, RBAC, billing, architecture, security, license, and deployment explanations against shipped source.'] },
+    { id: 'next', title: 'Next — evidence and activation', paragraphs: ['Improve clean-clone evaluation, installation guidance, source-package delivery, and the first buyer activation path. Publish deeper technical material only where maintained implementation and tests support it.', 'Use qualified buyer questions and adoption friction to select work rather than creating placeholder features for search traffic.'] },
+    { id: 'later', title: 'Later — conditional delivery models', paragraphs: ['Additional licensing, managed operations, localization, or product modules remain conditional on repeated demand, support capacity, security, recovery, and economic evidence.', 'They do not receive indexable product pages or promised dates before the release and operating boundaries are ready.'] }
+  ]}
+  relatedLinks={[{ href: '/platform/changelog/', label: 'Changelog', description: 'Review factual public-surface changes.' }, { href: '/platform/docs/', label: 'Documentation', description: 'Evaluate what exists now.' }, { href: '/pricing/', label: 'Pricing', description: 'Understand current distribution models.' }, { href: '/platform/', label: 'Platform', description: 'Return to the released product.' }]}
+/>

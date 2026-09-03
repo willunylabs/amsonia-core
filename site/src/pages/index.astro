@@ -4,6 +4,7 @@ import {
   absoluteUrl,
   amsoniaBrandReference,
   amsoniaProductReference,
+  AMSONIA_NEXT_GITHUB_URL,
   COMMERCIAL_URL,
   COMPANY_NAME,
   GITHUB_URL,
@@ -11,37 +12,37 @@ import {
   SITE_ORIGIN
 } from '../lib/site';
 
-const description = 'Source-owned infrastructure for multi-tenant Go applications. Explore Amsonia Core, its documentation, security model, releases, and commercial product boundary.';
+const description = 'Amsonia is a family of source-owned SaaS foundations: a commercial Go + Next.js platform and an open-source Next.js starter, published by Willuny Labs.';
+const platformId = `${absoluteUrl('/platform')}#software`;
+const nextId = `${absoluteUrl('/next')}#software`;
 const schemas = [{
   '@context': 'https://schema.org',
   '@graph': [
-    {
-      ...publisherReference,
-      legalName: COMPANY_NAME,
-      logo: absoluteUrl('/amsonia-mark-v2.svg'),
-    },
-    {
-      ...amsoniaBrandReference,
-      logo: absoluteUrl('/amsonia-mark-v2.svg')
-    },
+    { ...publisherReference, legalName: COMPANY_NAME, logo: absoluteUrl('/amsonia-mark-v2.svg') },
+    { ...amsoniaBrandReference, logo: absoluteUrl('/amsonia-mark-v2.svg') },
     {
       ...amsoniaProductReference,
       description,
-      applicationCategory: 'DeveloperApplication',
-      operatingSystem: 'Self-hosted',
       brand: { '@id': `${SITE_ORIGIN}/#brand` },
-      publisher: { '@id': publisherReference['@id'] },
-      hasPart: { '@id': `${absoluteUrl('/core')}#source` }
+      manufacturer: { '@id': publisherReference['@id'] },
+      hasVariant: [{ '@id': platformId }, { '@id': nextId }]
     },
     {
-      '@type': 'WebSite',
-      '@id': `${SITE_ORIGIN}/#website`,
-      name: 'Amsonia',
-      url: `${SITE_ORIGIN}/`,
-      description,
-      inLanguage: 'en-US',
+      '@type': 'SoftwareApplication', '@id': platformId, name: 'Amsonia Platform',
+      url: absoluteUrl('/platform'), applicationCategory: 'DeveloperApplication',
+      operatingSystem: 'Self-hosted', isPartOf: { '@id': `${SITE_ORIGIN}/#product-family` }
+    },
+    {
+      '@type': 'SoftwareApplication', '@id': nextId, name: 'Amsonia Next',
+      url: absoluteUrl('/next'), applicationCategory: 'DeveloperApplication',
+      operatingSystem: 'Self-hosted', license: 'https://opensource.org/license/mit',
+      isAccessibleForFree: true, isPartOf: { '@id': `${SITE_ORIGIN}/#product-family` }
+    },
+    {
+      '@type': 'WebSite', '@id': `${SITE_ORIGIN}/#website`, name: 'Amsonia',
+      url: `${SITE_ORIGIN}/`, description, inLanguage: 'en-US',
       publisher: { '@id': publisherReference['@id'] },
-      about: { '@id': `${SITE_ORIGIN}/#product` }
+      about: { '@id': `${SITE_ORIGIN}/#product-family` }
     }
   ]
 }];
@@ -49,132 +50,51 @@ const schemas = [{
 
 <BaseLayout title="Amsonia" description={description} canonicalPath="/" schemas={schemas}>
   <main id="main-content">
-    <section class="hero">
+    <section class="hero family-hero">
       <div class="shell hero-inner">
         <div class="hero-copy">
-          <span class="eyebrow">Amsonia / Software product / Est. 2026</span>
-          <h1>Amsonia</h1>
-          <p class="hero-thesis">Source-owned infrastructure for multi-tenant Go applications.</p>
-          <p class="hero-summary">
-            Amsonia Core is the first public component: an Apache-2.0 authorization foundation built with Go, PostgreSQL RLS, and a React management console.
-          </p>
+          <span class="eyebrow">Amsonia / Product family / By Willuny Labs</span>
+          <h1>Build the product. Own the foundation.</h1>
+          <p class="hero-thesis">Source-owned SaaS foundations for two ways of shipping.</p>
+          <p class="hero-summary">Choose a commercial Go + Next.js platform for multi-tenant B2B software, or start with a focused open-source Next.js kit. Both keep your application, data, and deployment decisions in your hands.</p>
           <div class="hero-actions">
-            <a class="button primary" href={GITHUB_URL} data-cta-target="github">GitHub source <span aria-hidden="true">↗</span></a>
-            <a class="button secondary" href="/core/docs/getting-started/" data-cta-target="docs">Documentation <span aria-hidden="true">→</span></a>
-            <a class="button quiet" href="/core/security/">Security model <span aria-hidden="true">→</span></a>
+            <a class="button primary" href="/products/">Choose your foundation <span aria-hidden="true">→</span></a>
+            <a class="button secondary" href="/next/">Explore open-source Next <span aria-hidden="true">→</span></a>
           </div>
         </div>
-        <div class="hero-specimen" aria-label="Amsonia Core product summary">
-          <div class="hero-product-header">
-            <span><img src="/amsonia-mark-v2.svg" width="34" height="34" alt="" /> Open-source foundation</span>
-            <strong>Released</strong>
-          </div>
-          <div class="hero-product-copy">
-            <span class="eyebrow">Core / 01</span>
-            <h2>Amsonia Core</h2>
-            <p>Tenant-safe authorization for Go and PostgreSQL teams.</p>
-          </div>
-          <div class="hero-product-features">
-            <div><span>01</span><strong>Go-first</strong><small>Standalone API and CLI</small></div>
-            <div><span>02</span><strong>Tenant-safe</strong><small>Signed context and RLS</small></div>
-            <div><span>03</span><strong>Inspectable</strong><small>Versioned policy evidence</small></div>
-            <div><span>04</span><strong>Source-owned</strong><small>Apache-2.0 foundation</small></div>
-          </div>
-          <a class="hero-product-link" href="/core/">Explore Amsonia Core <span aria-hidden="true">→</span></a>
+        <div class="hero-specimen family-specimen" aria-label="Amsonia product family summary">
+          <div class="hero-product-header"><span><img src="/amsonia-mark-v2.svg" width="34" height="34" alt="" /> Two product paths</span><strong>Source owned</strong></div>
+          <a class="family-specimen-row" href="/platform/"><span class="eyebrow">01 / Commercial</span><strong>Amsonia Platform</strong><small>Go + Next.js · Multi-tenant B2B</small><span aria-hidden="true">→</span></a>
+          <a class="family-specimen-row" href="/next/"><span class="eyebrow">02 / MIT</span><strong>Amsonia Next</strong><small>Next.js 16 · Single-tenant starter</small><span aria-hidden="true">→</span></a>
+          <div class="family-specimen-note"><span>Additional open source</span><a href={GITHUB_URL} data-cta-target="github">View engineering work on GitHub ↗</a></div>
         </div>
       </div>
     </section>
 
-    <section class="band">
-      <div class="shell brand-contract">
-        <div><span class="specimen-number">PRODUCT / 00</span></div>
-        <div>
-          <h2>One inspectable security boundary.</h2>
-          <p>Core keeps tenant membership, delegated policy, administrator sessions, audit history, and PostgreSQL row isolation in source you can run and review.</p>
-        </div>
-        <div>
-          <h3>Core leads today.</h3>
-          <p>Only released products appear here. New components enter the system when their source, documentation, and support boundary are ready.</p>
-        </div>
-      </div>
-    </section>
+    <section class="band"><div class="shell brand-contract">
+      <div><span class="specimen-number">FAMILY / 00</span></div>
+      <div><h2>One product family, not one forced stack.</h2><p>Each product has a distinct buyer, license, and architecture. Shared principles connect them; search intent and technical scope stay explicit.</p></div>
+      <div><h3>Published by Willuny Labs.</h3><p>This site owns product evaluation. Willuny Labs remains the company, seller, and commercial support boundary.</p></div>
+    </div></section>
 
-    <section class="section">
-      <div class="shell">
-        <div class="section-heading">
-          <span class="eyebrow">Open source / First component</span>
-          <div class="section-heading-copy">
-            <h2>Own the authorization boundary.</h2>
-            <p>Amsonia Core packages the boundary that is expensive to retrofit later: tenant membership, delegated RBAC, signed PostgreSQL row-level security, authenticated administrator sessions, and an auditable policy history.</p>
-          </div>
-        </div>
+    <section class="section"><div class="shell">
+      <div class="section-heading"><span class="eyebrow">Products / Pick the constraint</span><div class="section-heading-copy"><h2>Start with the architecture you actually need.</h2><p>Platform is for a team already committed to Go and multi-tenant operations. Next is for a product that benefits from one full-stack Next.js codebase and a smaller operating surface.</p></div></div>
+      <div class="product-grid">
+        <article class="product-card product-card-featured"><span class="specimen-number">PLATFORM / COMMERCIAL SOURCE</span><h2>Amsonia Platform</h2><p class="product-lede">A Go + Next.js SaaS starter kit for multi-tenant B2B products.</p><ul class="capability-list"><li>Go API and Next.js product surface</li><li>Tenant and workspace boundaries</li><li>Roles, permissions, and operations</li><li>Stripe-oriented commerce and billing</li></ul><div class="hero-actions"><a class="button primary" href="/platform/">Evaluate Platform →</a><a class="button secondary" href="/go-saas-boilerplate/">Go SaaS guide →</a></div></article>
+        <article class="product-card"><span class="specimen-number">NEXT / OPEN SOURCE / MIT</span><h2>Amsonia Next</h2><p class="product-lede">A single-tenant Next.js 16 SaaS starter for founders who want a focused full-stack base.</p><ul class="capability-list"><li>Auth.js and PostgreSQL with Drizzle</li><li>Stripe and Lemon Squeezy adapters</li><li>Admin, account, audit, and billing flows</li><li>English and Chinese route foundations</li></ul><div class="hero-actions"><a class="button primary" href="/next/">Explore Amsonia Next →</a><a class="button secondary" href={AMSONIA_NEXT_GITHUB_URL} data-cta-target="github">GitHub source ↗</a></div></article>
+      </div>
+    </div></section>
 
-        <div class="core-grid">
-          <article>
-            <span class="specimen-number">CORE / APACHE-2.0</span>
-            <h3>Amsonia<br />Core</h3>
-            <p>Open-source foundation inside Amsonia, implemented in Go with PostgreSQL and a React management console.</p>
-            <ul class="capability-list">
-              <li>Tenant-first delegated authorization</li>
-              <li>Signed context and forced PostgreSQL RLS</li>
-              <li>Versioned roles and permission catalogs</li>
-              <li>Argon2id authentication and rotating sessions</li>
-              <li>Append-only policy audit events</li>
-              <li>Versioned HTTP and OpenAPI contract</li>
-            </ul>
-            <div class="hero-actions">
-              <a class="button primary" href="/core/">Explore Core <span aria-hidden="true">→</span></a>
-              <a class="button secondary" href="/core/docs/getting-started/">Run locally <span aria-hidden="true">→</span></a>
-            </div>
-          </article>
-          <aside class="boundary-note">
-            <div>
-              <span class="eyebrow">Scope boundary</span>
-              <h3>Precise by design.</h3>
-              <p>Core covers identity, sessions, tenants, memberships, roles, permissions, authorization decisions, and policy audit.</p>
-              <p>Billing, commerce, AI, education, messaging, and white-label operations belong to Amsonia Platform—not this repository.</p>
-            </div>
-            <code>core.status = "open-source"<br />core.license = "Apache-2.0"<br />publisher = "Willuny Labs"</code>
-          </aside>
-        </div>
+    <section class="section band"><div class="shell">
+      <div class="section-heading"><span class="eyebrow">Decision / No vague tiers</span><div class="section-heading-copy"><h2>Choose by system boundary.</h2><p>The deciding question is not free versus paid. It is whether your product needs a Go service and multi-tenant operating model now.</p></div></div>
+      <div class="link-grid">
+        <a class="link-card" href="/compare/platform-vs-next/"><span>COMPARE / 01</span><h3>Platform vs Next</h3><p>Compare runtime, tenancy, license, billing providers, and the intended team.</p></a>
+        <a class="link-card" href="/architecture/"><span>ARCH / 02</span><h3>Platform architecture</h3><p>See how the Go API, Next.js surfaces, PostgreSQL, and deployment boundary fit together.</p></a>
+        <a class="link-card" href="/features/multi-tenancy/"><span>TENANCY / 03</span><h3>Multi-tenant by design</h3><p>Follow tenant context from identity through authorization, jobs, cache keys, and data access.</p></a>
+        <a class="link-card" href="/open-source/"><span>OSS / 04</span><h3>Inspect the source</h3><p>Start with Amsonia Next, review its license, and follow the implementation before adopting it.</p></a>
       </div>
-    </section>
+    </div></section>
 
-    <section class="section band">
-      <div class="shell">
-        <div class="section-heading">
-          <span class="eyebrow">Evaluate / Follow the evidence</span>
-          <div class="section-heading-copy">
-            <h2>Read the boundary before the promise.</h2>
-            <p>Every technical claim on this site is tied to public code, a versioned contract, a negative test, or a maintained document in Amsonia Core.</p>
-          </div>
-        </div>
-        <div class="link-grid">
-          <a class="link-card" href="/core/docs/getting-started/">
-            <span>DOC / 01</span><h3>Start locally</h3><p>Run the complete least-privileged PostgreSQL, API, and Console stack with one command.</p>
-          </a>
-          <a class="link-card" href="/core/security/">
-            <span>SEC / 02</span><h3>Security model</h3><p>Understand signed tenant context, forced RLS, negative tests, and operational assumptions.</p>
-          </a>
-          <a class="link-card" href="/core/api/">
-            <span>API / 03</span><h3>HTTP contract</h3><p>Inspect the versioned OpenAPI contract for authentication, tenants, roles, audit, and decisions.</p>
-          </a>
-          <a class="link-card" href="/releases/">
-            <span>REL / 04</span><h3>Release history</h3><p>Follow the public tags and release notes instead of relying on an unversioned feature list.</p>
-          </a>
-        </div>
-      </div>
-    </section>
-
-    <section class="commercial-panel">
-      <div>
-        <span class="eyebrow">Commercial distribution</span>
-        <h2>Build beyond Core.</h2>
-      </div>
-      <div>
-        <p>Amsonia Platform is the commercial Go + Next.js SaaS starter kit, composed of Amsonia Server and Amsonia Console. Its demo, pricing, licensing, purchase, and support live with Willuny Labs.</p>
-        <a class="button" href={COMMERCIAL_URL} data-cta-target="commercial">Explore Amsonia Platform <span aria-hidden="true">↗</span></a>
-      </div>
-    </section>
+    <section class="commercial-panel"><div><span class="eyebrow">Commercial path</span><h2>Need multi-tenant Go?</h2></div><div><p>Evaluate Amsonia Platform here, then continue to the transaction-only source package catalog operated by Willuny Labs.</p><a class="button" href={COMMERCIAL_URL} data-cta-target="commercial">View Platform source packages <span aria-hidden="true">↗</span></a></div></section>
   </main>
 </BaseLayout>

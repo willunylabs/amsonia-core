@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import { breadcrumbSchema } from '../../lib/site';
+
+const description = 'Compare Amsonia Platform and Amsonia Next across stack, tenancy, license, billing, deployment, operations, and the SaaS teams each product is designed for.';
+---
+
+<BaseLayout title="Amsonia Platform vs Amsonia Next" description={description} canonicalPath="/compare/platform-vs-next" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Compare', href: '/products' }, { name: 'Platform vs Next', href: '/compare/platform-vs-next' }])]}>
+  <main id="main-content">
+    <PageIntro eyebrow="Product comparison" index="COMPARE / 01" title="Platform or Next? Choose by architecture." summary="Both products keep source ownership explicit. Platform adds a Go service and multi-tenant operating model; Next keeps the system inside one open-source Next.js application." />
+    <div class="content-shell">
+      <section class="section">
+        <div class="comparison-table" tabindex="0"><table><thead><tr><th>Decision</th><th>Amsonia Platform</th><th>Amsonia Next</th></tr></thead><tbody><tr><th>Primary stack</th><td>Go API + Next.js product and operations surfaces</td><td>Next.js 16 full-stack application</td></tr><tr><th>Tenancy model</th><td>Multi-tenant, with tenant and workspace-aware boundaries</td><td>Single-tenant by design</td></tr><tr><th>Distribution</th><td>Commercial source-code package</td><td>Open-source Git repository</td></tr><tr><th>License</th><td>Commercial source license</td><td>MIT</td></tr><tr><th>Billing</th><td>Stripe-oriented commerce, billing, invoice, and fulfillment surfaces</td><td>Stripe and Lemon Squeezy provider adapters</td></tr><tr><th>Best fit</th><td>B2B products that require organizations, delegated access, Go, and broader operations</td><td>Founders shipping a focused product from one Next.js codebase</td></tr><tr><th>Operating surface</th><td>Separate frontend, API, database, and product operations</td><td>One application runtime plus PostgreSQL and configured providers</td></tr></tbody></table></div>
+      </section>
+      <section class="decision-strip"><div><span class="eyebrow">Recommendation</span><h2>Prefer the smaller truthful boundary.</h2></div><div><p>Start with Next when its single-tenant model is sufficient. Choose Platform when multi-tenancy and Go are requirements, not speculative future possibilities.</p><div class="hero-actions"><a class="button primary" href="/platform/">Evaluate Platform →</a><a class="button secondary" href="/next/">Explore Next →</a></div></div></section>
+    </div>
+  </main>
+</BaseLayout>
