@@ -13,6 +13,6 @@
     "check": "node scripts/check-domain-config.mjs && node scripts/check-visual-system.mjs && npm run build && node scripts/check-built-site.mjs"
   },
   "devDependencies": {
-    "astro": "7.2.2"
+    "astro": "7.3.6"
   }
 }
