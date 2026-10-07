@@ -22,19 +22,16 @@ const schemas = [{
     {
       ...amsoniaProductReference,
       description,
-      brand: { '@id': `${SITE_ORIGIN}/#brand` },
-      manufacturer: { '@id': publisherReference['@id'] },
-      hasVariant: [{ '@id': platformId }, { '@id': nextId }]
-    },
-    {
-      '@type': 'SoftwareApplication', '@id': platformId, name: 'Amsonia Platform',
-      url: absoluteUrl('/platform'), applicationCategory: 'DeveloperApplication',
-      operatingSystem: 'Self-hosted', isPartOf: { '@id': `${SITE_ORIGIN}/#product-family` }
-    },
-    {
-      '@type': 'SoftwareApplication', '@id': nextId, name: 'Amsonia Next',
-      url: absoluteUrl('/next'), applicationCategory: 'DeveloperApplication',
-      operatingSystem: 'Self-hosted', publisher: { '@id': publisherReference['@id'] }, isPartOf: { '@id': `${SITE_ORIGIN}/#product-family` }
+      about: { '@id': `${SITE_ORIGIN}/#brand` },
+      publisher: { '@id': publisherReference['@id'] },
+      isPartOf: { '@id': `${SITE_ORIGIN}/#website` },
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Amsonia Platform', url: absoluteUrl('/platform'), item: { '@id': platformId } },
+          { '@type': 'ListItem', position: 2, name: 'Amsonia Next', url: absoluteUrl('/next'), item: { '@id': nextId } }
+        ]
+      }
     },
     {
       '@type': 'WebSite', '@id': `${SITE_ORIGIN}/#website`, name: 'Amsonia',

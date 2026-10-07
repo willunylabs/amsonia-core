@@ -79,6 +79,12 @@ for (const file of htmlFiles) {
 }
 
 const homepage = readFileSync(pageFile('/'), 'utf8');
+const homepageGraph = [...homepage.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+  .flatMap((match) => JSON.parse(match[1])['@graph'] ?? []);
+assert.ok(!homepageGraph.some((entry) => entry['@type'] === 'ProductGroup'), 'distinct software products must not be marked as merchant variants');
+const catalog = homepageGraph.find((entry) => entry['@type'] === 'CollectionPage');
+assert.equal(catalog?.mainEntity?.['@type'], 'ItemList', 'the homepage must describe its product catalog as a list');
+assert.deepEqual(catalog.mainEntity.itemListElement.map((entry) => entry.url), [canonicalFor('/platform'), canonicalFor('/next')], 'catalog entries must point to the actual product pages');
 assert.ok(homepage.includes(`${companyOrigin}/logo`), 'publisher logo must use the company logo');
 assert.match(homepage, /github\.com\/willunylabs/, 'publisher must identify the GitHub organization');
 assert.ok(homepage.includes(`${companyOrigin}/#organization`), 'homepage publisher must use the configured Willuny organization ID');
