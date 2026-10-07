@@ -15,6 +15,7 @@ export const COMPANY_NAME = 'Willuny Labs LLC';
 export const COMPANY_DISPLAY_NAME = 'Willuny Labs';
 export const COMPANY_FOUNDING_DATE = '2026-01-07';
 export const COMPANY_OPENCORPORATES_URL = 'https://opencorporates.com/companies/us_wy/2026-001860652';
+export const COMPANY_CRUNCHBASE_URL = 'https://www.crunchbase.com/organization/willuny-labs';
 export const COMPANY_DESCRIPTION = 'Willuny Labs builds source-owned software products, maintains open-source foundations, and publishes practical engineering work.';
 export const GITHUB_ORGANIZATION_URL = 'https://github.com/willunylabs';
 export const COMPANY_ORIGIN = requiredURL('PUBLIC_COMPANY_ORIGIN', import.meta.env.PUBLIC_COMPANY_ORIGIN);
@@ -68,7 +69,7 @@ export const publisherReference = {
   logo: `${COMPANY_ORIGIN}/logo`,
   description: COMPANY_DESCRIPTION,
   foundingDate: COMPANY_FOUNDING_DATE,
-  sameAs: [GITHUB_ORGANIZATION_URL, COMPANY_OPENCORPORATES_URL]
+  sameAs: [GITHUB_ORGANIZATION_URL, COMPANY_OPENCORPORATES_URL, COMPANY_CRUNCHBASE_URL]
 };
 
 export const amsoniaBrandReference = {
