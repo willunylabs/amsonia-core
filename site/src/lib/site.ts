@@ -79,7 +79,7 @@ export const amsoniaBrandReference = {
 };
 
 export const amsoniaProductReference = {
-  '@type': 'ProductGroup',
+  '@type': 'CollectionPage',
   '@id': `${SITE_ORIGIN}/#product-family`,
   name: SITE_NAME,
   url: `${SITE_ORIGIN}/`
