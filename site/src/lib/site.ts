@@ -13,6 +13,8 @@ export const SITE_ORIGIN = requiredURL('PUBLIC_SITE_ORIGIN', import.meta.env.PUB
 export const SITE_NAME = 'Amsonia';
 export const COMPANY_NAME = 'Willuny Labs LLC';
 export const COMPANY_DISPLAY_NAME = 'Willuny Labs';
+export const COMPANY_FOUNDING_DATE = '2026-01-07';
+export const COMPANY_OPENCORPORATES_URL = 'https://opencorporates.com/companies/us_wy/2026-001860652';
 export const COMPANY_DESCRIPTION = 'Willuny Labs builds source-owned software products, maintains open-source foundations, and publishes practical engineering work.';
 export const GITHUB_ORGANIZATION_URL = 'https://github.com/willunylabs';
 export const COMPANY_ORIGIN = requiredURL('PUBLIC_COMPANY_ORIGIN', import.meta.env.PUBLIC_COMPANY_ORIGIN);
@@ -65,7 +67,8 @@ export const publisherReference = {
   url: `${COMPANY_ORIGIN}/`,
   logo: `${COMPANY_ORIGIN}/logo`,
   description: COMPANY_DESCRIPTION,
-  sameAs: [GITHUB_ORGANIZATION_URL]
+  foundingDate: COMPANY_FOUNDING_DATE,
+  sameAs: [GITHUB_ORGANIZATION_URL, COMPANY_OPENCORPORATES_URL]
 };
 
 export const amsoniaBrandReference = {
