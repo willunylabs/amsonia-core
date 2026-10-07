@@ -9,6 +9,8 @@ const origin = String(process.env.PUBLIC_SITE_ORIGIN || '').trim();
 assert.ok(origin, 'PUBLIC_SITE_ORIGIN is required for the site audit');
 const companyOrigin = String(process.env.PUBLIC_COMPANY_ORIGIN || '').trim();
 assert.ok(companyOrigin, 'PUBLIC_COMPANY_ORIGIN is required for the site audit');
+const commercialUrl = new URL(process.env.PUBLIC_COMMERCIAL_URL);
+assert.notEqual(commercialUrl.href.replace(/\/$/, ''), `${companyOrigin}/amsonia`, 'commercial CTA must not loop through the retired company product page');
 const requiredRoutes = [
   '/', '/products', '/platform', '/platform/docs', '/platform/docs/quickstart', '/platform/docs/deployment',
   '/platform/docs/billing', '/platform/changelog', '/platform/roadmap', '/next', '/compare/platform-vs-next',
@@ -57,6 +59,7 @@ const htmlFiles = collectHtml(distRoot);
 for (const file of htmlFiles) {
   const html = readFileSync(file, 'utf8');
   assert.doesNotMatch(html, /willuny\.xyz|willunylabs\.com/i, `${file} must not publish a legacy Willuny domain`);
+  assert.doesNotMatch(html, /github\.com\/willunylabs\/amsonia-next|opensource\.org\/license\/mit|MIT-licensed/i, `${file} must not promote private Next source as an open-source release`);
   assert.doesNotMatch(html, /Complete Amsonia|Commercial Amsonia|Amsonia Full/, `${file} must use the accepted product names`);
   assert.doesNotMatch(html, /demo\.amsonia\.dev|data-cta-target="demo"|Live demo/i, `${file} must not present an unverified hosted demo as product evidence`);
   assert.doesNotMatch(html, /Amsonia Core/i, `${file} must keep Core outside the product-site narrative`);
@@ -76,6 +79,8 @@ for (const file of htmlFiles) {
 }
 
 const homepage = readFileSync(pageFile('/'), 'utf8');
+assert.ok(homepage.includes(`${companyOrigin}/logo`), 'publisher logo must use the company logo');
+assert.match(homepage, /github\.com\/willunylabs/, 'publisher must identify the GitHub organization');
 assert.ok(homepage.includes(`${companyOrigin}/#organization`), 'homepage publisher must use the configured Willuny organization ID');
 assert.ok(homepage.includes(`${origin}/#product-family`), 'homepage must declare the configured Amsonia product family');
 assert.ok(homepage.includes(`${origin}/platform/#software`), 'homepage must reference Amsonia Platform');

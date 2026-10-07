@@ -1,9 +1,9 @@
 ---
 import PageIntro from '../../components/PageIntro.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { AMSONIA_NEXT_GITHUB_URL, breadcrumbSchema } from '../../lib/site';
+import { COMPANY_CONTACT_URL, breadcrumbSchema } from '../../lib/site';
 
-const description = 'Documentation entry point for the commercial Amsonia Platform source foundation and the open-source Amsonia Next SaaS starter.';
+const description = 'Documentation entry point for the commercial Amsonia Platform source foundation and the privately maintained Amsonia Next SaaS foundation.';
 ---
 
 <BaseLayout title="Amsonia Documentation" description={description} canonicalPath="/docs" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Docs', href: '/docs' }])]}>
@@ -14,7 +14,7 @@ const description = 'Documentation entry point for the commercial Amsonia Platfo
         <div class="link-grid">
           <a class="link-card" href="/platform/docs/"><span>PLATFORM / DOCS</span><h3>Platform guide</h3><p>Understand the commercial source package, system boundaries, buyer responsibilities, and evaluation path.</p></a>
           <a class="link-card" href="/next/"><span>NEXT / OVERVIEW</span><h3>Next product page</h3><p>Evaluate the single-tenant boundary, included flows, stack, and license.</p></a>
-          <a class="link-card" href={AMSONIA_NEXT_GITHUB_URL}><span>NEXT / README</span><h3>Next repository docs</h3><p>Continue to the setup instructions, source tree, scripts, and version history on GitHub.</p></a>
+          <a class="link-card" href={COMPANY_CONTACT_URL}><span>NEXT / CONTACT</span><h3>Next availability</h3><p>Ask Willuny Labs about the private Next.js foundation, documentation, availability, and terms.</p></a>
           <a class="link-card" href="/architecture/"><span>PLATFORM / ARCH</span><h3>Architecture</h3><p>Review the Go, Next.js, PostgreSQL, and deployment boundaries.</p></a>
           <a class="link-card" href="/security/"><span>PLATFORM / SECURITY</span><h3>Security model</h3><p>Separate supplied implementation controls from buyer-owned operations.</p></a>
         </div>

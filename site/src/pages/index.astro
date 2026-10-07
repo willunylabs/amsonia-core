@@ -4,21 +4,20 @@ import {
   absoluteUrl,
   amsoniaBrandReference,
   amsoniaProductReference,
-  AMSONIA_NEXT_GITHUB_URL,
+  COMPANY_CONTACT_URL,
   COMMERCIAL_URL,
-  COMPANY_NAME,
   GITHUB_URL,
   publisherReference,
   SITE_ORIGIN
 } from '../lib/site';
 
-const description = 'Amsonia is a family of source-owned SaaS foundations: a commercial Go + Next.js platform and an open-source Next.js starter, published by Willuny Labs.';
+const description = 'Amsonia is a family of source-owned SaaS foundations: a commercial Go + Next.js platform and a privately maintained Next.js foundation, published by Willuny Labs.';
 const platformId = `${absoluteUrl('/platform')}#software`;
 const nextId = `${absoluteUrl('/next')}#software`;
 const schemas = [{
   '@context': 'https://schema.org',
   '@graph': [
-    { ...publisherReference, legalName: COMPANY_NAME, logo: absoluteUrl('/amsonia-mark-v2.svg') },
+    publisherReference,
     { ...amsoniaBrandReference, logo: absoluteUrl('/amsonia-mark-v2.svg') },
     {
       ...amsoniaProductReference,
@@ -35,8 +34,7 @@ const schemas = [{
     {
       '@type': 'SoftwareApplication', '@id': nextId, name: 'Amsonia Next',
       url: absoluteUrl('/next'), applicationCategory: 'DeveloperApplication',
-      operatingSystem: 'Self-hosted', license: 'https://opensource.org/license/mit',
-      isAccessibleForFree: true, isPartOf: { '@id': `${SITE_ORIGIN}/#product-family` }
+      operatingSystem: 'Self-hosted', publisher: { '@id': publisherReference['@id'] }, isPartOf: { '@id': `${SITE_ORIGIN}/#product-family` }
     },
     {
       '@type': 'WebSite', '@id': `${SITE_ORIGIN}/#website`, name: 'Amsonia',
@@ -56,16 +54,16 @@ const schemas = [{
           <span class="eyebrow">Amsonia / Product family / By Willuny Labs</span>
           <h1>Build the product. Own the foundation.</h1>
           <p class="hero-thesis">Source-owned SaaS foundations for two ways of shipping.</p>
-          <p class="hero-summary">Choose a commercial Go + Next.js platform for multi-tenant B2B software, or start with a focused open-source Next.js kit. Both keep your application, data, and deployment decisions in your hands.</p>
+          <p class="hero-summary">Choose a commercial Go + Next.js platform for multi-tenant B2B software, or start with a focused Next.js foundation. Both keep your application, data, and deployment decisions in your hands.</p>
           <div class="hero-actions">
             <a class="button primary" href="/products/">Choose your foundation <span aria-hidden="true">→</span></a>
-            <a class="button secondary" href="/next/">Explore open-source Next <span aria-hidden="true">→</span></a>
+            <a class="button secondary" href="/next/">Explore Amsonia Next <span aria-hidden="true">→</span></a>
           </div>
         </div>
         <div class="hero-specimen family-specimen" aria-label="Amsonia product family summary">
           <div class="hero-product-header"><span><img src="/amsonia-mark-v2.svg" width="34" height="34" alt="" /> Two product paths</span><strong>Source owned</strong></div>
           <a class="family-specimen-row" href="/platform/"><span class="eyebrow">01 / Commercial</span><strong>Amsonia Platform</strong><small>Go + Next.js · Multi-tenant B2B</small><span aria-hidden="true">→</span></a>
-          <a class="family-specimen-row" href="/next/"><span class="eyebrow">02 / MIT</span><strong>Amsonia Next</strong><small>Next.js 16 · Single-tenant starter</small><span aria-hidden="true">→</span></a>
+          <a class="family-specimen-row" href="/next/"><span class="eyebrow">02 / PRIVATE SOURCE</span><strong>Amsonia Next</strong><small>Next.js 16 · Single-tenant starter</small><span aria-hidden="true">→</span></a>
           <div class="family-specimen-note"><span>Additional open source</span><a href={GITHUB_URL} data-cta-target="github">View engineering work on GitHub ↗</a></div>
         </div>
       </div>
@@ -81,7 +79,7 @@ const schemas = [{
       <div class="section-heading"><span class="eyebrow">Products / Pick the constraint</span><div class="section-heading-copy"><h2>Start with the architecture you actually need.</h2><p>Platform is for a team already committed to Go and multi-tenant operations. Next is for a product that benefits from one full-stack Next.js codebase and a smaller operating surface.</p></div></div>
       <div class="product-grid">
         <article class="product-card product-card-featured"><span class="specimen-number">PLATFORM / COMMERCIAL SOURCE</span><h2>Amsonia Platform</h2><p class="product-lede">A Go + Next.js SaaS starter kit for multi-tenant B2B products.</p><ul class="capability-list"><li>Go API and Next.js product surface</li><li>Tenant and workspace boundaries</li><li>Roles, permissions, and operations</li><li>Stripe-oriented commerce and billing</li></ul><div class="hero-actions"><a class="button primary" href="/platform/">Evaluate Platform →</a><a class="button secondary" href="/go-saas-boilerplate/">Go SaaS guide →</a></div></article>
-        <article class="product-card"><span class="specimen-number">NEXT / OPEN SOURCE / MIT</span><h2>Amsonia Next</h2><p class="product-lede">A single-tenant Next.js 16 SaaS starter for founders who want a focused full-stack base.</p><ul class="capability-list"><li>Auth.js and PostgreSQL with Drizzle</li><li>Stripe and Lemon Squeezy adapters</li><li>Admin, account, audit, and billing flows</li><li>English and Chinese route foundations</li></ul><div class="hero-actions"><a class="button primary" href="/next/">Explore Amsonia Next →</a><a class="button secondary" href={AMSONIA_NEXT_GITHUB_URL} data-cta-target="github">GitHub source ↗</a></div></article>
+        <article class="product-card"><span class="specimen-number">NEXT / PRIVATE SOURCE</span><h2>Amsonia Next</h2><p class="product-lede">A single-tenant Next.js 16 SaaS starter for founders who want a focused full-stack base.</p><ul class="capability-list"><li>Auth.js and PostgreSQL with Drizzle</li><li>Stripe and Lemon Squeezy adapters</li><li>Admin, account, audit, and billing flows</li><li>English and Chinese route foundations</li></ul><div class="hero-actions"><a class="button primary" href="/next/">Explore Amsonia Next →</a><a class="button secondary" href={COMPANY_CONTACT_URL} data-cta-target="contact">Contact about Next ↗</a></div></article>
       </div>
     </div></section>
 
@@ -91,7 +89,7 @@ const schemas = [{
         <a class="link-card" href="/compare/platform-vs-next/"><span>COMPARE / 01</span><h3>Platform vs Next</h3><p>Compare runtime, tenancy, license, billing providers, and the intended team.</p></a>
         <a class="link-card" href="/architecture/"><span>ARCH / 02</span><h3>Platform architecture</h3><p>See how the Go API, Next.js surfaces, PostgreSQL, and deployment boundary fit together.</p></a>
         <a class="link-card" href="/features/multi-tenancy/"><span>TENANCY / 03</span><h3>Multi-tenant by design</h3><p>Follow tenant context from identity through authorization, jobs, cache keys, and data access.</p></a>
-        <a class="link-card" href="/open-source/"><span>OSS / 04</span><h3>Inspect the source</h3><p>Start with Amsonia Next, review its license, and follow the implementation before adopting it.</p></a>
+        <a class="link-card" href="/open-source/"><span>OSS / 04</span><h3>Inspect the source</h3><p>Review the public engineering repositories maintained by Willuny Labs.</p></a>
       </div>
     </div></section>
 
