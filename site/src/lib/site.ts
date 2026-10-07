@@ -12,10 +12,15 @@ function requiredURL(name: string, rawValue: string | undefined): string {
 export const SITE_ORIGIN = requiredURL('PUBLIC_SITE_ORIGIN', import.meta.env.PUBLIC_SITE_ORIGIN);
 export const SITE_NAME = 'Amsonia';
 export const COMPANY_NAME = 'Willuny Labs LLC';
+export const COMPANY_DISPLAY_NAME = 'Willuny Labs';
+export const COMPANY_FOUNDING_DATE = '2026-01-07';
+export const COMPANY_OPENCORPORATES_URL = 'https://opencorporates.com/companies/us_wy/2026-001860652';
+export const COMPANY_DESCRIPTION = 'Willuny Labs builds source-owned software products, maintains open-source foundations, and publishes practical engineering work.';
+export const GITHUB_ORGANIZATION_URL = 'https://github.com/willunylabs';
 export const COMPANY_ORIGIN = requiredURL('PUBLIC_COMPANY_ORIGIN', import.meta.env.PUBLIC_COMPANY_ORIGIN);
 export const GITHUB_URL = requiredURL('PUBLIC_GITHUB_URL', import.meta.env.PUBLIC_GITHUB_URL);
 export const COMMERCIAL_URL = requiredURL('PUBLIC_COMMERCIAL_URL', import.meta.env.PUBLIC_COMMERCIAL_URL);
-export const AMSONIA_NEXT_GITHUB_URL = 'https://github.com/willunylabs/amsonia-next';
+export const COMPANY_CONTACT_URL = `${COMPANY_ORIGIN}/shop/contact`;
 
 export const primaryNav = [
   { href: '/platform/', label: 'Platform' },
@@ -56,8 +61,14 @@ export function breadcrumbSchema(items: Breadcrumb[]) {
 export const publisherReference = {
   '@type': 'Organization',
   '@id': `${COMPANY_ORIGIN}/#organization`,
-  name: COMPANY_NAME,
-  url: `${COMPANY_ORIGIN}/`
+  name: COMPANY_DISPLAY_NAME,
+  legalName: COMPANY_NAME,
+  alternateName: ['Willuny', COMPANY_NAME],
+  url: `${COMPANY_ORIGIN}/`,
+  logo: `${COMPANY_ORIGIN}/logo`,
+  description: COMPANY_DESCRIPTION,
+  foundingDate: COMPANY_FOUNDING_DATE,
+  sameAs: [GITHUB_ORGANIZATION_URL, COMPANY_OPENCORPORATES_URL]
 };
 
 export const amsoniaBrandReference = {
@@ -84,8 +95,8 @@ export function softwareProductSchema({
   name: string;
   path: string;
   description: string;
-  license: string;
-  isAccessibleForFree: boolean;
+  license?: string;
+  isAccessibleForFree?: boolean;
 }) {
   return {
     '@context': 'https://schema.org',
@@ -96,8 +107,8 @@ export function softwareProductSchema({
     description,
     applicationCategory: 'DeveloperApplication',
     operatingSystem: 'Self-hosted',
-    license,
-    isAccessibleForFree,
+    ...(license ? { license } : {}),
+    ...(isAccessibleForFree !== undefined ? { isAccessibleForFree } : {}),
     brand: { '@id': `${SITE_ORIGIN}/#brand` },
     publisher: { '@id': publisherReference['@id'] },
     isPartOf: { '@id': `${SITE_ORIGIN}/#product-family` }
