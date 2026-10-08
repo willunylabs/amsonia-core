@@ -84,7 +84,7 @@ const homepageGraph = [...homepage.matchAll(/<script type="application\/ld\+json
 assert.ok(!homepageGraph.some((entry) => entry['@type'] === 'ProductGroup'), 'distinct software products must not be marked as merchant variants');
 const catalog = homepageGraph.find((entry) => entry['@type'] === 'CollectionPage');
 assert.equal(catalog?.mainEntity?.['@type'], 'ItemList', 'the homepage must describe its product catalog as a list');
-assert.deepEqual(catalog.mainEntity.itemListElement.map((entry) => entry.url), [canonicalFor('/platform'), canonicalFor('/next')], 'catalog entries must point to the actual product pages');
+assert.deepEqual(catalog.mainEntity.itemListElement.map((entry) => entry.url), [canonicalFor('/next'), canonicalFor('/platform')], 'catalog entries must point to the actual product pages');
 assert.ok(homepage.includes(`${companyOrigin}/logo`), 'publisher logo must use the company logo');
 assert.match(homepage, /github\.com\/willunylabs/, 'publisher must identify the GitHub organization');
 assert.ok(homepage.includes(`${companyOrigin}/#organization`), 'homepage publisher must use the configured Willuny organization ID');
@@ -94,6 +94,11 @@ assert.ok(homepage.includes(`${origin}/next/#software`), 'homepage must referenc
 assert.match(homepage, /FAMILY \/ 00/, 'homepage must present Amsonia as the product family');
 assert.match(homepage, /Amsonia Platform/, 'homepage must name the commercial product consistently');
 assert.match(homepage, /Amsonia Next/, 'homepage must name the Next.js product consistently');
+
+for (const route of ['/', '/next', '/products', '/pricing', '/compare/platform-vs-next']) {
+  const html = readFileSync(pageFile(route), 'utf8');
+  assert.doesNotMatch(html, /Lemon Squeezy|Polar/i, `${route} must not advertise unsupported Next payment providers`);
+}
 
 const sitemapFile = join(distRoot, 'sitemap.xml');
 assert.ok(existsSync(sitemapFile), 'sitemap.xml must be generated');
