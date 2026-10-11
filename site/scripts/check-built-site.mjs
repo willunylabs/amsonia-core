@@ -47,6 +47,12 @@ for (const route of requiredRoutes) {
   assert.match(html, /<meta name="description" content="[^"]{70,}"/, `${route} must have a useful description`);
   assert.ok(html.includes(`<link rel="canonical" href="${canonicalFor(route)}">`), `${route} must self-canonicalize`);
   assert.match(html, /<meta property="og:title" content="[^"]+">/, `${route} must have Open Graph metadata`);
+  const image = html.match(/<meta property="og:image" content="([^"]+)">/)?.[1];
+  assert.ok(image?.startsWith(`${origin}/`) && image.endsWith('.png'), `${route} must share a same-origin PNG`);
+  assert.ok(html.includes(`<meta name="twitter:image" content="${image}">`), `${route} must share the same image on X`);
+  assert.match(html, /<meta property="og:image:width" content="1200">/, `${route} must declare the image width`);
+  assert.match(html, /<meta property="og:image:height" content="630">/, `${route} must declare the image height`);
+  assert.match(html, /<meta property="og:image:type" content="image\/png">/, `${route} must declare the image type`);
   assert.match(html, /<meta name="robots" content="index,follow,/, `${route} must be indexable`);
   assert.doesNotMatch(html, /noindex/i, `${route} must not contain noindex`);
 
@@ -79,6 +85,16 @@ for (const file of htmlFiles) {
 }
 
 const homepage = readFileSync(pageFile('/'), 'utf8');
+for (const image of ['og-amsonia.png', 'og-amsonia-platform.png']) {
+  const png = readFileSync(join(distRoot, image));
+  assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `${image} must be a real PNG`);
+  assert.equal(png.readUInt32BE(16), 1200, `${image} must be 1200 pixels wide`);
+  assert.equal(png.readUInt32BE(20), 630, `${image} must be 630 pixels tall`);
+}
+assert.ok(readFileSync(pageFile('/platform'), 'utf8').includes(`${origin}/og-amsonia-platform.png`), 'Platform must share its own product image');
+const notFound = readFileSync(pageFile('/404'), 'utf8');
+assert.match(notFound, /<meta name="robots" content="noindex">/, '404 must not be indexable');
+assert.doesNotMatch(notFound, /<meta name="robots" content="index,/, '404 must not inherit index metadata');
 const homepageGraph = [...homepage.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
   .flatMap((match) => JSON.parse(match[1])['@graph'] ?? []);
 assert.ok(!homepageGraph.some((entry) => entry['@type'] === 'ProductGroup'), 'distinct software products must not be marked as merchant variants');

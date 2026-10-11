@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Amsonia Platform — Go + Next.js SaaS">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#635bff"/><stop offset="1" stop-color="#7a73ff"/></linearGradient>
+    <pattern id="grid" width="56" height="56" patternUnits="userSpaceOnUse"><path d="M56 0H0V56" fill="none" stroke="#635bff" stroke-opacity=".08"/></pattern>
+  </defs>
+  <rect width="1200" height="630" fill="#ffffff"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <rect x="720" y="64" width="416" height="502" rx="24" fill="#1d1b3f"/>
+  <g transform="translate(76 70) scale(.72)">
+    <g fill="#635bff">
+      <path d="M32 31C24.8 23.2 25.2 11.7 32 2.5C38.8 11.7 39.2 23.2 32 31Z"/><path d="M32 31C24.8 23.2 25.2 11.7 32 2.5C38.8 11.7 39.2 23.2 32 31Z" transform="rotate(72 32 32)"/><path d="M32 31C24.8 23.2 25.2 11.7 32 2.5C38.8 11.7 39.2 23.2 32 31Z" transform="rotate(144 32 32)"/><path d="M32 31C24.8 23.2 25.2 11.7 32 2.5C38.8 11.7 39.2 23.2 32 31Z" transform="rotate(216 32 32)"/><path d="M32 31C24.8 23.2 25.2 11.7 32 2.5C38.8 11.7 39.2 23.2 32 31Z" transform="rotate(288 32 32)"/>
+    </g>
+    <path d="M31 56.2C40.2 56.4 48.6 52.7 57.5 44C54.6 56.2 44.5 62.2 32 59.6C27.4 58.6 23.8 57.5 20.2 57.8C23.9 54.8 27.5 54.9 31 56.2Z" fill="#7f9d7c"/><circle cx="32" cy="32" r="4.2" fill="#f8fafc"/>
+  </g>
+  <text x="132" y="108" fill="#0f172a" font-family="Arial, sans-serif" font-size="25" font-weight="700">Amsonia</text>
+  <text x="76" y="258" fill="#0f172a" font-family="Arial, sans-serif" font-size="70" font-weight="700" letter-spacing="-4">Build with Go.</text>
+  <text x="76" y="346" fill="url(#brand)" font-family="Arial, sans-serif" font-size="70" font-weight="700" letter-spacing="-4">Ship your SaaS.</text>
+  <text x="80" y="418" fill="#475569" font-family="Arial, sans-serif" font-size="27">Tenancy, roles, billing, and admin.</text>
+  <text x="80" y="540" fill="#4f46e5" font-family="monospace" font-size="18" letter-spacing="4">AMSONIA PLATFORM · BY WILLUNY LABS</text>
+  <text x="768" y="132" fill="#a5b4fc" font-family="monospace" font-size="18" letter-spacing="3">GO + NEXT.JS SAAS</text>
+  <text x="768" y="225" fill="#ffffff" font-family="Arial, sans-serif" font-size="40" font-weight="700">Amsonia Platform</text>
+  <text x="768" y="282" fill="#cbd5e1" font-family="Arial, sans-serif" font-size="23">Multi-tenant B2B foundation</text>
+  <path d="M768 344H1088M768 406H1088M768 468H1088" stroke="#ffffff" stroke-opacity=".16"/>
+  <text x="768" y="382" fill="#ffffff" font-family="Arial, sans-serif" font-size="22">Tenant boundaries + roles</text><text x="768" y="444" fill="#ffffff" font-family="Arial, sans-serif" font-size="22">Go API + Next.js</text><text x="768" y="506" fill="#ffffff" font-family="Arial, sans-serif" font-size="22">Commercial source packages</text>
+</svg>
