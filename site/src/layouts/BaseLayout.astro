@@ -10,11 +10,18 @@ interface Props {
   description: string;
   canonicalPath: string;
   schemas?: Record<string, unknown>[];
+  noindex?: boolean;
 }
 
-const { title, description, canonicalPath, schemas = [] } = Astro.props;
+const { title, description, canonicalPath, schemas = [], noindex = false } = Astro.props;
 const canonical = absoluteUrl(canonicalPath);
 const fullTitle = canonicalPath === '/' ? `${SITE_NAME} — Next.js SaaS Starter` : `${title} | ${SITE_NAME}`;
+const platformPage = ['/platform', '/go-saas-boilerplate', '/best-go-saas-boilerplates', '/features', '/architecture', '/security']
+  .some((path) => canonicalPath === path || canonicalPath.startsWith(`${path}/`));
+const socialImage = absoluteUrl(platformPage ? '/og-amsonia-platform.png' : '/og-amsonia.png');
+const socialImageAlt = platformPage
+  ? 'Amsonia Platform — a Go + Next.js foundation for multi-tenant B2B SaaS'
+  : 'Amsonia Next — authentication, Stripe billing, and admin in one Next.js application';
 ---
 
 <!doctype html>
@@ -24,10 +31,10 @@ const fullTitle = canonicalPath === '/' ? `${SITE_NAME} — Next.js SaaS Starter
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
     <meta name="theme-color" content="#635bff" />
-    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+    <meta name="robots" content={noindex ? 'noindex' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'} />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
+    {!noindex && <link rel="canonical" href={canonical} />}
     <link rel="icon" href="/amsonia-mark-v2.svg" type="image/svg+xml" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Amsonia" />
@@ -35,12 +42,15 @@ const fullTitle = canonicalPath === '/' ? `${SITE_NAME} — Next.js SaaS Starter
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta property="og:image" content={absoluteUrl('/og-amsonia.svg')} />
-    <meta property="og:image:alt" content="Amsonia Next — authentication, Stripe billing, and admin in one Next.js application" />
+    <meta property="og:image" content={socialImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content={socialImageAlt} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={absoluteUrl('/og-amsonia.svg')} />
+    <meta name="twitter:image" content={socialImage} />
     {schemas.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} />)}
   </head>
   <body>

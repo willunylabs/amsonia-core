@@ -14,7 +14,7 @@
   </g>
   <text x="132" y="108" fill="#0f172a" font-family="Arial, sans-serif" font-size="25" font-weight="700">Amsonia</text>
   <text x="76" y="258" fill="#0f172a" font-family="Arial, sans-serif" font-size="70" font-weight="700" letter-spacing="-4">Your SaaS.</text>
-  <text x="76" y="346" fill="url(#brand)" font-family="Arial, sans-serif" font-size="70" font-weight="700" letter-spacing="-4">One Next.js codebase.</text>
+  <text x="76" y="346" fill="url(#brand)" font-family="Arial, sans-serif" font-size="62" font-weight="700" letter-spacing="-4">One Next.js codebase.</text>
   <text x="80" y="418" fill="#475569" font-family="Arial, sans-serif" font-size="27">Authentication, Stripe billing, and admin.</text>
   <text x="80" y="540" fill="#4f46e5" font-family="monospace" font-size="18" letter-spacing="4">AMSONIA NEXT · BY WILLUNY LABS</text>
   <text x="768" y="132" fill="#a5b4fc" font-family="monospace" font-size="18" letter-spacing="3">NEXT.JS SAAS STARTER</text>
