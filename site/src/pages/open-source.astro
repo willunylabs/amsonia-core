@@ -1,21 +1,32 @@
 ---
 import PageIntro from '../components/PageIntro.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { breadcrumbSchema, GITHUB_URL, GITHUB_ORGANIZATION_URL } from '../lib/site';
+import { breadcrumbSchema, GITHUB_URL } from '../lib/site';
 
-const description = 'Find public engineering repositories maintained by Willuny Labs and understand the source-availability boundary of the Amsonia product family.';
+const description = 'Explore Amsonia Core: Apache-2.0 Go authorization with tenant-scoped RBAC, PostgreSQL row-level security, sessions, audit, and runnable GitHub examples.';
+const repositoryFile = (path: string) => `${GITHUB_URL}/blob/main/${path}`;
+const quickstart = `git clone ${GITHUB_URL}.git
+cd amsonia-core
+make demo`;
 ---
 
-<BaseLayout title="Open-source Engineering" description={description} canonicalPath="/open-source" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Open source', href: '/open-source' }])]}>
+<BaseLayout title="Open-source Go RBAC & PostgreSQL Tenant Isolation" description={description} canonicalPath="/open-source" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Open source', href: '/open-source' }])]}>
   <main id="main-content">
-    <PageIntro eyebrow="Public engineering" index="OSS / 00" title="Inspect our public engineering work." summary="Willuny Labs maintains public engineering repositories alongside its privately maintained products. Each public repository documents its own scope, setup, and license." />
+    <PageIntro eyebrow="Amsonia Core / Apache-2.0" index="OSS / 01" title="Tenant authorization for Go. Enforced in PostgreSQL." summary="Amsonia Core is our open-source authorization foundation for Go teams building multi-tenant applications. Inspect tenant-scoped RBAC, PostgreSQL row-level security, sessions, audit, and a React management console in the public repository." />
     <div class="content-shell">
-      <section class="section">
-        <div class="core-grid">
-          <article><span class="specimen-number">GITHUB / PUBLIC SOURCE</span><h3>Engineering<br />on GitHub</h3><p>Review the public source, documentation, tests, and license directly in the repository before using it in your application.</p><div class="hero-actions"><a class="button primary" href={GITHUB_URL} data-cta-target="github">Inspect public source ↗</a><a class="button secondary" href={GITHUB_ORGANIZATION_URL} data-cta-target="github">Willuny Labs on GitHub ↗</a></div></article>
-          <aside class="boundary-note"><div><span class="eyebrow">Product boundary</span><h3>Public source has an explicit scope.</h3><p>Amsonia Next is privately maintained and is not an open-source distribution. Platform source is delivered under its commercial package terms. A public engineering repository does not grant access to either product.</p></div><a class="button secondary" href="/license/">Review product terms →</a></aside>
-        </div>
-      </section>
+      <div class="hero-actions"><a class="button primary" href={GITHUB_URL} data-cta-target="github">View source on GitHub ↗</a><a class="button secondary" href={repositoryFile('docs/getting-started.md')} data-cta-target="github">Read the quick start ↗</a></div>
+      <section class="section split-section" aria-labelledby="scope-title"><div><span class="eyebrow">Go + PostgreSQL</span><h2 id="scope-title">Keep tenant permissions and data isolation together.</h2><p>Core focuses on the authorization boundary. Your host application authenticates end users, resolves the active tenant, and chooses the permission each action requires.</p></div><div class="stack-list"><article><span>01</span><h3>Tenant-scoped and delegated RBAC</h3><p>Work with memberships, permission catalogs, immutable role versions, and scoped permissions. Review the public tests for grant-cycle and stale-version rejection.</p></article><article><span>02</span><h3>PostgreSQL row-level security</h3><p>A signed, transaction-local tenant binding and reference FORCE RLS policies connect the authorization boundary to database access. The host-table example includes cross-tenant reads and rejected writes.</p></article><article><span>03</span><h3>Sessions, audit, and administration</h3><p>Inspect administrator authentication, rotating refresh sessions, append-only policy audit, a versioned HTTP API, and the React management console.</p></article></div></section>
+      <section class="section split-section" aria-labelledby="run-title"><div><span class="eyebrow">Run it locally</span><h2 id="run-title">Start with a working example.</h2><p>The Compose quick start requires Docker with the Compose plugin and Go 1.25.13 or newer. Follow the repository guide for configuration and administrator bootstrap.</p><div class="hero-actions"><a class="button secondary" href={repositoryFile('docs/getting-started.md')} data-cta-target="github">Open setup guide ↗</a></div></div><div class="prose quickstart"><pre aria-label="Core local quick start"><code>{quickstart}</code></pre><p>Open <code>http://127.0.0.1:8080</code> after setup. The command prompts for an administrator password; follow the guide to manage the local stack and its PostgreSQL data.</p><p>Then inspect <a href={repositoryFile('docs/business-data-rls.md')} data-cta-target="github">the business-data RLS walkthrough</a>: two tenants access the same invoice table, with isolation enforced through the reference database policies.</p></div></section>
+      <section class="related-section"><span class="eyebrow">Evaluate the implementation</span><h2>Follow the source behind each boundary.</h2><div class="link-grid"><a class="link-card" href={`${GITHUB_URL}/tree/main/examples/business-data-rls`} data-cta-target="github"><span>EXAMPLE / 01</span><h3>Business-data isolation</h3><p>Read the runnable Go and PostgreSQL host-table example.</p></a><a class="link-card" href={repositoryFile('postgres/host_table_integration_test.go')} data-cta-target="github"><span>TESTS / 02</span><h3>Cross-tenant checks</h3><p>Inspect the negative cases and database integration tests.</p></a><a class="link-card" href={repositoryFile('docs/security-model.md')} data-cta-target="github"><span>DESIGN / 03</span><h3>Security model</h3><p>Review trust assumptions, role provisioning, and application responsibilities.</p></a><a class="link-card" href={repositoryFile('CONTRIBUTING.md')} data-cta-target="github"><span>CONTRIBUTE / 04</span><h3>Build with us</h3><p>Contribute a reproducible example, integration guide, or test.</p></a></div><p class="repository-invite">Find Core useful? <a href={GITHUB_URL} data-cta-target="github">Star the repository on GitHub ↗</a></p></section>
+      <section class="publication-note"><span class="eyebrow">The Next.js product</span><h2>Looking for a complete Next.js SaaS starter?</h2><p>Amsonia Next is our private commercial Next.js application with accounts, Stripe billing, PostgreSQL/Drizzle, and admin. Core is independently useful Go authorization code; it does not include Next source, billing, or the full SaaS product.</p><div class="hero-actions"><a class="button primary" href="/next/" data-cta-target="next">Explore Amsonia Next →</a><a class="button secondary" href="/license/">Review source and license scope →</a></div></section>
     </div>
   </main>
 </BaseLayout>
+
+<style>
+  .repository-invite { margin-top: 2rem; color: var(--ink-soft); line-height: 1.8; }
+  .repository-invite a { color: var(--brand-strong); text-underline-offset: .2em; }
+  .quickstart { padding: 0; }
+  .quickstart pre { margin-top: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .quickstart a { color: var(--brand-strong); text-underline-offset: .2em; }
+</style>
