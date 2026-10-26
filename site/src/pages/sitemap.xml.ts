@@ -13,6 +13,7 @@ const routes = [
   '/platform/roadmap',
   '/next',
   '/compare/platform-vs-next',
+  '/compare/shipfast-vs-amsonia-next',
   '/go-saas-boilerplate',
   '/best-go-saas-boilerplates',
   '/features/multi-tenancy',
@@ -29,10 +30,11 @@ const routes = [
 
 const updatedRoutes = new Set(['/', '/products', '/next', '/compare/platform-vs-next', '/about', '/license', '/docs', '/open-source', '/platform/docs', '/pricing', '/best-go-saas-boilerplates']);
 const nextFocusRoutes = new Set(['/', '/products', '/next', '/compare/platform-vs-next', '/pricing', '/about']);
+const growthRoutes = new Set(['/next', '/open-source', '/compare/shipfast-vs-amsonia-next']);
 const escapeXml = (value: string) => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
 export const GET: APIRoute = () => {
-  const entries = routes.map((route) => `  <url>\n    <loc>${escapeXml(absoluteUrl(route))}</loc>\n    <lastmod>${nextFocusRoutes.has(route) ? '2026-10-08' : updatedRoutes.has(route) ? '2026-10-07' : '2026-09-03'}</lastmod>\n  </url>`).join('\n');
+  const entries = routes.map((route) => `  <url>\n    <loc>${escapeXml(absoluteUrl(route))}</loc>\n    <lastmod>${growthRoutes.has(route) ? '2026-10-26' : nextFocusRoutes.has(route) ? '2026-10-08' : updatedRoutes.has(route) ? '2026-10-07' : '2026-09-03'}</lastmod>\n  </url>`).join('\n');
   return new Response(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</urlset>\n`, {
     headers: { 'Content-Type': 'application/xml; charset=utf-8' }
   });

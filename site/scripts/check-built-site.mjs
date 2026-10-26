@@ -13,7 +13,7 @@ const commercialUrl = new URL(process.env.PUBLIC_COMMERCIAL_URL);
 assert.notEqual(commercialUrl.href.replace(/\/$/, ''), `${companyOrigin}/amsonia`, 'commercial CTA must not loop through the retired company product page');
 const requiredRoutes = [
   '/', '/products', '/platform', '/platform/docs', '/platform/docs/quickstart', '/platform/docs/deployment',
-  '/platform/docs/billing', '/platform/changelog', '/platform/roadmap', '/next', '/compare/platform-vs-next',
+  '/platform/docs/billing', '/platform/changelog', '/platform/roadmap', '/next', '/compare/platform-vs-next', '/compare/shipfast-vs-amsonia-next',
   '/go-saas-boilerplate', '/best-go-saas-boilerplates',
   '/features/multi-tenancy', '/features/rbac', '/features/stripe-billing', '/architecture', '/security', '/pricing', '/license',
   '/docs', '/open-source', '/about'
@@ -62,7 +62,9 @@ for (const file of htmlFiles) {
   assert.doesNotMatch(html, /github\.com\/willunylabs\/amsonia-next|opensource\.org\/license\/mit|MIT-licensed/i, `${file} must not promote private Next source as an open-source release`);
   assert.doesNotMatch(html, /Complete Amsonia|Commercial Amsonia|Amsonia Full/, `${file} must use the accepted product names`);
   assert.doesNotMatch(html, /demo\.amsonia\.dev|data-cta-target="demo"|Live demo/i, `${file} must not present an unverified hosted demo as product evidence`);
-  assert.doesNotMatch(html, /Amsonia Core/i, `${file} must keep Core outside the product-site narrative`);
+  if (file !== pageFile('/open-source')) {
+    assert.doesNotMatch(html, /Amsonia Core/i, `${file} must keep Core out of the commercial product narrative`);
+  }
   assert.doesNotMatch(html, /mailto:|email-protection/i, `${file} must use the canonical contact page instead of an obfuscated email URL`);
   for (const match of html.matchAll(/href="(\/[^"]*)"/g)) {
     const href = match[1];
@@ -99,6 +101,20 @@ for (const route of ['/', '/next', '/products', '/pricing', '/compare/platform-v
   const html = readFileSync(pageFile(route), 'utf8');
   assert.doesNotMatch(html, /Lemon Squeezy|Polar/i, `${route} must not advertise unsupported Next payment providers`);
 }
+
+const sourceEntry = readFileSync(pageFile('/open-source'), 'utf8');
+assert.match(sourceEntry, /Amsonia Core/, 'the open-source gateway must identify the public repository');
+assert.ok(sourceEntry.includes(process.env.PUBLIC_GITHUB_URL), 'the open-source gateway must link to the configured repository');
+for (const match of sourceEntry.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+  const schema = JSON.parse(match[1]);
+  const entries = schema['@graph'] ?? [schema];
+  assert.ok(!entries.some((entry) => ['Product', 'SoftwareApplication', 'ProductGroup'].includes(entry['@type'])), 'Core remains a repository, not a third commercial product');
+}
+
+const comparison = readFileSync(pageFile('/compare/shipfast-vs-amsonia-next'), 'utf8');
+assert.match(comparison, /href="https:\/\/shipfa\.st\/"/, 'vendor comparison must cite the official product page');
+assert.match(comparison, /href="https:\/\/shipfa\.st\/docs"/, 'vendor comparison must cite public documentation');
+assert.ok(readFileSync(pageFile('/next'), 'utf8').includes('/compare/shipfast-vs-amsonia-next/'), 'the comparison must have an incoming product-page link');
 
 const sitemapFile = join(distRoot, 'sitemap.xml');
 assert.ok(existsSync(sitemapFile), 'sitemap.xml must be generated');

@@ -1,0 +1,34 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import { COMPANY_CONTACT_URL, breadcrumbSchema } from '../../lib/site';
+
+const description = 'Considering a ShipFast alternative? Compare Amsonia Next and ShipFast on Next.js architecture, databases, Stripe billing, public docs, and source access.';
+const decisions = [
+  { decision: 'Application foundation', shipfast: 'Next.js boilerplate for SaaS, AI tools, and other web applications.', next: 'One Next.js 16 full-stack TypeScript application for a focused, single-tenant product.' },
+  { decision: 'Database and data access', shipfast: 'MongoDB or Supabase options listed on the product page.', next: 'PostgreSQL with Drizzle schemas and explicit migrations.' },
+  { decision: 'Accounts', shipfast: 'Google OAuth and magic links listed publicly; authentication tutorials are available.', next: 'Account registration, login, recovery, verification, sessions, export, and deletion.' },
+  { decision: 'Billing', shipfast: 'Stripe and Lemon Squeezy listed publicly, with a Stripe subscriptions tutorial.', next: 'Stripe checkout, subscriptions, customer billing portal, webhooks, and payment records.' },
+  { decision: 'Administration', shipfast: 'Review the current package and documentation for the operations your project requires.', next: 'Admin pages, subscription management, audit logs, and role-based access.' },
+  { decision: 'Source access and terms', shipfast: 'A public purchase flow, listed packages, and public setup documentation.', next: 'Private source. Confirm availability, delivery, licensing, updates, and support with Willuny Labs.' }
+];
+---
+
+<BaseLayout title="ShipFast Alternative: Amsonia Next Compared" description={description} canonicalPath="/compare/shipfast-vs-amsonia-next" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Next', href: '/next' }, { name: 'ShipFast comparison', href: '/compare/shipfast-vs-amsonia-next' }])]}>
+  <main id="main-content">
+    <PageIntro eyebrow="Next.js SaaS starter comparison" index="COMPARE / 02" title="ShipFast or Amsonia Next? Start with your stack." summary="If you are evaluating a ShipFast alternative, compare the database, account and billing flows, and source terms your application needs. Here is how the publicly documented options differ." />
+    <div class="content-shell">
+      <div class="hero-actions"><a class="button primary" href="/next/" data-cta-target="next">Explore Amsonia Next →</a><a class="button secondary" href="https://shipfa.st/">Visit ShipFast ↗</a></div>
+      <section class="section compact-section" aria-labelledby="comparison-title"><span class="eyebrow">Compare the application</span><h2 id="comparison-title" class="comparison-title">Choose the foundation you want to extend.</h2><p class="comparison-summary">This comparison is maintained by Willuny Labs, the publisher of Amsonia Next. ShipFast details are based on its official product page and public documentation reviewed on <time datetime="2026-10-26">October 26, 2026</time>.</p><div class="comparison-table" role="region" aria-label="ShipFast and Amsonia Next feature comparison; scroll horizontally on small screens" tabindex="0"><table><caption class="table-caption">ShipFast and Amsonia Next: documented scope and source access</caption><thead><tr><th scope="col">Decision</th><th scope="col">ShipFast</th><th scope="col">Amsonia Next</th></tr></thead><tbody>{decisions.map((row) => <tr><th scope="row">{row.decision}</th><td>{row.shipfast}</td><td>{row.next}</td></tr>)}</tbody></table></div><p class="comparison-summary">Sources: <a href="https://shipfa.st/">ShipFast product page</a> and <a href="https://shipfa.st/docs">ShipFast documentation</a>. Public documentation is not an audit of either private codebase. Confirm the current package and terms with each vendor.</p></section>
+      <section class="section split-section" aria-labelledby="fit-title"><div><span class="eyebrow">Make the decision</span><h2 id="fit-title">Use the differences that affect your project.</h2></div><div class="stack-list"><article><span>01</span><h3>Evaluate ShipFast for its documented stack and purchase flow.</h3><p>If its listed database options and launch workflow match your project, use its public tutorials to assess the setup before purchasing. Verify the package, support, and license terms directly with ShipFast.</p></article><article><span>02</span><h3>Evaluate Next for PostgreSQL, Drizzle, and one TypeScript application.</h3><p>Amsonia Next brings account lifecycle, Stripe billing, and administration into one application. Discuss the current source scope and delivery terms with us if this is the foundation you want to extend.</p></article><article><span>03</span><h3>Check the tenancy requirement early.</h3><p>Amsonia Next is currently single-tenant. If customer organizations and workspace isolation are requirements, compare the separate <a href="/compare/platform-vs-next/">Amsonia Platform architecture</a> before choosing Next.</p></article></div></section>
+      <section class="decision-strip"><div><span class="eyebrow">Evaluate Next</span><h2>Bring your application requirements.</h2></div><div><p>Tell Willuny Labs what you are building, your data and billing needs, and the source access you require. Confirm included features, delivery, licensing, and support together.</p><div class="hero-actions"><a class="button primary" href={COMPANY_CONTACT_URL} data-cta-target="contact">Ask about Amsonia Next ↗</a><a class="button secondary" href="/next/#capabilities">Review Next capabilities →</a></div></div></section>
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .comparison-title { max-width: 900px; margin: 1rem 0 1.5rem; font-size: clamp(2.4rem, 5vw, 4.4rem); line-height: 1; letter-spacing: -.045em; }
+  .comparison-summary { max-width: 850px; color: var(--ink-soft); line-height: 1.8; }
+  .comparison-summary a, .stack-list a { color: var(--brand-strong); text-underline-offset: .2em; }
+  .table-caption { padding: 1rem; color: var(--ink-soft); text-align: left; font-size: .84rem; line-height: 1.6; }
+</style>
