@@ -36,7 +36,7 @@ const { eyebrow, index, title, summary, description, canonicalPath, sections, re
     <div class="content-shell">
       <div class="content-grid">
         <aside class="content-aside">
-          <nav aria-label={`${title} sections`}>
+          <nav data-section-navigation aria-label={`${title} sections`}>
             {sections.map((section) => <a href={`#${section.id}`}>{section.title}</a>)}
           </nav>
         </aside>
@@ -63,3 +63,16 @@ const { eyebrow, index, title, summary, description, canonicalPath, sections, re
     </div>
   </main>
 </BaseLayout>
+
+<script>
+  const links = document.querySelectorAll<HTMLAnchorElement>('[data-section-navigation] a[href^="#"]');
+  const syncCurrentSection = () => {
+    links.forEach((link) => {
+      if (link.hash === window.location.hash) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    });
+  };
+
+  window.addEventListener('hashchange', syncCurrentSection);
+  syncCurrentSection();
+</script>

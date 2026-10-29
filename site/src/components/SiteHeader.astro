@@ -1,20 +1,26 @@
 ---
 import { COMPANY_CONTACT_URL, primaryNav } from '../lib/site';
 
-const currentPath = Astro.url.pathname;
+const currentPath = `${Astro.url.pathname.replace(/\/+$/, '')}/`;
+const currentSection = currentPath.startsWith('/platform/docs/')
+  ? '/docs/'
+  : primaryNav.find((item) => currentPath.startsWith(item.href))?.href;
+const navigationCurrent = (href: string) => currentPath === href
+  ? 'page'
+  : currentSection === href ? 'location' : undefined;
 ---
 
 <header class="site-header">
   <a class="skip-link" href="#main-content">Skip to main content</a>
   <div class="header-inner">
-    <a class="wordmark" href="/" aria-label="Amsonia home">
+    <a class="wordmark" href="/" aria-label="Amsonia home" aria-current={currentPath === '/' ? 'page' : undefined}>
       <img src="/amsonia-mark-v2.svg" width="32" height="32" alt="" />
       <span>Amsonia</span>
     </a>
 
     <nav aria-label="Primary navigation">
       {primaryNav.map((item) => (
-        <a href={item.href} aria-current={currentPath === item.href ? 'page' : undefined}>{item.label}</a>
+        <a href={item.href} aria-current={navigationCurrent(item.href)}>{item.label}</a>
       ))}
     </nav>
 
@@ -29,7 +35,7 @@ const currentPath = Astro.url.pathname;
       </summary>
       <nav id="mobile-navigation-links" aria-label="Mobile navigation">
         {primaryNav.map((item) => (
-          <a href={item.href} aria-current={currentPath === item.href ? 'page' : undefined}>{item.label}</a>
+          <a href={item.href} aria-current={navigationCurrent(item.href)}>{item.label}</a>
         ))}
         <a href={COMPANY_CONTACT_URL} data-cta-target="contact">Ask about Next ↗</a>
       </nav>

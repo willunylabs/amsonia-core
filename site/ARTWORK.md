@@ -82,3 +82,27 @@ or page exceptions. The existing site check passes23 routes and 24 HTML document
 Browser evidence is retained in the companion checkout's
 `output/website-iteration-20261029/`. This iteration does not alter dependencies,
 artwork, application/API behavior, analytics or deployment.
+
+
+## Current page and document selection — 2026-10-29
+
+Desktop and mobile links identify the current page or parent category with
+`aria-current`, existing brand color, stronger type and an underline. Nested
+`/platform/docs/` pages select Docs rather than also marking Platform, so each
+navigation set has one current category. Category state is rendered on the
+server and remains available without JavaScript.
+
+The document contents highlight the selected URL fragment on initial loading,
+link clicks and browser back/forward navigation. Empty or unknown fragments clear
+the selection. Native links, scrolling and history remain intact; keyboard focus
+uses the existing 2px brand outline with 3px offset. This marks the selected
+fragment and does not claim to follow arbitrary manual scrolling.
+
+Browser validation covers six representative routes at 1440x900 and 390x844,
+including exact pages, nested docs and Platform roadmap; all 12 views retain one
+current category, one H1 and no page overflow. Direct/clicked/back fragments,
+malformed and empty hashes pass, and no page exceptions were observed. The
+no-JavaScript mobile menu retains the server-rendered Docs state and reaches Next.
+The existing Astro check/build passes 23 routes and 24 HTML documents. Evidence
+is retained in the companion checkout's `output/website-location-20261029/`.
+No artwork, route, analytics, dependency, API or deployment changes are included.
