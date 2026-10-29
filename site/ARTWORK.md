@@ -62,3 +62,23 @@ horizontal overflow. Runtime SVG checksums remain unchanged. The maintenance
 work changes build/dependency inputs only; artwork, application/API logic,
 deployment steps, access boundaries and production data are unchanged. This
 source integration is one draft PR; it has not been merged or released.
+
+
+## Navigation and reading iteration — 2026-10-29
+
+The native mobile disclosure now closes on Escape (returning focus to its
+summary), outside pointer/focus and when the viewport crosses above the 1080px mobile breakpoint. Its
+label follows the expanded state, control/panel IDs are connected, and a bounded
+scroll area keeps the final contact link reachable in a 390x260 viewport. The
+native navigation remains usable without JavaScript. Main fragment targets use
+a 5rem scroll margin so document headings clear the sticky header.
+
+Playwright reproduced all three dismissal failures and a document heading at 0px
+beneath the 65px header before the fix. Dismissal/focus behavior now passes;
+collapsed links are excluded from Tab navigation, the final menu link fits within
+the short viewport, and direct/clicked document targets stop at 80px. Desktop and
+mobile page checks retain loaded artwork, one H1, canonical links and no overflow
+or page exceptions. The existing site check passes23 routes and 24 HTML documents.
+Browser evidence is retained in the companion checkout's
+`output/website-iteration-20261029/`. This iteration does not alter dependencies,
+artwork, application/API behavior, analytics or deployment.
