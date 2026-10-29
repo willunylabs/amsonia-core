@@ -1,20 +1,26 @@
 ---
 import { COMPANY_CONTACT_URL, primaryNav } from '../lib/site';
 
-const currentPath = Astro.url.pathname;
+const currentPath = `${Astro.url.pathname.replace(/\/+$/, '')}/`;
+const currentSection = currentPath.startsWith('/platform/docs/')
+  ? '/docs/'
+  : primaryNav.find((item) => currentPath.startsWith(item.href))?.href;
+const navigationCurrent = (href: string) => currentPath === href
+  ? 'page'
+  : currentSection === href ? 'location' : undefined;
 ---
 
 <header class="site-header">
   <a class="skip-link" href="#main-content">Skip to main content</a>
   <div class="header-inner">
-    <a class="wordmark" href="/" aria-label="Amsonia home">
+    <a class="wordmark" href="/" aria-label="Amsonia home" aria-current={currentPath === '/' ? 'page' : undefined}>
       <img src="/amsonia-mark-v2.svg" width="32" height="32" alt="" />
       <span>Amsonia</span>
     </a>
 
     <nav aria-label="Primary navigation">
       {primaryNav.map((item) => (
-        <a href={item.href} aria-current={currentPath === item.href ? 'page' : undefined}>{item.label}</a>
+        <a href={item.href} aria-current={navigationCurrent(item.href)}>{item.label}</a>
       ))}
     </nav>
 
@@ -24,15 +30,46 @@ const currentPath = Astro.url.pathname;
     </a>
 
     <details class="mobile-navigation">
-      <summary aria-label="Open navigation menu">
+      <summary aria-label="Open navigation menu" aria-controls="mobile-navigation-links">
         <svg aria-hidden="true" viewBox="0 0 20 20" width="18" height="18"><path d="M3 5h14M3 10h14M3 15h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
       </summary>
-      <nav aria-label="Mobile navigation">
+      <nav id="mobile-navigation-links" aria-label="Mobile navigation">
         {primaryNav.map((item) => (
-          <a href={item.href} aria-current={currentPath === item.href ? 'page' : undefined}>{item.label}</a>
+          <a href={item.href} aria-current={navigationCurrent(item.href)}>{item.label}</a>
         ))}
         <a href={COMPANY_CONTACT_URL} data-cta-target="contact">Ask about Next ↗</a>
       </nav>
     </details>
   </div>
 </header>
+
+<script>
+  const menu = document.querySelector<HTMLDetailsElement>('.mobile-navigation');
+  const toggle = menu?.querySelector('summary');
+
+  if (menu && toggle) {
+    const close = () => { menu.open = false; };
+    const dismissOutside = (event: Event) => {
+      if (menu.open && event.target instanceof Node && !menu.contains(event.target)) close();
+    };
+
+    menu.addEventListener('toggle', () => {
+      toggle.setAttribute('aria-label', menu.open ? 'Close navigation menu' : 'Open navigation menu');
+    });
+    menu.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && menu.open && !event.defaultPrevented) {
+        event.preventDefault();
+        close();
+        toggle.focus();
+      }
+    });
+    document.addEventListener('pointerdown', dismissOutside);
+    document.addEventListener('focusin', dismissOutside);
+
+    // Match the header's 1080px mobile breakpoint.
+    const desktop = window.matchMedia('(min-width: 1081px)');
+    const dismissOnDesktop = () => { if (desktop.matches) close(); };
+    desktop.addEventListener('change', dismissOnDesktop);
+    dismissOnDesktop();
+  }
+</script>

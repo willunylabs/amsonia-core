@@ -73,7 +73,7 @@ application-owned PostgreSQL tables.
 
 ## Verify it in five minutes
 
-Requirements: Docker with the Compose plugin and Go 1.25.13+.
+Requirements: Docker with the Compose plugin and Go 1.26.10+.
 
 ```bash
 git clone https://github.com/willunylabs/amsonia-core.git
@@ -119,7 +119,7 @@ and a cross-tenant insert is rejected by PostgreSQL RLS. The walkthrough is in
 
 ## Manual development setup
 
-Requirements: Go 1.25.13+, PostgreSQL 16+, Node.js 22.15+, and npm 10.
+Requirements: Go 1.26.10+, PostgreSQL 16+, Node.js 22.15+, and npm 10.
 Docker is optional. The complete local setup, role provisioning, environment
 variables, and PostgreSQL checks are in
 [docs/getting-started.md](docs/getting-started.md).

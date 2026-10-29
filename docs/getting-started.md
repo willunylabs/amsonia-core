@@ -5,7 +5,7 @@ runtime, and maintenance roles. A fully manual PostgreSQL setup follows it.
 
 ## Five-minute local stack
 
-Requirements: Docker with the Compose plugin and Go 1.25.13 or newer.
+Requirements: Docker with the Compose plugin and Go 1.26.10 or newer.
 
 ```bash
 git clone https://github.com/willunylabs/amsonia-core.git
@@ -39,7 +39,7 @@ Docker is not required for the manual path.
 
 ## Requirements
 
-- Go 1.25.13 or newer within the supported release line
+- Go 1.26.10 or newer within the supported release line
 - PostgreSQL 16 or newer
 - Node.js 22.15 or newer and npm 10
 
