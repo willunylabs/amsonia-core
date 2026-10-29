@@ -26,9 +26,10 @@ is used only on Platform, not to advertise customer tenancy for Next.
 ## Validation
 
 The existing `npm run check` passed: domain and visual guards, a static build,
-and built-site checks covering 23 routes / 24 HTML documents. Node 24.19.0 and
-existing dependencies were reused. Installed Astro 7.2.2 differs from the manifest
-pin 7.3.6, so clean CI dependency builds remain the version acceptance check.
+and built-site checks covering 23 routes / 24 HTML documents. Initial artwork
+validation reused Astro 7.2.2. The maintenance validation on 2026-10-29 aligned
+the installed dependencies with the lockfile and passed with the manifest pin
+Astro 7.3.6 using Node 24.19.0 and the CI public-URL configuration.
 
 Playwright verified family, Next and Platform at 1440x900 and 390x844, plus the
 shared documentation intro and mobile navigation. New illustrations load, each
@@ -43,6 +44,21 @@ checkout's `output/affinity-web-assets-20261027/` directory. The companion branc
 `codex/affinity-web-assets-20261027` updates the actual Willuny homepage and public
 controls; the legacy redirected Next.js `/amsonia` page is not the product site.
 
-All changes in this repository are scoped to `site/`. No Go/backend, API,
-deployment or production-data change is included. This source integration is
-submitted as one draft PR; it has not been merged or released.
+## Approved build maintenance
+
+To clear the existing security scans, the approved follow-up updates undici
+8.12.2 and zod 4.6.6 in the site lockfile, Vite 7.3.7 and Vitest 4.1.12 in the
+console manifest/lock, and Go 1.26.10 in the module, CI and site-release build
+toolchain pins. Version requirements are updated in the setup documentation.
+Both npm audits report zero vulnerabilities. Console typecheck, lint, eight
+tests and build pass. Go source provenance, vet, unit/race tests and the
+reachable-vulnerability scan pass with Go 1.26.10. The scan reports zero reachable
+vulnerabilities; four additional module-level findings have no imported affected
+packages or calls. Existing Pages/AWS deployment contract checks also pass.
+
+The rebuilt family, Next, Platform and documentation pages were checked in
+Playwright at desktop and mobile sizes with no missing assets, page errors or
+horizontal overflow. Runtime SVG checksums remain unchanged. The maintenance
+work changes build/dependency inputs only; artwork, application/API logic,
+deployment steps, access boundaries and production data are unchanged. This
+source integration is one draft PR; it has not been merged or released.
