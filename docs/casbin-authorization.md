@@ -44,6 +44,12 @@ comparison. An unconstrained workspace grant still requires membership.
 Only tenant scope can authorize `tenant_action`, even if owner or workspace
 facts are supplied.
 
+Workspace membership is loaded lazily at most once per `Authorizer.Check`,
+including a missing-membership result. All candidate grants in that call use
+the same snapshot. A subsequent check loads fresh membership, so a role change
+or removal takes effect without a shared cache. Checks resolved by tenant
+scope or rejected before workspace evaluation do not query membership.
+
 `Authorizer.Check` validates the request and all loaded grants before evaluating
 any candidate. Cross-tenant resource requests are rejected before reading
 policy. Casbin also checks the resource tenant in its matcher. Candidate scope
@@ -90,7 +96,8 @@ Run `make go-check` for formatting, vet, unit tests, race detection, and the
 reachable-vulnerability scan. The regression suite covers the three scopes,
 delegation coverage, grant validation before allow, enforcement failures,
 immediate permission/role revocation, and concurrent checks with reused
-subject/role IDs across tenants.
+subject/role IDs across tenants. Workspace regressions also cover one lookup
+per check, consistent candidate facts, and fresh membership after changes.
 
 PostgreSQL lifecycle and RLS checks additionally run with
 `go test -tags postgres -count=1 ./postgres/` against an isolated test database
