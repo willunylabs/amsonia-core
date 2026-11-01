@@ -1,9 +1,16 @@
 # Amsonia product site
 
 The Astro site in this directory is the canonical public product surface for
-Amsonia. It is deployed to `amsonia.dev` and has no hosted-demo dependency.
-Amsonia Platform transactions and any future read-only demo are operated by the
-commercial repositories, outside this indexable static site.
+Amsonia. It is deployed to `amsonia.dev`. The Next product page links to the
+separate public Amsonia Next demonstration after anonymous-access acceptance.
+The demo and Platform transactions run outside this indexable static site;
+the static build does not call them or depend on their runtime availability.
+
+The reviewed public demo destination lives in `config/public-links.json`, separate
+from runtime source and canonical-origin configuration. Keep this link restricted
+to the Next page, disclose its current preview limits, and reverify anonymous
+access and application permissions before changing it. No GitHub environment,
+workflow or hosting setting is needed to publish this public-link configuration.
 
 ## Shared Willuny visual system
 
