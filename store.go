@@ -16,7 +16,7 @@ type PolicyReader interface {
 // WorkspaceMembershipReader confirms workspace membership from authoritative
 // host data. The workspace must belong to the tenant; a workspace that does
 // not belong to the tenant or a subject that is not a member must return
-// ErrNotFound and must not distinguish those cases.
+// ErrNotFound (possibly wrapped) and must not distinguish those cases.
 type WorkspaceMembershipReader interface {
 	LookupWorkspaceMembership(
 		ctx context.Context,

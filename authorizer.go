@@ -1,6 +1,9 @@
 package amsonia
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 // Authorizer evaluates authorization requests with Casbin against the catalog
 // and the injected policy reader. It is safe for concurrent use.
@@ -236,7 +239,7 @@ func (s *workspaceMembershipSnapshot) load(ctx context.Context, reader Workspace
 		return nil
 	}
 	membership, err := reader.LookupWorkspaceMembership(ctx, request.Principal.TenantID, request.Resource.WorkspaceID, request.Principal.SubjectID)
-	if err != nil && err != ErrNotFound {
+	if err != nil && !errors.Is(err, ErrNotFound) {
 		return err
 	}
 	s.membership = membership

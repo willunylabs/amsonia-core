@@ -2,6 +2,7 @@ package amsonia
 
 import (
 	"context"
+	"fmt"
 	"testing"
 )
 
@@ -82,5 +83,77 @@ func TestMissingWorkspaceMembershipIsOneSnapshot(t *testing.T) {
 	decision, err = authorizer.Check(t.Context(), request)
 	if err != nil || !decision.Allowed || decision.EffectiveScope != ScopeWorkspace || lookups != 2 {
 		t.Fatalf("second check: decision = %+v, err = %v, lookups = %d; want fresh workspace access", decision, err, lookups)
+	}
+}
+
+func TestWorkspaceAdapterWrappedErrors(t *testing.T) {
+	missing := fmt.Errorf("workspace membership lookup: %w", ErrNotFound)
+	tests := []struct {
+		name      string
+		lookupErr error
+		ownGrant  bool
+		want      Decision
+		wantError bool
+	}{
+		{
+			name: "wrapped missing membership", lookupErr: missing,
+			want: Decision{Reason: ReasonWorkspaceMembershipMiss},
+		},
+		{
+			name: "nested missing membership", lookupErr: fmt.Errorf("host adapter: %w", missing),
+			want: Decision{Reason: ReasonWorkspaceMembershipMiss},
+		},
+		{
+			name: "missing membership permits own scope fallback", lookupErr: missing, ownGrant: true,
+			want: Decision{Allowed: true, Reason: ReasonAllowed, EffectiveScope: ScopeOwn},
+		},
+		{
+			name: "dependency failure prevents fallback", lookupErr: fmt.Errorf("workspace store: %w", ErrDependencyUnavailable), ownGrant: true,
+			want: Decision{Reason: ReasonDependencyUnavailable}, wantError: true,
+		},
+		{
+			name: "cancellation prevents fallback", lookupErr: fmt.Errorf("workspace lookup: %w", context.Canceled), ownGrant: true,
+			want: Decision{Reason: ReasonDependencyUnavailable}, wantError: true,
+		},
+		{
+			name: "timeout prevents fallback", lookupErr: fmt.Errorf("workspace lookup: %w", context.DeadlineExceeded), ownGrant: true,
+			want: Decision{Reason: ReasonDependencyUnavailable}, wantError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			grants := []EffectiveGrant{
+				{RoleID: "workspace-reader", Permission: testPerm, Scope: ScopeWorkspace},
+				{RoleID: "editor", Permission: testPerm, Scope: ScopeWorkspace, WorkspaceRoles: []string{"editor"}},
+			}
+			if tt.ownGrant {
+				grants = append(grants, EffectiveGrant{RoleID: "owner", Permission: testPerm, Scope: ScopeOwn})
+			}
+			lookups := 0
+			authorizer, err := NewAuthorizer(testCatalog(t), &stubPolicies{grants: grants}, workspaceReaderFunc(func(context.Context, TenantID, WorkspaceID, SubjectID) (WorkspaceMembership, error) {
+				lookups++
+				// Facts accompanying an error must not establish membership.
+				return WorkspaceMembership{Role: "editor"}, tt.lookupErr
+			}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			decision, err := authorizer.Check(t.Context(), tenantRequest("alice", ResourceExisting, ResourceContext{
+				TenantID: "tenant-a", ResourceID: "invoice-1", WorkspaceID: "workspace-1", OwnerSubjectID: "alice",
+			}))
+			if decision != tt.want {
+				t.Errorf("decision = %+v; want %+v", decision, tt.want)
+			}
+			if tt.wantError {
+				if err != tt.lookupErr {
+					t.Errorf("error = %v; want original adapter error %v", err, tt.lookupErr)
+				}
+			} else if err != nil {
+				t.Errorf("unexpected dependency error: %v", err)
+			}
+			if lookups != 1 {
+				t.Errorf("membership lookups = %d; want 1", lookups)
+			}
+		})
 	}
 }

@@ -2,6 +2,7 @@ package amsonia
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -167,9 +168,9 @@ func (m *Manager) auditEvent(tenantID TenantID, actor Principal, meta MutationMe
 
 func (m *Manager) recordDenied(ctx context.Context, actor Principal, meta MutationMetadata, operation, targetType, targetID string, roleVersion int64, cause error) {
 	outcome := AuditOutcomeDenied
-	if cause == ErrConflict {
+	if errors.Is(cause, ErrConflict) {
 		outcome = AuditOutcomeConflict
-	} else if cause != ErrForbidden {
+	} else if !errors.Is(cause, ErrForbidden) {
 		outcome = AuditOutcomeFailed
 	}
 	event := m.auditEvent(actor.TenantID, actor, meta, operation, targetType, targetID, outcome, roleVersion)

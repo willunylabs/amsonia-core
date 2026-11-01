@@ -61,6 +61,12 @@ reason codes and retains their precedence. Membership or enforcement failures
 return an error and a denied `dependency_unavailable` decision; malformed
 persisted grants produce `invalid_policy`.
 
+Host membership readers may wrap `ErrNotFound` with diagnostic context. Such
+errors still mean missing membership: they are resolved once per check and
+allow evaluation to continue to any own-scope grant. Other reader errors,
+including wrapped cancellation, timeout, or dependency failures, abort the
+check and are returned with their original error chain.
+
 ## Administrative checks
 
 The model's `m2` matcher evaluates exact permissions and scope/constraint
@@ -77,6 +83,11 @@ All effective grants are validated before administrative evaluation too. A
 malformed grant returns `ErrInvalidPolicy` and rolls back the operation, even
 if another loaded grant would allow it. Casbin enforcement errors wrap
 `ErrDependencyUnavailable` and also abort the transaction.
+
+Mutation audit classification follows the error chain too: wrapped
+`ErrForbidden` is recorded as `denied`, wrapped `ErrConflict` as `conflict`,
+and other failures as `failed`. The original adapter error is returned to the
+caller unchanged.
 
 ## Host integration
 
