@@ -26,10 +26,11 @@ and botanical-specimen presentation is retired.
 
 - `/` introduces the Amsonia product family and its Platform and Next products.
 - `/platform` owns the commercial Go + Next.js, multi-tenant product narrative.
-- `/next` owns the open-source, single-tenant Next.js product narrative.
+- `/next` owns the private-source Next.js starter narrative; source availability and
+  license terms are confirmed by Willuny inquiry.
 - `/docs` is the product-family documentation entry point.
 - product positioning, pricing, and purchase explanations remain indexable on
-  `amsonia.dev`; transaction CTAs enter the non-indexable Amsonia app;
+  `amsonia.dev`; transaction CTAs enter the non-indexable Willuny transaction surface;
 - company, publisher, blog, legal, and support content remain on `willuny.com`.
 - unreleased Amsonia products do not receive indexable placeholder pages.
 - retired `/core/*` and `/releases` site routes redirect to the external GitHub

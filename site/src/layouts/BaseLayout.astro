@@ -14,7 +14,7 @@ interface Props {
 
 const { title, description, canonicalPath, schemas = [] } = Astro.props;
 const canonical = absoluteUrl(canonicalPath);
-const fullTitle = canonicalPath === '/' ? `${SITE_NAME} — Next.js SaaS Starter` : `${title} | ${SITE_NAME}`;
+const fullTitle = canonicalPath === '/' ? `${SITE_NAME} — SaaS Starters by Willuny Labs` : `${title} | ${SITE_NAME}`;
 ---
 
 <!doctype html>
