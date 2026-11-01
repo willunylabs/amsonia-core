@@ -89,6 +89,7 @@ type Manager struct {
 	controls      ControlPermissions
 	securityAudit SecurityAuditSink
 	clock         Clock
+	engine        *policyEngine
 }
 
 // NewManager constructs a Manager. All dependencies are required.
@@ -106,6 +107,10 @@ func NewManager(
 	if err := validateControls(catalog, controls); err != nil {
 		return nil, err
 	}
+	engine, err := newPolicyEngine()
+	if err != nil {
+		return nil, err
+	}
 	return &Manager{
 		catalog:       catalog,
 		store:         store,
@@ -113,6 +118,7 @@ func NewManager(
 		controls:      controls,
 		securityAudit: securityAudit,
 		clock:         clock,
+		engine:        engine,
 	}, nil
 }
 
@@ -847,70 +853,36 @@ func normalizeWorkspaceRoles(roles []string) ([]string, error) {
 
 // requireActor checks the actor holds an exact permission at tenant scope.
 func (m *Manager) requireActor(ctx context.Context, tx TenantTx, actor Principal, permission PermissionKey, scope Scope, workspaceRoles []string) error {
-	grants, err := tx.ListEffectiveGrants(ctx, actor.SubjectID, permission)
-	if err != nil {
-		return err
-	}
-	for _, g := range grants {
-		if g.Scope != scope {
-			continue
-		}
-		if coversWorkspaceRoles(g.WorkspaceRoles, workspaceRoles) {
-			return nil
-		}
-	}
-	return ErrForbidden
+	return m.requireGrant(ctx, tx, actor, permission, scope, workspaceRoles, true)
 }
 
 // requireActorForGrant checks the actor holds the exact permission with
 // coverage over the target scope and constraints. Tenant covers tenant,
 // workspace, and own; workspace covers only workspace; own covers only own.
 func (m *Manager) requireActorForGrant(ctx context.Context, tx TenantTx, actor Principal, permission PermissionKey, target Scope, targetRoles []string) error {
+	return m.requireGrant(ctx, tx, actor, permission, target, targetRoles, false)
+}
+
+// requireGrant evaluates fresh grants inside the existing tenant transaction;
+// Casbin never maintains a second policy copy outside that boundary.
+func (m *Manager) requireGrant(ctx context.Context, tx TenantTx, actor Principal, permission PermissionKey, target Scope, targetRoles []string, exactScope bool) error {
 	grants, err := tx.ListEffectiveGrants(ctx, actor.SubjectID, permission)
 	if err != nil {
 		return err
 	}
+	for _, grant := range grants {
+		if err := grant.Validate(permission); err != nil {
+			return err
+		}
+	}
 	for _, g := range grants {
-		if coversScope(g.Scope, target) && coversWorkspaceRoles(g.WorkspaceRoles, targetRoles) {
+		allowed, err := m.engine.allowDelegation(permission, target, targetRoles, exactScope, g)
+		if err != nil {
+			return err
+		}
+		if allowed {
 			return nil
 		}
 	}
 	return ErrForbidden
-}
-
-// coversScope reports whether an actor grant scope covers a target scope.
-// tenant > {tenant, workspace, own}; workspace > {workspace}; own > {own}.
-func coversScope(actor, target Scope) bool {
-	switch actor {
-	case ScopeTenant:
-		return true
-	case ScopeWorkspace:
-		return target == ScopeWorkspace
-	case ScopeOwn:
-		return target == ScopeOwn
-	default:
-		return false
-	}
-}
-
-// coversWorkspaceRoles reports whether an actor's constraint list covers the
-// target list. An unconstrained list (nil) covers any target; a constrained
-// list must be a superset of the target.
-func coversWorkspaceRoles(actorRoles, targetRoles []string) bool {
-	if len(actorRoles) == 0 {
-		return true
-	}
-	if len(targetRoles) == 0 {
-		return false
-	}
-	actorSet := make(map[string]struct{}, len(actorRoles))
-	for _, r := range actorRoles {
-		actorSet[r] = struct{}{}
-	}
-	for _, t := range targetRoles {
-		if _, ok := actorSet[t]; !ok {
-			return false
-		}
-	}
-	return true
 }
