@@ -29,7 +29,7 @@ const routes = [
 
 const updatedRoutes = new Set(['/', '/products', '/next', '/compare/platform-vs-next', '/about', '/license', '/docs', '/open-source', '/platform/docs', '/pricing', '/best-go-saas-boilerplates']);
 const nextFocusRoutes = new Set(['/', '/products', '/next', '/compare/platform-vs-next', '/pricing', '/about']);
-const positioningRoutes = new Set(['/', '/next']);
+const positioningRoutes = new Set(['/', '/products', '/next']);
 const escapeXml = (value: string) => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
 export const GET: APIRoute = () => {

@@ -1,3 +1,5 @@
+import publicLinks from '../../config/public-links.json';
+
 function requiredURL(name: string, rawValue: string | undefined): string {
   const value = String(rawValue || '').trim();
   try {
@@ -21,6 +23,7 @@ export const GITHUB_ORGANIZATION_URL = 'https://github.com/willunylabs';
 export const COMPANY_ORIGIN = requiredURL('PUBLIC_COMPANY_ORIGIN', import.meta.env.PUBLIC_COMPANY_ORIGIN);
 export const GITHUB_URL = requiredURL('PUBLIC_GITHUB_URL', import.meta.env.PUBLIC_GITHUB_URL);
 export const COMMERCIAL_URL = requiredURL('PUBLIC_COMMERCIAL_URL', import.meta.env.PUBLIC_COMMERCIAL_URL);
+export const NEXT_DEMO_URL = requiredURL('nextDemo', publicLinks.nextDemo);
 export const COMPANY_CONTACT_URL = `${COMPANY_ORIGIN}/shop/contact`;
 
 export const primaryNav = [
