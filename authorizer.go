@@ -1,16 +1,14 @@
 package amsonia
 
-import (
-	"context"
-	"strings"
-)
+import "context"
 
-// Authorizer evaluates authorization requests against the catalog and the
-// injected policy reader. It is safe for concurrent use.
+// Authorizer evaluates authorization requests with Casbin against the catalog
+// and the injected policy reader. It is safe for concurrent use.
 type Authorizer struct {
 	catalog     *Catalog
 	policies    PolicyReader
 	memberships WorkspaceMembershipReader
+	engine      *policyEngine
 }
 
 // NewAuthorizer constructs an Authorizer. All dependencies are required; a
@@ -23,10 +21,15 @@ func NewAuthorizer(
 	if catalog == nil || policies == nil || memberships == nil {
 		return nil, ErrInvalidInput
 	}
+	engine, err := newPolicyEngine()
+	if err != nil {
+		return nil, err
+	}
 	return &Authorizer{
 		catalog:     catalog,
 		policies:    policies,
 		memberships: memberships,
+		engine:      engine,
 	}, nil
 }
 
@@ -223,49 +226,47 @@ func (d deniedReason) reasonOr(fallback ReasonCode) ReasonCode {
 // a dependency error that must abort evaluation and never becomes a denial
 // reason.
 func (a *Authorizer) evaluate(ctx context.Context, request CheckRequest, grant EffectiveGrant) (bool, deniedReason, error) {
-	switch grant.Scope {
-	case ScopeTenant:
-		if request.Resource.TenantID != "" && request.Resource.TenantID != request.Principal.TenantID {
-			return false, deniedTenantMismatch, nil
-		}
-		return true, deniedNone, nil
-	case ScopeOwn:
-		if request.Mode == ResourceTenantAction {
-			return false, deniedOther, nil
-		}
-		if request.Resource.OwnerSubjectID == "" {
-			return false, deniedOwnerMismatch, nil
-		}
-		if request.Resource.OwnerSubjectID != request.Principal.SubjectID {
-			return false, deniedOwnerMismatch, nil
-		}
-		return true, deniedNone, nil
-	case ScopeWorkspace:
-		if request.Mode == ResourceTenantAction {
-			return false, deniedOther, nil
-		}
-		if request.Resource.WorkspaceID == "" {
-			return false, deniedWorkspaceMissing, nil
-		}
-		membership, err := a.memberships.LookupWorkspaceMembership(
+	var membership WorkspaceMembership
+	member := false
+	if grant.Scope == ScopeWorkspace && request.Mode != ResourceTenantAction && request.Resource.WorkspaceID != "" {
+		var err error
+		membership, err = a.memberships.LookupWorkspaceMembership(
 			ctx,
 			request.Principal.TenantID,
 			request.Resource.WorkspaceID,
 			request.Principal.SubjectID,
 		)
 		if err != nil {
-			if err == ErrNotFound {
-				return false, deniedWorkspaceMissing, nil
+			if err != ErrNotFound {
+				return false, deniedNone, err
 			}
-			return false, deniedNone, err
+		} else {
+			member = true
 		}
-		if len(grant.WorkspaceRoles) == 0 {
-			return true, deniedNone, nil
-		}
-		for _, allowed := range grant.WorkspaceRoles {
-			if strings.EqualFold(strings.TrimSpace(allowed), strings.TrimSpace(membership.Role)) {
-				return true, deniedNone, nil
-			}
+	}
+
+	allowed, err := a.engine.allowAccess(request, grant, membership, member)
+	if err != nil {
+		return false, deniedNone, err
+	}
+	if allowed {
+		return true, deniedNone, nil
+	}
+
+	// Casbin owns the allow/deny result. Translate denials only to preserve
+	// the public reason codes and their deterministic precedence.
+	if request.Resource.TenantID != "" && request.Resource.TenantID != request.Principal.TenantID {
+		return false, deniedTenantMismatch, nil
+	}
+	if request.Mode == ResourceTenantAction {
+		return false, deniedOther, nil
+	}
+	switch grant.Scope {
+	case ScopeOwn:
+		return false, deniedOwnerMismatch, nil
+	case ScopeWorkspace:
+		if !member {
+			return false, deniedWorkspaceMissing, nil
 		}
 		return false, deniedWorkspaceRole, nil
 	default:

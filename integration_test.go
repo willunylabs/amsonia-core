@@ -491,6 +491,104 @@ func TestTenantIsolation(t *testing.T) {
 	_ = store
 }
 
+func TestAuthorizationTracksPolicyMutations(t *testing.T) {
+	store, manager, bootstrapper, catalog := setup(t)
+	bootstrapTenant(t, bootstrapper, "tenant-a", "owner", "owner-role")
+	owner := amsonia.Principal{TenantID: "tenant-a", SubjectID: "owner"}
+	ctx := t.Context()
+	_, _, err := manager.CreateRoleWithPermissions(ctx, owner, meta(), amsonia.CreateRoleWithPermissionsInput{
+		RoleID: "reader", Name: "Reader", Permissions: []amsonia.PermissionKey{permInvoiceRead},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	authorizer, err := amsonia.NewAuthorizer(catalog, store, noMemberships{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := amsonia.CheckRequest{
+		Principal:  amsonia.Principal{TenantID: "tenant-a", SubjectID: "alice"},
+		Permission: permInvoiceRead,
+		Mode:       amsonia.ResourceExisting,
+		Resource:   amsonia.ResourceContext{TenantID: "tenant-a", ResourceID: "invoice-1"},
+	}
+	check := func(allowed bool) {
+		t.Helper()
+		decision, err := authorizer.Check(ctx, request)
+		want := amsonia.Decision{Reason: amsonia.ReasonPermissionNotGranted}
+		if allowed {
+			want = amsonia.Decision{Allowed: true, Reason: amsonia.ReasonAllowed, EffectiveScope: amsonia.ScopeTenant}
+		}
+		if err != nil || decision != want {
+			t.Fatalf("decision = %+v, err = %v; want %+v", decision, err, want)
+		}
+	}
+	check(false)
+	if _, err := manager.AssignRole(ctx, owner, meta(), amsonia.AssignRoleInput{SubjectID: "alice", RoleID: "reader", ExpectedRoleVersion: 1}); err != nil {
+		t.Fatal(err)
+	}
+	check(true)
+	if _, err := manager.RevokePermission(ctx, owner, meta(), amsonia.RevokePermissionInput{
+		RoleID: "reader", ExpectedVersion: 1, Permission: permInvoiceRead, Scope: amsonia.ScopeTenant,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	check(false)
+	if _, err := manager.GrantPermission(ctx, owner, meta(), amsonia.GrantPermissionInput{
+		RoleID: "reader", ExpectedVersion: 2, Permission: permInvoiceRead, Scope: amsonia.ScopeTenant,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	check(true)
+	if _, err := manager.UnassignRole(ctx, owner, meta(), amsonia.UnassignRoleInput{SubjectID: "alice", RoleID: "reader", ExpectedRoleVersion: 3}); err != nil {
+		t.Fatal(err)
+	}
+	check(false)
+}
+
+func TestConcurrentAuthorizationKeepsTenantPoliciesSeparate(t *testing.T) {
+	store, manager, bootstrapper, catalog := setup(t)
+	// Deliberately reuse role and subject IDs across tenants.
+	for _, tenant := range []amsonia.TenantID{"tenant-a", "tenant-b"} {
+		bootstrapTenant(t, bootstrapper, tenant, "owner", "owner-role")
+	}
+	owner := amsonia.Principal{TenantID: "tenant-a", SubjectID: "owner"}
+	if _, _, err := manager.CreateRoleWithPermissions(t.Context(), owner, meta(), amsonia.CreateRoleWithPermissionsInput{
+		RoleID: "reader", Name: "Reader", Permissions: []amsonia.PermissionKey{permInvoiceRead},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.AssignRole(t.Context(), owner, meta(), amsonia.AssignRoleInput{
+		SubjectID: "alice", RoleID: "reader", ExpectedRoleVersion: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	authorizer, err := amsonia.NewAuthorizer(catalog, store, noMemberships{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var workers sync.WaitGroup
+	for range 16 {
+		for _, tenant := range []amsonia.TenantID{"tenant-a", "tenant-b"} {
+			for _, subject := range []amsonia.SubjectID{"alice", "owner"} {
+				workers.Go(func() {
+					decision, err := authorizer.Check(t.Context(), amsonia.CheckRequest{
+						Principal:  amsonia.Principal{TenantID: tenant, SubjectID: subject},
+						Permission: permInvoiceRead,
+						Mode:       amsonia.ResourceExisting,
+						Resource:   amsonia.ResourceContext{TenantID: tenant, ResourceID: "invoice-1"},
+					})
+					wantAllowed := tenant == "tenant-a" || subject == "owner"
+					if err != nil || decision.Allowed != wantAllowed {
+						t.Errorf("tenant %s, subject %s: decision = %+v, err = %v; want allowed %t", tenant, subject, decision, err, wantAllowed)
+					}
+				})
+			}
+		}
+	}
+	workers.Wait()
+}
+
 func TestPurgeAndReuseTombstone(t *testing.T) {
 	store, _, bs, _ := setup(t)
 	bootstrapTenant(t, bs, "tenant-a", "owner-1", "role-owner")
