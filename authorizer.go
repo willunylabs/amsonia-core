@@ -79,6 +79,7 @@ func (a *Authorizer) Check(ctx context.Context, request CheckRequest) (Decision,
 	}
 
 	// Deterministic scope precedence: tenant, workspace, own.
+	var workspace workspaceMembershipSnapshot
 	bestDenied := deniedNone
 	for _, scope := range []Scope{ScopeTenant, ScopeWorkspace, ScopeOwn} {
 		var denied deniedReason
@@ -86,7 +87,7 @@ func (a *Authorizer) Check(ctx context.Context, request CheckRequest) (Decision,
 			if g.Scope != scope {
 				continue
 			}
-			allowed, reason, depErr := a.evaluate(ctx, request, g)
+			allowed, reason, depErr := a.evaluate(ctx, request, g, &workspace)
 			if depErr != nil {
 				return Decision{
 					Allowed: false,
@@ -222,30 +223,39 @@ func (d deniedReason) reasonOr(fallback ReasonCode) ReasonCode {
 	}
 }
 
+// workspaceMembershipSnapshot belongs to one Check call, including a missing
+// membership. Every candidate uses the same facts; later checks read afresh.
+type workspaceMembershipSnapshot struct {
+	loaded     bool
+	membership WorkspaceMembership
+	member     bool
+}
+
+func (s *workspaceMembershipSnapshot) load(ctx context.Context, reader WorkspaceMembershipReader, request CheckRequest) error {
+	if s.loaded {
+		return nil
+	}
+	membership, err := reader.LookupWorkspaceMembership(ctx, request.Principal.TenantID, request.Resource.WorkspaceID, request.Principal.SubjectID)
+	if err != nil && err != ErrNotFound {
+		return err
+	}
+	s.membership = membership
+	s.member = err == nil
+	s.loaded = true
+	return nil
+}
+
 // evaluate decides one grant against the request. The third return value is
 // a dependency error that must abort evaluation and never becomes a denial
 // reason.
-func (a *Authorizer) evaluate(ctx context.Context, request CheckRequest, grant EffectiveGrant) (bool, deniedReason, error) {
-	var membership WorkspaceMembership
-	member := false
+func (a *Authorizer) evaluate(ctx context.Context, request CheckRequest, grant EffectiveGrant, workspace *workspaceMembershipSnapshot) (bool, deniedReason, error) {
 	if grant.Scope == ScopeWorkspace && request.Mode != ResourceTenantAction && request.Resource.WorkspaceID != "" {
-		var err error
-		membership, err = a.memberships.LookupWorkspaceMembership(
-			ctx,
-			request.Principal.TenantID,
-			request.Resource.WorkspaceID,
-			request.Principal.SubjectID,
-		)
-		if err != nil {
-			if err != ErrNotFound {
-				return false, deniedNone, err
-			}
-		} else {
-			member = true
+		if err := workspace.load(ctx, a.memberships, request); err != nil {
+			return false, deniedNone, err
 		}
 	}
 
-	allowed, err := a.engine.allowAccess(request, grant, membership, member)
+	allowed, err := a.engine.allowAccess(request, grant, workspace.membership, workspace.member)
 	if err != nil {
 		return false, deniedNone, err
 	}
@@ -265,7 +275,7 @@ func (a *Authorizer) evaluate(ctx context.Context, request CheckRequest, grant E
 	case ScopeOwn:
 		return false, deniedOwnerMismatch, nil
 	case ScopeWorkspace:
-		if !member {
+		if !workspace.member {
 			return false, deniedWorkspaceMissing, nil
 		}
 		return false, deniedWorkspaceRole, nil
