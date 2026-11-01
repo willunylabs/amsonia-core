@@ -34,3 +34,21 @@ static server on port4322 served this exact build; owned browser contexts closed
 in finally. Dependencies were reused; no install or new worktree was needed.
 No backend, DNS, access-protection, workflow or deployment settings changed.
 The code is delivered in a draft PR; publication is pending.
+
+## Merge-gate continuation
+
+The required web example job failed on GHSA-g3hv-75wg-m249 in minimatch,
+not on the changed product-site pages. The advisory marks versions before
+11.0.1 affected: https://github.com/advisories/GHSA-g3hv-75wg-m249.
+A development-only override pins minimatch11.0.3 and regenerates the web lockfile.
+No force audit fix, audit exclusion, workflow bypass or runtime dependency change
+was used. The production lock entries are byte-for-byte equivalent as parsed
+objects; only minimatch and its development-only dependency graph changed.
+
+The required moderate-level npm audit reports zero vulnerabilities. Web ESLint,
+TypeScript, both test files/all eight tests and the existing configured Vite build
+pass. A deliberate unused TSX variable is still reported, source files are linted,
+and generated dist paths remain ignored, verifying matcher compatibility.
+The npm dependency tree resolves minimatch11.0.3 for all lint/parser consumers.
+These checks target the dependency change; the already-passed product-site build
+was not repeated. Generated web build output will be cleaned after verification.
