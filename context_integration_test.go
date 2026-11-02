@@ -3,9 +3,7 @@ package amsonia_test
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
-	"sort"
 	"testing"
 	"time"
 
@@ -44,28 +42,6 @@ func exportMemoryPolicy(t *testing.T, store amsonia.MaintenanceStore) []byte {
 		data, err = tx.ExportTenant(t.Context())
 		return err
 	}); err != nil {
-		t.Fatal(err)
-	}
-	// Compare exported sets independently of map iteration order, while
-	// retaining audit sequence and every exported row's contents.
-	var snapshot map[string]json.RawMessage
-	if err := json.Unmarshal(data, &snapshot); err != nil {
-		t.Fatal(err)
-	}
-	for _, key := range []string{"roles", "grants", "versions", "edges"} {
-		var rows []json.RawMessage
-		if err := json.Unmarshal(snapshot[key], &rows); err != nil {
-			t.Fatal(err)
-		}
-		sort.Slice(rows, func(i, j int) bool { return bytes.Compare(rows[i], rows[j]) < 0 })
-		var err error
-		snapshot[key], err = json.Marshal(rows)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	data, err := json.Marshal(snapshot)
-	if err != nil {
 		t.Fatal(err)
 	}
 	return data

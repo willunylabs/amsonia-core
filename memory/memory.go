@@ -9,13 +9,13 @@ package memory
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/willunylabs/amsonia-core"
+	"github.com/willunylabs/amsonia-core/internal/tenantexport"
 )
 
 // Store is a thread-safe, tenant-isolated in-memory Store.
@@ -512,16 +512,7 @@ func (mt *maintenanceTx) ExportTenant(ctx context.Context) ([]byte, error) {
 	if mt.tenant.purged {
 		return nil, amsonia.ErrNotFound
 	}
-	type export struct {
-		Format   string                        `json:"format"`
-		TenantID amsonia.TenantID              `json:"tenant_id"`
-		Roles    []amsonia.Role                `json:"roles"`
-		Grants   []amsonia.RolePermissionGrant `json:"grants"`
-		Versions []amsonia.RoleVersion         `json:"versions"`
-		Edges    []amsonia.GrantEdge           `json:"edges"`
-		Audit    []amsonia.MutationAuditEvent  `json:"audit"`
-	}
-	e := export{Format: "amsonia.tenant.v1", TenantID: mt.tenantID}
+	e := tenantexport.Snapshot{Format: "amsonia.tenant.v1", TenantID: mt.tenantID}
 	for _, role := range mt.tenant.roles {
 		e.Roles = append(e.Roles, role)
 	}
@@ -539,9 +530,9 @@ func (mt *maintenanceTx) ExportTenant(ctx context.Context) ([]byte, error) {
 		e.Edges = append(e.Edges, edge)
 	}
 	e.Audit = append(e.Audit, mt.tenant.audit...)
-	data, err := marshalSorted(e)
+	data, err := tenantexport.Marshal(e)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("amsonia: export failed: %w", err)
 	}
 	return data, nil
 }
@@ -593,14 +584,4 @@ func (s *Store) DebugAuditEvents(tenantID amsonia.TenantID) []amsonia.MutationAu
 		return nil
 	}
 	return append([]amsonia.MutationAuditEvent(nil), t.audit...)
-}
-
-func marshalSorted(v any) ([]byte, error) {
-	// json.MarshalIndent is deterministic; maps are already materialized into
-	// slices above.
-	data, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("amsonia: export failed: %w", err)
-	}
-	return data, nil
 }

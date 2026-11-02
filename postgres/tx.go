@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/willunylabs/amsonia-core"
+	"github.com/willunylabs/amsonia-core/internal/tenantexport"
 )
 
 type tenantReader struct {
@@ -411,16 +412,7 @@ func (mt *maintenanceTx) ExportTenant(ctx context.Context) ([]byte, error) {
 	if purged {
 		return nil, amsonia.ErrNotFound
 	}
-	type export struct {
-		Format   string                        `json:"format"`
-		TenantID amsonia.TenantID              `json:"tenant_id"`
-		Roles    []amsonia.Role                `json:"roles"`
-		Grants   []amsonia.RolePermissionGrant `json:"grants"`
-		Versions []amsonia.RoleVersion         `json:"versions"`
-		Edges    []amsonia.GrantEdge           `json:"edges"`
-		Audit    []amsonia.MutationAuditEvent  `json:"audit"`
-	}
-	e := export{Format: "amsonia.tenant.v1", TenantID: mt.tenantID}
+	e := tenantexport.Snapshot{Format: "amsonia.tenant.v1", TenantID: mt.tenantID}
 
 	roleRows, err := mt.tx.Query(ctx, `
 		SELECT tenant_id, role_id, name, description, version, deleted
@@ -528,7 +520,7 @@ func (mt *maintenanceTx) ExportTenant(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	return json.MarshalIndent(e, "", "  ")
+	return tenantexport.Marshal(e)
 }
 
 func (mt *maintenanceTx) PurgeTenant(ctx context.Context, event amsonia.MutationAuditEvent) (amsonia.PurgeResult, error) {
