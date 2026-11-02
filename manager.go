@@ -610,14 +610,8 @@ func (m *Manager) AssignRole(ctx context.Context, actor Principal, meta Mutation
 		if role.Version != input.ExpectedRoleVersion {
 			return ErrConflict
 		}
-		grants, err := tx.ListRolePermissionGrants(ctx, role.RoleID)
-		if err != nil {
+		if err := m.requireRoleCoverage(ctx, tx, actor, role.RoleID); err != nil {
 			return err
-		}
-		for _, g := range grants {
-			if err := m.requireActorForGrant(ctx, tx, actor, g.Permission, g.Scope, g.WorkspaceRoles); err != nil {
-				return err
-			}
 		}
 		if actor.SubjectID != input.SubjectID {
 			hasPath, err := tx.HasGrantPath(ctx, input.SubjectID, actor.SubjectID)
@@ -694,14 +688,8 @@ func (m *Manager) UnassignRole(ctx context.Context, actor Principal, meta Mutati
 		if role.Deleted {
 			return ErrNotFound
 		}
-		grants, err := tx.ListRolePermissionGrants(ctx, role.RoleID)
-		if err != nil {
+		if err := m.requireRoleCoverage(ctx, tx, actor, role.RoleID); err != nil {
 			return err
-		}
-		for _, g := range grants {
-			if err := m.requireActorForGrant(ctx, tx, actor, g.Permission, g.Scope, g.WorkspaceRoles); err != nil {
-				return err
-			}
 		}
 		removed, changed, err := tx.DeleteSubjectRoleGrant(ctx, input.SubjectID, input.RoleID)
 		if err != nil {
@@ -847,6 +835,38 @@ func normalizeWorkspaceRoles(roles []string) ([]string, error) {
 	}
 	sort.Strings(out)
 	return out, nil
+}
+
+// requireRoleCoverage validates the entire target policy before checking
+// delegation. Malformed rows must not be hidden by an earlier coverage denial.
+func (m *Manager) requireRoleCoverage(ctx context.Context, tx TenantTx, actor Principal, roleID RoleID) error {
+	grants, err := tx.ListRolePermissionGrants(ctx, roleID)
+	if err != nil {
+		return err
+	}
+	for _, grant := range grants {
+		if grant.RoleID != roleID {
+			return ErrInvalidPolicy
+		}
+		if _, ok := m.catalog.Lookup(grant.Permission); !ok {
+			return ErrInvalidPolicy
+		}
+		effective := EffectiveGrant{
+			RoleID:         grant.RoleID,
+			Permission:     grant.Permission,
+			Scope:          grant.Scope,
+			WorkspaceRoles: grant.WorkspaceRoles,
+		}
+		if err := effective.Validate(grant.Permission); err != nil {
+			return err
+		}
+	}
+	for _, grant := range grants {
+		if err := m.requireActorForGrant(ctx, tx, actor, grant.Permission, grant.Scope, grant.WorkspaceRoles); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // requireActor checks the actor holds an exact permission at tenant scope.
