@@ -64,6 +64,11 @@ func TestCasbinDelegationCoverage(t *testing.T) {
 		{name: "superset covers subset", actorScope: ScopeWorkspace, targetScope: ScopeWorkspace, actorRoles: []string{"admin", "editor"}, targetRoles: []string{"editor"}, allowed: true},
 		{name: "subset cannot expand", actorScope: ScopeWorkspace, targetScope: ScopeWorkspace, actorRoles: []string{"editor"}, targetRoles: []string{"editor", "admin"}},
 		{name: "constraints cannot be removed", actorScope: ScopeWorkspace, targetScope: ScopeWorkspace, actorRoles: []string{"editor"}},
+		{name: "tenant metadata does not restrict management", actorScope: ScopeTenant, targetScope: ScopeTenant, actorRoles: []string{"editor"}, exact: true, allowed: true},
+		{name: "tenant metadata does not restrict workspace roles", actorScope: ScopeTenant, targetScope: ScopeWorkspace, actorRoles: []string{"editor"}, targetRoles: []string{"admin"}, allowed: true},
+		{name: "tenant metadata does not require workspace constraints", actorScope: ScopeTenant, targetScope: ScopeWorkspace, actorRoles: []string{"editor"}, allowed: true},
+		{name: "own metadata does not constrain own coverage", actorScope: ScopeOwn, targetScope: ScopeOwn, actorRoles: []string{"editor"}, allowed: true},
+		{name: "own metadata does not expand scope", actorScope: ScopeOwn, targetScope: ScopeWorkspace, actorRoles: []string{"editor"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
