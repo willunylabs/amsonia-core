@@ -636,7 +636,11 @@ func (m *Manager) AssignRole(ctx context.Context, actor Principal, meta Mutation
 		}
 		if !changed {
 			event := m.auditEvent(actor.TenantID, actor, meta, "assign.role", "subject_role", string(input.SubjectID), AuditOutcomeNoop, role.Version)
-			return tx.InsertMutationAudit(ctx, event)
+			if err := tx.InsertMutationAudit(ctx, event); err != nil {
+				return err
+			}
+			result = MutationResult{Changed: false, RoleVersion: role.Version}
+			return nil
 		}
 		edge := GrantEdge{
 			TenantID:  actor.TenantID,

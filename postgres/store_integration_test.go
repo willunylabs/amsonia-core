@@ -334,6 +334,14 @@ func TestPostgresFullLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Retrying the binding reports the current role version without changing it.
+	result, err := mgr.AssignRole(ctx, owner, amsonia.MutationMetadata{ReasonCode: "retry"}, amsonia.AssignRoleInput{
+		SubjectID: "alice", RoleID: role.RoleID, ExpectedRoleVersion: 2,
+	})
+	if err != nil || result != (amsonia.MutationResult{RoleVersion: 2}) {
+		t.Fatalf("duplicate assignment result = %+v, err = %v; want no-op at version 2", result, err)
+	}
+
 	// Alice can read invoices.
 	alice := amsonia.Principal{TenantID: tenantID, SubjectID: "alice"}
 	dec, err = auth.Check(ctx, amsonia.CheckRequest{
