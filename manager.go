@@ -467,33 +467,13 @@ func (m *Manager) GrantPermission(ctx context.Context, actor Principal, meta Mut
 	if err := actor.TenantID.Validate(); err != nil || actor.SubjectID.Validate() != nil {
 		return MutationResult{}, ErrInvalidInput
 	}
-	if err := input.RoleID.Validate(); err != nil {
-		return MutationResult{}, ErrInvalidInput
-	}
-	if err := input.Permission.Validate(); err != nil {
-		return MutationResult{}, ErrInvalidInput
-	}
-	if _, ok := m.catalog.Lookup(input.Permission); !ok {
-		return MutationResult{}, ErrInvalidInput
-	}
-	switch input.Scope {
-	case ScopeOwn, ScopeWorkspace, ScopeTenant:
-	default:
-		return MutationResult{}, ErrInvalidInput
-	}
-	roles, err := normalizeWorkspaceRoles(input.WorkspaceRoles)
+	grant, err := m.validateGrantInput(input)
 	if err != nil {
 		return MutationResult{}, err
 	}
-	grant := RolePermissionGrant{
-		RoleID:         input.RoleID,
-		Permission:     input.Permission,
-		Scope:          input.Scope,
-		WorkspaceRoles: roles,
-	}
 	result := MutationResult{}
 	err = m.store.MutateTenant(ctx, actor.TenantID, func(tx TenantTx) error {
-		if err := m.requireActorForGrant(ctx, tx, actor, input.Permission, input.Scope, roles); err != nil {
+		if err := m.requireActorForGrant(ctx, tx, actor, grant.Permission, grant.Scope, grant.WorkspaceRoles); err != nil {
 			return err
 		}
 		role, err := tx.GetRole(ctx, input.RoleID)
@@ -545,25 +525,13 @@ func (m *Manager) RevokePermission(ctx context.Context, actor Principal, meta Mu
 	if err := actor.TenantID.Validate(); err != nil || actor.SubjectID.Validate() != nil {
 		return MutationResult{}, ErrInvalidInput
 	}
-	if err := input.RoleID.Validate(); err != nil {
-		return MutationResult{}, ErrInvalidInput
-	}
-	if err := input.Permission.Validate(); err != nil {
-		return MutationResult{}, ErrInvalidInput
-	}
-	roles, err := normalizeWorkspaceRoles(input.WorkspaceRoles)
+	grant, err := m.validateGrantInput(input)
 	if err != nil {
 		return MutationResult{}, err
 	}
-	grant := RolePermissionGrant{
-		RoleID:         input.RoleID,
-		Permission:     input.Permission,
-		Scope:          input.Scope,
-		WorkspaceRoles: roles,
-	}
 	result := MutationResult{}
 	err = m.store.MutateTenant(ctx, actor.TenantID, func(tx TenantTx) error {
-		if err := m.requireActorForGrant(ctx, tx, actor, input.Permission, input.Scope, roles); err != nil {
+		if err := m.requireActorForGrant(ctx, tx, actor, grant.Permission, grant.Scope, grant.WorkspaceRoles); err != nil {
 			return err
 		}
 		role, err := tx.GetRole(ctx, input.RoleID)
@@ -829,6 +797,35 @@ func sortedGrants(grants []RolePermissionGrant) []RolePermissionGrant {
 		return fmt.Sprint(out[i].WorkspaceRoles) < fmt.Sprint(out[j].WorkspaceRoles)
 	})
 	return out
+}
+
+// validateGrantInput keeps grant and revoke validation and normalization at
+// the same input boundary, before either operation opens a tenant transaction.
+func (m *Manager) validateGrantInput(input GrantPermissionInput) (RolePermissionGrant, error) {
+	if err := input.RoleID.Validate(); err != nil {
+		return RolePermissionGrant{}, ErrInvalidInput
+	}
+	if err := input.Permission.Validate(); err != nil {
+		return RolePermissionGrant{}, ErrInvalidInput
+	}
+	if _, ok := m.catalog.Lookup(input.Permission); !ok {
+		return RolePermissionGrant{}, ErrInvalidInput
+	}
+	switch input.Scope {
+	case ScopeOwn, ScopeWorkspace, ScopeTenant:
+	default:
+		return RolePermissionGrant{}, ErrInvalidInput
+	}
+	roles, err := normalizeWorkspaceRoles(input.WorkspaceRoles)
+	if err != nil {
+		return RolePermissionGrant{}, err
+	}
+	return RolePermissionGrant{
+		RoleID:         input.RoleID,
+		Permission:     input.Permission,
+		Scope:          input.Scope,
+		WorkspaceRoles: roles,
+	}, nil
 }
 
 func normalizeWorkspaceRoles(roles []string) ([]string, error) {

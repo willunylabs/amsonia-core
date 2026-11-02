@@ -91,11 +91,18 @@ coverage inside `Manager`'s existing tenant transaction:
 - Management controls require the requested scope exactly (tenant scope for
   the built-in management operations).
 - When delegating a grant, tenant scope covers all three supported scopes.
-  Workspace and own scope each cover only themselves.
+  Workspace and own scope each cover only themselves. Unknown or empty target
+  scopes are denied by the matcher, including when both scope strings match.
 - For workspace-scoped actor grants, an unconstrained role list covers any
   target constraint. A constrained list must cover every target role and
   cannot delegate an unconstrained list. Tenant- and own-scoped actor grants
   do not apply workspace-role metadata when evaluating scope coverage.
+
+`GrantPermission` and `RevokePermission` share input validation and workspace-role
+normalization. An unknown catalog permission, unsupported scope, malformed role
+ID, or malformed workspace-role constraint returns `ErrInvalidInput` before any
+tenant transaction or mutation/security audit. Valid revocations retain their
+optimistic version checks and audited, idempotent no-op behavior.
 
 All effective grants are validated before administrative evaluation too. A
 malformed grant returns `ErrInvalidPolicy` and rolls back the operation, even
