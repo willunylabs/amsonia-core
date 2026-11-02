@@ -12,10 +12,13 @@
 package postgres
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -327,19 +330,30 @@ func TestPostgresFullLifecycle(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	// Insert same-permission scope/constraint ties in noncanonical order.
+	for i, grant := range []amsonia.GrantPermissionInput{
+		{Scope: amsonia.ScopeWorkspace, WorkspaceRoles: []string{"editor"}},
+		{Scope: amsonia.ScopeOwn},
+		{Scope: amsonia.ScopeWorkspace, WorkspaceRoles: []string{"admin"}},
+	} {
+		grant.RoleID, grant.Permission, grant.ExpectedVersion = role.RoleID, permInvoiceRead, int64(i+2)
+		if _, err := mgr.GrantPermission(ctx, owner, amsonia.MutationMetadata{ReasonCode: "setup"}, grant); err != nil {
+			t.Fatal(err)
+		}
+	}
 	// Assign to alice.
 	if _, err := mgr.AssignRole(ctx, owner, amsonia.MutationMetadata{ReasonCode: "setup"}, amsonia.AssignRoleInput{
-		SubjectID: "alice", RoleID: role.RoleID, ExpectedRoleVersion: 2,
+		SubjectID: "alice", RoleID: role.RoleID, ExpectedRoleVersion: 5,
 	}); err != nil {
 		t.Fatal(err)
 	}
 
 	// Retrying the binding reports the current role version without changing it.
 	result, err := mgr.AssignRole(ctx, owner, amsonia.MutationMetadata{ReasonCode: "retry"}, amsonia.AssignRoleInput{
-		SubjectID: "alice", RoleID: role.RoleID, ExpectedRoleVersion: 2,
+		SubjectID: "alice", RoleID: role.RoleID, ExpectedRoleVersion: 5,
 	})
-	if err != nil || result != (amsonia.MutationResult{RoleVersion: 2}) {
-		t.Fatalf("duplicate assignment result = %+v, err = %v; want no-op at version 2", result, err)
+	if err != nil || result != (amsonia.MutationResult{RoleVersion: 5}) {
+		t.Fatalf("duplicate assignment result = %+v, err = %v; want no-op at version 5", result, err)
 	}
 
 	// Alice can read invoices.
@@ -371,6 +385,31 @@ func TestPostgresFullLifecycle(t *testing.T) {
 	}
 	if !strings.Contains(string(data), `"format": "amsonia.tenant.v1"`) {
 		t.Fatalf("export missing format marker")
+	}
+	again, err := maint.ExportTenant(ctx, tenantID)
+	if err != nil || !bytes.Equal(data, again) {
+		t.Fatalf("unchanged tenant produced different export bytes: %v", err)
+	}
+	var exported struct {
+		Grants []amsonia.RolePermissionGrant `json:"grants"`
+	}
+	if err := json.Unmarshal(data, &exported); err != nil {
+		t.Fatal(err)
+	}
+	var readerGrants []amsonia.RolePermissionGrant
+	for _, grant := range exported.Grants {
+		if grant.RoleID == role.RoleID {
+			readerGrants = append(readerGrants, grant)
+		}
+	}
+	wantGrants := []amsonia.RolePermissionGrant{
+		{RoleID: role.RoleID, Permission: permInvoiceRead, Scope: amsonia.ScopeOwn, WorkspaceRoles: []string{}},
+		{RoleID: role.RoleID, Permission: permInvoiceRead, Scope: amsonia.ScopeTenant, WorkspaceRoles: []string{}},
+		{RoleID: role.RoleID, Permission: permInvoiceRead, Scope: amsonia.ScopeWorkspace, WorkspaceRoles: []string{"admin"}},
+		{RoleID: role.RoleID, Permission: permInvoiceRead, Scope: amsonia.ScopeWorkspace, WorkspaceRoles: []string{"editor"}},
+	}
+	if !reflect.DeepEqual(readerGrants, wantGrants) {
+		t.Errorf("exported grants = %+v; want scope/constraint order %+v", readerGrants, wantGrants)
 	}
 
 	// Purge.

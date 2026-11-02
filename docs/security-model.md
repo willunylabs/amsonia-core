@@ -17,4 +17,13 @@ boundaries, not only application conventions.
 - The React console is an administrative interface and should be protected by
   HTTPS, network controls, monitoring, and backups.
 
+Maintenance exports retain the `amsonia.tenant.v1` payload: roles, scoped grants,
+role-version snapshots, grant edges, and mutation audit. Both adapters serialize
+policy collections in the same complete order: role ID; grant role, permission,
+scope, and workspace-role list; role ID and numeric version; and edge grantor,
+grantee, and role. Identifiers use bytewise ordering independent of database
+collation. Grant sets inside version snapshots follow the same grant ordering.
+Audit keeps its recorded sequence, and serialization does not modify stored
+snapshots or normalize field values.
+
 For vulnerability reporting, follow [SECURITY.md](../SECURITY.md).
