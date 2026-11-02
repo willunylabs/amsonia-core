@@ -1,5 +1,10 @@
 // Package memory provides a deterministic in-memory adapter for tests and
 // local development. It is not a production runtime store.
+//
+// Tenant boundaries check cancellation before and after acquiring their lock
+// and after successful callbacks. Cancellation before commit discards pending
+// changes. Mutex waits and callbacks remain synchronous; callbacks should
+// observe their context while doing work.
 package memory
 
 import (
@@ -130,13 +135,22 @@ func (s *Store) ReadTenant(ctx context.Context, tenantID amsonia.TenantID, fn fu
 	if tenantID.Validate() != nil || fn == nil {
 		return amsonia.ErrInvalidInput
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	t := s.tenants[tenantID]
 	if t == nil {
 		t = newTenantState()
 	}
-	return fn(&tenantReader{tenant: t, tenantID: tenantID})
+	if err := fn(&tenantReader{tenant: t, tenantID: tenantID}); err != nil {
+		return err
+	}
+	return ctx.Err()
 }
 
 // ListEffectiveGrants implements amsonia.PolicyReader.
@@ -160,8 +174,14 @@ func (s *Store) MutateTenant(ctx context.Context, tenantID amsonia.TenantID, fn 
 	if tenantID.Validate() != nil || fn == nil {
 		return amsonia.ErrInvalidInput
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	t := s.tenant(tenantID)
 	if t.purged {
 		return amsonia.ErrNotFound
@@ -169,6 +189,9 @@ func (s *Store) MutateTenant(ctx context.Context, tenantID amsonia.TenantID, fn 
 	pending := cloneTenantState(t)
 	tx := &tenantTx{tenant: pending, tenantID: tenantID}
 	if err := fn(tx); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
 		return err
 	}
 	s.tenants[tenantID] = pending
@@ -460,11 +483,20 @@ func (s *Store) MaintainTenant(ctx context.Context, tenantID amsonia.TenantID, f
 	if tenantID.Validate() != nil || fn == nil {
 		return amsonia.ErrInvalidInput
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	t := s.tenant(tenantID)
 	pending := cloneTenantState(t)
 	if err := fn(&maintenanceTx{tenant: pending, tenantID: tenantID}); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
 		return err
 	}
 	s.tenants[tenantID] = pending
