@@ -229,6 +229,41 @@ func bootstrapInput(tenantID amsonia.TenantID, owner amsonia.SubjectID, roleID a
 	}
 }
 
+func TestPostgresUnicodeIdentifierRoundTrip(t *testing.T) {
+	store := setupPostgres(t)
+	catalog := testCatalog(t)
+	bootstrapper, err := amsonia.NewBootstrapper(catalog, store, testControls, hostAuthorizer{}, fixedTime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	principal := amsonia.Principal{TenantID: "租户-\ufffd", SubjectID: "用户-\ufffd"}
+	roleID := amsonia.RoleID(strings.Repeat("r", 253) + "\ufffd")
+	if _, err := bootstrapper.BootstrapTenant(t.Context(), bootstrapInput(principal.TenantID, principal.SubjectID, roleID)); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.ReadTenant(t.Context(), principal.TenantID, func(reader amsonia.TenantReader) error {
+		role, err := reader.GetRole(t.Context(), roleID)
+		if err == nil && (role.TenantID != principal.TenantID || role.RoleID != roleID) {
+			t.Errorf("stored identifiers changed: tenant %q, role %q", role.TenantID, role.RoleID)
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	authorizer, err := amsonia.NewAuthorizer(catalog, store, noMemberships{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision, err := authorizer.Check(t.Context(), amsonia.CheckRequest{
+		Principal: principal, Permission: permInvoiceRead, Mode: amsonia.ResourceExisting,
+		Resource: amsonia.ResourceContext{TenantID: principal.TenantID, ResourceID: "账单-\ufffd"},
+	})
+	want := amsonia.Decision{Allowed: true, Reason: amsonia.ReasonAllowed, EffectiveScope: amsonia.ScopeTenant}
+	if err != nil || decision != want {
+		t.Fatalf("decision = %+v, err = %v; want %+v", decision, err, want)
+	}
+}
+
 func TestPostgresFullLifecycle(t *testing.T) {
 	store := setupPostgres(t)
 	cat := testCatalog(t)

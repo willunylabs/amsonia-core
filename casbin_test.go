@@ -3,6 +3,7 @@ package amsonia
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -107,6 +108,9 @@ func TestInvalidGrantsCannotBeHiddenByAnAllow(t *testing.T) {
 		{RoleID: "bad", Permission: testPerm, Scope: "unknown"},
 		{Permission: testPerm, Scope: ScopeTenant},
 		{RoleID: "bad", Permission: testPerm, Scope: ScopeWorkspace, WorkspaceRoles: []string{"*"}},
+		{RoleID: RoleID(strings.Repeat("r", 257)), Permission: testPerm, Scope: ScopeTenant},
+		{RoleID: "role\nreader", Permission: testPerm, Scope: ScopeTenant},
+		{RoleID: RoleID(string([]byte{0xff})), Permission: testPerm, Scope: ScopeTenant},
 	}
 	request := tenantRequest("alice", ResourceExisting, ResourceContext{TenantID: "tenant-a", ResourceID: "invoice-1"})
 	for _, bad := range invalid {

@@ -1,6 +1,7 @@
 package coreapp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/willunylabs/amsonia-core"
 )
@@ -146,7 +148,12 @@ func accountFromContext(ctx context.Context) Account {
 
 func decodeJSON(response http.ResponseWriter, request *http.Request, target any) bool {
 	request.Body = http.MaxBytesReader(response, request.Body, 1<<20)
-	decoder := json.NewDecoder(request.Body)
+	body, err := io.ReadAll(request.Body)
+	if err != nil || !utf8.Valid(body) {
+		writeError(response, http.StatusBadRequest, "invalid_request", "Check the request fields and try again.")
+		return false
+	}
+	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
 		writeError(response, http.StatusBadRequest, "invalid_request", "Check the request fields and try again.")

@@ -155,6 +155,16 @@ func validateResourceContext(request CheckRequest) error {
 			return ErrInvalidInput
 		}
 	}
+	if res.TenantID != "" {
+		if err := res.TenantID.Validate(); err != nil {
+			return ErrInvalidInput
+		}
+	}
+	if res.ResourceID != "" {
+		if err := res.ResourceID.Validate(); err != nil {
+			return ErrInvalidInput
+		}
+	}
 	if res.OwnerSubjectID != "" {
 		if err := res.OwnerSubjectID.Validate(); err != nil {
 			return ErrInvalidInput
@@ -287,8 +297,8 @@ func (a *Authorizer) evaluate(ctx context.Context, request CheckRequest, grant E
 	}
 }
 
-// Validate checks a persisted grant against the catalog. It is exported for
-// adapters and tests; the authorizer calls it on every loaded grant.
+// Validate checks a persisted grant's identifier, permission, and constraints.
+// Authorizer and Manager call it on every loaded grant before evaluation.
 func (g EffectiveGrant) Validate(requested PermissionKey) error {
 	if err := g.Permission.Validate(); err != nil {
 		return ErrInvalidPolicy
@@ -301,7 +311,7 @@ func (g EffectiveGrant) Validate(requested PermissionKey) error {
 	default:
 		return ErrInvalidPolicy
 	}
-	if g.RoleID == "" {
+	if err := g.RoleID.Validate(); err != nil {
 		return ErrInvalidPolicy
 	}
 	for _, role := range g.WorkspaceRoles {

@@ -56,6 +56,18 @@ policy. Casbin also checks the resource tenant in its matcher. Candidate scope
 order remains `tenant`, `workspace`, `own`; the first allow determines
 `EffectiveScope`.
 
+Every supplied resource identifier follows the same opaque-ID contract as
+principal and role IDs: valid UTF-8, no ASCII control characters, at most 256
+bytes, and no trimming or normalization. Required fields still depend on the
+resource mode. Malformed resource IDs produce `invalid_request` before any
+policy or membership read; malformed role IDs in effective grants produce
+`invalid_policy` before any candidate can allow access.
+
+A correctly encoded U+FFFD replacement character is valid identifier content;
+it is distinct from malformed UTF-8 bytes. The HTTP JSON boundary validates
+the bounded request body's UTF-8 encoding before decoding, preventing raw
+invalid bytes from being silently replaced with U+FFFD.
+
 Casbin determines allow/deny. The Go wrapper maps denials to the existing
 reason codes and retains their precedence. Membership or enforcement failures
 return an error and a denied `dependency_unavailable` decision; malformed

@@ -18,6 +18,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Opaque identifier types. Values are preserved exactly as provided by the
@@ -325,8 +326,11 @@ func validateOpaqueID(v, kind string) error {
 }
 
 func isValidUTF8NoControl(v string) bool {
+	if !utf8.ValidString(v) {
+		return false
+	}
 	for _, r := range v {
-		if r < 0x20 || r == 0x7f || r == 0xfffd {
+		if r < 0x20 || r == 0x7f {
 			return false
 		}
 	}
