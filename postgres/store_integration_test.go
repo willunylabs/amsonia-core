@@ -397,6 +397,87 @@ func TestPostgresFullLifecycle(t *testing.T) {
 	}
 }
 
+func TestPostgresRoleBindingsRejectMalformedTargetPolicy(t *testing.T) {
+	store := setupPostgres(t)
+	catalog := testCatalog(t)
+	manager, err := amsonia.NewManager(catalog, store, noMemberships{}, testControls, nullAudit{}, fixedTime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	bootstrapper, err := amsonia.NewBootstrapper(catalog, store, testControls, hostAuthorizer{}, fixedTime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := t.Context()
+	actor := amsonia.Principal{TenantID: "pg-target-policy", SubjectID: "owner"}
+	if _, err := bootstrapper.BootstrapTenant(ctx, bootstrapInput(actor.TenantID, actor.SubjectID, "owner-role")); err != nil {
+		t.Fatal(err)
+	}
+	meta := amsonia.MutationMetadata{ReasonCode: "policy_test"}
+	if _, _, err := manager.CreateRoleWithPermissions(ctx, actor, meta, amsonia.CreateRoleWithPermissionsInput{
+		RoleID: "reader", Name: "Reader", Permissions: []amsonia.PermissionKey{permInvoiceRead},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.AssignRole(ctx, actor, meta, amsonia.AssignRoleInput{SubjectID: "alice", RoleID: "reader", ExpectedRoleVersion: 1}); err != nil {
+		t.Fatal(err)
+	}
+	// Model a damaged persisted row through the low-level adapter. Manager
+	// inputs cannot create this invalid workspace-role constraint.
+	malformed := amsonia.RolePermissionGrant{
+		RoleID: "reader", Permission: permInvoiceRead, Scope: amsonia.ScopeWorkspace, WorkspaceRoles: []string{"*"},
+	}
+	if err := store.MutateTenant(ctx, actor.TenantID, func(tx amsonia.TenantTx) error {
+		_, err := tx.InsertRolePermissionGrant(ctx, malformed)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	assign := amsonia.AssignRoleInput{SubjectID: "bob", RoleID: "reader", ExpectedRoleVersion: 1}
+	unassign := amsonia.UnassignRoleInput{SubjectID: "alice", RoleID: "reader", ExpectedRoleVersion: 1}
+	if _, err := manager.AssignRole(ctx, actor, meta, assign); !errors.Is(err, amsonia.ErrInvalidPolicy) {
+		t.Errorf("assign error = %v; want invalid policy", err)
+	}
+	if _, err := manager.UnassignRole(ctx, actor, meta, unassign); !errors.Is(err, amsonia.ErrInvalidPolicy) {
+		t.Errorf("unassign error = %v; want invalid policy", err)
+	}
+	if err := store.ReadTenant(ctx, actor.TenantID, func(reader amsonia.TenantReader) error {
+		for _, subject := range []amsonia.SubjectID{"alice", "bob"} {
+			roles, err := reader.ListSubjectRoleIDs(ctx, subject)
+			if err != nil {
+				return err
+			}
+			wantBound := subject == "alice"
+			if bound := len(roles) == 1 && roles[0] == "reader"; bound != wantBound {
+				t.Errorf("%s roles = %v; want bound %t", subject, roles, wantBound)
+			}
+			path, err := reader.HasGrantPath(ctx, actor.SubjectID, subject)
+			if err != nil {
+				return err
+			}
+			if path != wantBound {
+				t.Errorf("%s grant path = %t; want %t", subject, path, wantBound)
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.MutateTenant(ctx, actor.TenantID, func(tx amsonia.TenantTx) error {
+		_, err := tx.DeleteRolePermissionGrant(ctx, malformed)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Repairing the row is visible immediately to the same Manager.
+	if _, err := manager.AssignRole(ctx, actor, meta, assign); err != nil {
+		t.Fatalf("assign after repair: %v", err)
+	}
+	if _, err := manager.UnassignRole(ctx, actor, meta, unassign); err != nil {
+		t.Fatalf("unassign after repair: %v", err)
+	}
+}
+
 func TestPostgresTenantIsolation(t *testing.T) {
 	store := setupPostgres(t)
 	cat := testCatalog(t)

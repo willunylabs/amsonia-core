@@ -109,6 +109,16 @@ malformed grant returns `ErrInvalidPolicy` and rolls back the operation, even
 if another loaded grant would allow it. Casbin enforcement errors wrap
 `ErrDependencyUnavailable` and also abort the transaction.
 
+After checking assignment authority and loading the target role, `AssignRole`
+and `UnassignRole` validate its complete grant set before delegation coverage.
+Every row must reference that role, use a catalog permission, and satisfy the
+persisted-grant grammar, including workspace-role metadata on all scopes.
+Malformed target policy returns `ErrInvalidPolicy` regardless of row order,
+preserves bindings and grant edges, and records a failed security audit.
+Valid target policy that exceeds the actor's coverage still returns
+`ErrForbidden` with a denied audit. These reads remain in the same tenant
+transaction and do not introduce a policy cache.
+
 Mutation audit classification follows the error chain too: wrapped
 `ErrForbidden` is recorded as `denied`, wrapped `ErrConflict` as `conflict`,
 and other failures as `failed`. The original adapter error is returned to the
