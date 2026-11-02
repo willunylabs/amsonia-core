@@ -405,6 +405,68 @@ func TestLastAdministratorProtection(t *testing.T) {
 	}
 }
 
+func TestTenantWorkspaceMetadataDoesNotLockOutBootstrapOwner(t *testing.T) {
+	store, manager, bootstrapper, catalog := setup(t)
+	owner := amsonia.Principal{TenantID: "tenant-a", SubjectID: "owner"}
+	permissions := []amsonia.PermissionKey{permRoleManage, permGrantManage, permRoleAssign, permInvoiceRead}
+	grants := make([]amsonia.RolePermissionGrant, 0, len(permissions))
+	for _, permission := range permissions {
+		grants = append(grants, amsonia.RolePermissionGrant{
+			RoleID: "owner-role", Permission: permission, Scope: amsonia.ScopeTenant, WorkspaceRoles: []string{"editor"},
+		})
+	}
+	if _, err := bootstrapper.BootstrapTenant(t.Context(), amsonia.BootstrapInput{
+		TenantID: owner.TenantID, OwnerSubjectID: owner.SubjectID, OwnerRoleID: "owner-role", OwnerRoleName: "Owner",
+		Grants: grants, Metadata: meta(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	authorizer, err := amsonia.NewAuthorizer(catalog, store, noMemberships{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkOwner := func() {
+		t.Helper()
+		decision, err := authorizer.Check(t.Context(), amsonia.CheckRequest{
+			Principal: owner, Permission: permRoleManage, Mode: amsonia.ResourceTenantAction,
+		})
+		want := amsonia.Decision{Allowed: true, Reason: amsonia.ReasonAllowed, EffectiveScope: amsonia.ScopeTenant}
+		if err != nil || decision != want {
+			t.Fatalf("owner decision = %+v, err = %v; want %+v", decision, err, want)
+		}
+	}
+	checkOwner()
+	role, _, err := manager.CreateRole(t.Context(), owner, meta(), amsonia.CreateRoleInput{RoleID: "reader", Name: "Reader"})
+	if err != nil {
+		t.Fatalf("authorized bootstrap owner cannot create role: %v", err)
+	}
+	if _, err := manager.GrantPermission(t.Context(), owner, meta(), amsonia.GrantPermissionInput{
+		RoleID: role.RoleID, ExpectedVersion: 1, Permission: permInvoiceRead, Scope: amsonia.ScopeWorkspace, WorkspaceRoles: []string{"admin"},
+	}); err != nil {
+		t.Fatalf("tenant scope cannot delegate a workspace grant: %v", err)
+	}
+	if _, err := manager.AssignRole(t.Context(), owner, meta(), amsonia.AssignRoleInput{
+		SubjectID: "alice", RoleID: role.RoleID, ExpectedRoleVersion: 2,
+	}); err != nil {
+		t.Fatalf("tenant owner cannot assign covered workspace role: %v", err)
+	}
+	if _, err := manager.UnassignRole(t.Context(), owner, meta(), amsonia.UnassignRoleInput{
+		SubjectID: owner.SubjectID, RoleID: "owner-role", ExpectedRoleVersion: 1,
+	}); !errors.Is(err, amsonia.ErrLastAdministrator) {
+		t.Fatalf("removing only administrator returned %v; want last-administrator protection", err)
+	}
+	if err := store.ReadTenant(t.Context(), owner.TenantID, func(reader amsonia.TenantReader) error {
+		roles, err := reader.ListSubjectRoleIDs(t.Context(), owner.SubjectID)
+		if err == nil && (len(roles) != 1 || roles[0] != "owner-role") {
+			t.Errorf("blocked administrator removal changed live bindings: %v", roles)
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	checkOwner()
+}
+
 func TestMemoryStoreRollsBackCallbackError(t *testing.T) {
 	store, _, bs, _ := setup(t)
 	bootstrapTenant(t, bs, "tenant-a", "owner-1", "role-owner")

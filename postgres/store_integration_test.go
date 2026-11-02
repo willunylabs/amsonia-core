@@ -290,8 +290,13 @@ func TestPostgresFullLifecycle(t *testing.T) {
 	tenantID := amsonia.TenantID("pg-tenant-1")
 	owner := amsonia.Principal{TenantID: tenantID, SubjectID: "owner-1"}
 
-	// Bootstrap.
-	if _, err := bs.BootstrapTenant(ctx, bootstrapInput(tenantID, owner.SubjectID, "role-owner")); err != nil {
+	// Tenant-scoped workspace metadata must not prevent management after a
+	// successful resource check. Exercise this through the full SQL lifecycle.
+	input := bootstrapInput(tenantID, owner.SubjectID, "role-owner")
+	for i := range input.Grants {
+		input.Grants[i].WorkspaceRoles = []string{"editor"}
+	}
+	if _, err := bs.BootstrapTenant(ctx, input); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
 

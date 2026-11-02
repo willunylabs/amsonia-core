@@ -129,9 +129,10 @@ type Decision struct {
 
 // EffectiveGrant is the read-only view of one scoped grant held by a subject.
 type EffectiveGrant struct {
-	RoleID         RoleID
-	Permission     PermissionKey
-	Scope          Scope
+	RoleID     RoleID
+	Permission PermissionKey
+	Scope      Scope
+	// WorkspaceRoles narrows workspace scope only; it does not narrow tenant or own scope.
 	WorkspaceRoles []string
 }
 
@@ -180,9 +181,10 @@ type Role struct {
 
 // RolePermissionGrant is one scoped permission grant on a role.
 type RolePermissionGrant struct {
-	RoleID         RoleID
-	Permission     PermissionKey
-	Scope          Scope
+	RoleID     RoleID
+	Permission PermissionKey
+	Scope      Scope
+	// WorkspaceRoles narrows workspace scope only; it does not narrow tenant or own scope.
 	WorkspaceRoles []string
 }
 

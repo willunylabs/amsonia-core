@@ -44,6 +44,10 @@ comparison. An unconstrained workspace grant still requires membership.
 Only tenant scope can authorize `tenant_action`, even if owner or workspace
 facts are supplied.
 
+`WorkspaceRoles` narrows only workspace scope. On tenant or own grants, it
+remains stored and validated metadata and does not narrow access or delegation.
+This applies equally to bootstrap grants and grants created through `Manager`.
+
 Workspace membership is loaded lazily at most once per `Authorizer.Check`,
 including a missing-membership result. All candidate grants in that call use
 the same snapshot. A subsequent check loads fresh membership, so a role change
@@ -88,8 +92,10 @@ coverage inside `Manager`'s existing tenant transaction:
   the built-in management operations).
 - When delegating a grant, tenant scope covers all three supported scopes.
   Workspace and own scope each cover only themselves.
-- Unconstrained workspace roles cover any target constraint. A constrained
-  list must cover every target role and cannot delegate an unconstrained list.
+- For workspace-scoped actor grants, an unconstrained role list covers any
+  target constraint. A constrained list must cover every target role and
+  cannot delegate an unconstrained list. Tenant- and own-scoped actor grants
+  do not apply workspace-role metadata when evaluating scope coverage.
 
 All effective grants are validated before administrative evaluation too. A
 malformed grant returns `ErrInvalidPolicy` and rolls back the operation, even
