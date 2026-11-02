@@ -119,6 +119,10 @@ Valid target policy that exceeds the actor's coverage still returns
 `ErrForbidden` with a denied audit. These reads remain in the same tenant
 transaction and do not introduce a policy cache.
 
+Repeating an existing role assignment returns `Changed: false` and the current
+`RoleVersion`, matching its no-op audit. The retry still checks the caller's
+expected version and current assignment authority and grant coverage.
+
 Mutation audit classification follows the error chain too: wrapped
 `ErrForbidden` is recorded as `denied`, wrapped `ErrConflict` as `conflict`,
 and other failures as `failed`. The original adapter error is returned to the
