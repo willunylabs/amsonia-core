@@ -54,10 +54,12 @@ func (api *API) Handler() http.Handler {
 		"GET /api/v1/auth/profile": api.profile, "PATCH /api/v1/auth/profile": api.updateProfile,
 		"POST /api/v1/auth/password": api.changePassword, "GET /api/v1/auth/sessions": api.sessions,
 		"DELETE /api/v1/auth/sessions/{session_id}": api.revokeSession,
+		"POST /api/v1/auth/sessions/revoke-others":  api.revokeOtherSessions,
 	} {
 		mux.Handle(pattern, api.auth(handler))
 	}
 	for pattern, handler := range map[string]http.HandlerFunc{
+		"GET /api/v1/tenants/{tenant_id}/members/{account_id}":                    api.memberDetail,
 		"GET /api/v1/tenants/{tenant_id}/invitations":                             api.invitations,
 		"POST /api/v1/tenants/{tenant_id}/invitations":                            api.createInvitation,
 		"DELETE /api/v1/tenants/{tenant_id}/invitations/{invitation_id}":          api.revokeInvitation,

@@ -151,6 +151,38 @@ func (s *Service) RevokeSession(ctx context.Context, accountID, sessionID string
 	return tx.Commit(ctx)
 }
 
+// The account lock serializes with login, rotation, password changes and device
+// revocation. Recheck the bearer after acquiring it so a concurrently revoked
+// caller cannot retain a different family or act using stale authentication.
+func (s *Service) revokeOtherSessions(ctx context.Context, accountID, accessToken string) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+	var lockedID string
+	if err := tx.QueryRow(ctx, `SELECT account_id FROM amsonia.accounts WHERE account_id=$1 AND status='active' FOR UPDATE`, accountID).Scan(&lockedID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSessionInvalid
+		}
+		return err
+	}
+	now := s.now()
+	var currentID string
+	if err := tx.QueryRow(ctx, `SELECT session_id FROM amsonia.access_sessions WHERE account_id=$1 AND token_hash=$2 AND revoked_at IS NULL AND expires_at>$3`, accountID, tokenHash(accessToken), now).Scan(&currentID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrSessionInvalid
+		}
+		return err
+	}
+	for _, table := range []string{"access_sessions", "refresh_sessions"} {
+		if _, err := tx.Exec(ctx, `UPDATE amsonia.`+table+` SET revoked_at=$1 WHERE account_id=$2 AND session_id<>$3 AND revoked_at IS NULL`, now, accountID, currentID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
 func accountNotFound(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return amsonia.ErrNotFound

@@ -281,6 +281,15 @@ export const api = {
     request<void>(`/api/v1/auth/sessions/${encodeURIComponent(id)}`, {
       method: "DELETE",
     }),
+  revokeOtherSessions: () =>
+    request<void>("/api/v1/auth/sessions/revoke-others", {
+      method: "POST",
+      body: "{}",
+    }),
+  member: (tenant: string, id: string) =>
+    request<Member>(
+      `/api/v1/tenants/${encodeURIComponent(tenant)}/members/${encodeURIComponent(id)}`,
+    ),
   previewInvitation: (token: string) =>
     request<InvitationPreview>("/api/v1/invitations/preview", {
       method: "POST",

@@ -1,3 +1,4 @@
+import { useConsoleRoute, useAlive } from "./routing";
 import { friendlyError } from "./errors";
 import {
   FormEvent,
@@ -19,6 +20,7 @@ import {
   KeyRound,
   LayoutGrid,
   LogOut,
+  MailPlus,
   Plus,
   RefreshCw,
   ScrollText,
@@ -36,9 +38,11 @@ import type {
   Tenant,
 } from "./types";
 
-import { Modal, PageHeader } from "./components";
+import { PageHeader } from "./components";
 import { AccountPage, InvitationLanding } from "./Account";
 import { MembersPage } from "./Members";
+import { InvitationsPage } from "./Invitations";
+import { FormPage } from "./navigation";
 import { RolesPage } from "./Roles";
 import { AuditWorkspace } from "./Audit";
 
@@ -49,12 +53,15 @@ type Section =
   | "permissions"
   | "audit"
   | "check"
-  | "account";
+  | "account"
+  | "tenants"
+  | "invitations";
 
 const sections: Array<{ id: Section; label: string; icon: typeof LayoutGrid }> =
   [
     { id: "overview", label: "Overview", icon: LayoutGrid },
     { id: "members", label: "Members", icon: UsersRound },
+    { id: "invitations", label: "Invitations", icon: MailPlus },
     { id: "roles", label: "Roles", icon: ShieldCheck },
     { id: "permissions", label: "Permissions", icon: KeyRound },
     { id: "audit", label: "Audit trail", icon: ScrollText },
@@ -341,7 +348,8 @@ function Console({
   account: Account;
   onLogout: () => void;
 }) {
-  const [section, setSection] = useState<Section>("overview");
+  const { segments, navigate } = useConsoleRoute();
+  const section = (segments[0] ?? "overview") as Section;
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantID, setTenantID] = useState(() => preferredTenant(account.id));
   const [members, setMembers] = useState<number | null>(null);
@@ -354,7 +362,6 @@ function Console({
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState<"tenant" | "role" | null>(null);
 
   const tenantRequest = useRef(0);
   const globalRequest = useRef(0);
@@ -373,13 +380,19 @@ function Console({
     (id: string) => {
       if (id === tenantRef.current) return;
       ++tenantRequest.current;
+      const root = location.hash.slice(2).split("/")[0];
+      if (
+        ["members", "roles", "invitations"].includes(root) &&
+        location.hash.slice(2).includes("/")
+      )
+        navigate(root);
       tenantRef.current = id;
       setTenantID(id);
-      setModal(null);
+
       setLoadedTenantID("");
       rememberTenant(account.id, id);
     },
-    [account.id],
+    [account.id, navigate],
   );
 
   const loadGlobal = useCallback(async (): Promise<string | null> => {
@@ -450,8 +463,6 @@ function Console({
         setAudit(auditItems);
         setCapabilities(capabilityItems);
         setLoadedTenantID(id);
-        if (!allowed["iam:role:manage"])
-          setModal((current) => (current === "role" ? null : current));
       } catch (cause) {
         if (serial !== tenantRequest.current || id !== tenantRef.current)
           return;
@@ -460,7 +471,7 @@ function Console({
           (cause.status === 403 || cause.status === 404)
         ) {
           clear();
-          setModal(null);
+
           if (retryAccess) {
             const next = await loadGlobal();
             if (next === id && tenantRef.current === id)
@@ -536,10 +547,27 @@ function Console({
             <button
               key={item.id}
               className={section === item.id ? "nav-item active" : "nav-item"}
-              onClick={() => setSection(item.id)}
+              aria-label={item.label}
+              aria-current={section === item.id ? "page" : undefined}
+              onClick={() => navigate(item.id)}
             >
               <item.icon size={17} />
-              {item.label}
+              <span className="nav-text">{item.label}</span>
+              <span className="nav-short" aria-hidden="true">
+                {
+                  {
+                    overview: "Home",
+                    members: "Members",
+                    invitations: "Invites",
+                    roles: "Roles",
+                    permissions: "Access",
+                    audit: "Audit",
+                    check: "Policy",
+                    account: "Account",
+                    tenants: "Tenants",
+                  }[item.id]
+                }
+              </span>
             </button>
           ))}
         </nav>
@@ -583,7 +611,7 @@ function Console({
               <button
                 className="icon-button"
                 aria-label="Create tenant"
-                onClick={() => setModal("tenant")}
+                onClick={() => navigate("tenants/new")}
               >
                 <Plus size={17} />
               </button>
@@ -601,7 +629,7 @@ function Console({
             <button
               className="icon-button"
               aria-label="Account settings"
-              onClick={() => setSection("account")}
+              onClick={() => navigate("account/profile")}
             >
               <UsersRound size={18} />
             </button>
@@ -645,13 +673,28 @@ function Console({
             </div>
           ) : null}
           {section === "account" ? (
-            <AccountPage onLogout={onLogout} />
+            <AccountPage onLogout={onLogout} email={account.email} />
+          ) : section === "tenants" && segments[1] === "new" ? (
+            account.system_admin ? (
+              <CreateTenantForm
+                onClose={() => navigate("overview")}
+                onCreated={async (tenant) => {
+                  await loadGlobal();
+                  selectTenant(tenant.id);
+                  navigate("overview");
+                }}
+              />
+            ) : (
+              <p className="quiet-state">
+                Only system administrators can create tenants.
+              </p>
+            )
           ) : (
             <>
               {!loading && !selectedTenant ? (
                 <EmptyTenant
                   canCreate={account.system_admin}
-                  onCreate={() => setModal("tenant")}
+                  onCreate={() => navigate("tenants/new")}
                 />
               ) : null}
               {tenantLoading ? (
@@ -673,36 +716,13 @@ function Console({
                   audit={audit}
                   capabilities={capabilities}
                   onChanged={refreshWorkspace}
-                  onCreateRole={() => setModal("role")}
+                  onCreateRole={() => navigate("roles/new")}
                 />
               ) : null}
             </>
           )}
         </main>
       </div>
-      {modal === "tenant" && account.system_admin ? (
-        <CreateTenantModal
-          onClose={() => setModal(null)}
-          onCreated={async (tenant) => {
-            setModal(null);
-            await loadGlobal();
-            selectTenant(tenant.id);
-          }}
-        />
-      ) : null}
-      {modal === "role" &&
-      selectedTenant &&
-      capabilities.permissions["iam:role:manage"] ? (
-        <CreateRoleModal
-          tenant={selectedTenant}
-          permissions={permissions}
-          onClose={() => setModal(null)}
-          onCreated={async () => {
-            setModal(null);
-            await loadTenant(selectedTenant.id);
-          }}
-        />
-      ) : null}
     </div>
   );
 }
@@ -751,6 +771,7 @@ type SectionProps = {
 };
 
 function SectionView(props: SectionProps) {
+  const { segments, navigate } = useConsoleRoute();
   switch (props.section) {
     case "members":
       return (
@@ -761,7 +782,32 @@ function SectionView(props: SectionProps) {
           onChanged={props.onChanged}
         />
       );
+    case "invitations":
+      return (
+        <InvitationsPage
+          tenant={props.tenant.id}
+          revision={props.revision}
+          capabilities={props.capabilities}
+          onChanged={props.onChanged}
+        />
+      );
     case "roles":
+      if (segments[1] === "new" && segments.length === 2)
+        return props.capabilities.permissions["iam:role:manage"] ? (
+          <CreateRoleForm
+            tenant={props.tenant}
+            permissions={props.permissions}
+            onClose={() => navigate("roles")}
+            onCreated={async () => {
+              await props.onChanged();
+              navigate("roles");
+            }}
+          />
+        ) : (
+          <p className="quiet-state">
+            Your role does not include role management access.
+          </p>
+        );
       return (
         <RolesPage
           tenant={props.tenant.id}
@@ -790,6 +836,19 @@ function SectionView(props: SectionProps) {
         />
       );
     default:
+      if (props.section !== "overview")
+        return (
+          <>
+            <PageHeader
+              eyebrow="Navigation"
+              title="Page not found"
+              detail="Choose a page from the navigation."
+            />
+            <a className="secondary-button" href="#/overview">
+              Back to overview
+            </a>
+          </>
+        );
       return (
         <Overview
           tenant={props.tenant}
@@ -1020,13 +1079,14 @@ function PolicyLab({
   );
 }
 
-function CreateTenantModal({
+function CreateTenantForm({
   onClose,
   onCreated,
 }: {
   onClose: () => void;
   onCreated: (tenant: Tenant) => void;
 }) {
+  const alive = useAlive();
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1035,15 +1095,20 @@ function CreateTenantModal({
     setBusy(true);
     setError("");
     try {
-      onCreated(await api.createTenant(name));
+      const tenant = await api.createTenant(name);
+      if (alive.current) onCreated(tenant);
     } catch (cause) {
       setError(friendlyError(cause));
       setBusy(false);
     }
   }
   return (
-    <Modal title="Create a tenant" onClose={onClose}>
-      <form className="modal-form" onSubmit={submit}>
+    <FormPage
+      title="Create tenant"
+      detail="Create a tenant and its first administrator membership."
+      back={{ path: "overview", label: "Back to overview" }}
+    >
+      <form className="admin-form" onSubmit={submit}>
         <p>A tenant becomes an isolated policy and membership boundary.</p>
         <label>
           Name
@@ -1056,16 +1121,26 @@ function CreateTenantModal({
           />
         </label>
         {error ? <p className="form-error">{error}</p> : null}
-        <button className="primary-button" disabled={busy}>
-          {busy ? "Creating…" : "Create tenant"}
-          <ArrowRight size={16} />
-        </button>
+        <div className="form-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={busy}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button className="primary-button" disabled={busy}>
+            {busy ? "Creating…" : "Create tenant"}
+            <ArrowRight size={16} />
+          </button>
+        </div>
       </form>
-    </Modal>
+    </FormPage>
   );
 }
 
-function CreateRoleModal({
+function CreateRoleForm({
   tenant,
   permissions,
   onClose,
@@ -1076,6 +1151,7 @@ function CreateRoleModal({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const alive = useAlive();
   const [id, setID] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -1100,18 +1176,22 @@ function CreateRoleModal({
         description,
         permissions: selected,
       });
-      onCreated();
+      if (alive.current) onCreated();
     } catch (cause) {
       setError(friendlyError(cause));
       setBusy(false);
     }
   }
   return (
-    <Modal title="Create a role" onClose={onClose}>
-      <form className="modal-form" onSubmit={submit}>
+    <FormPage
+      title="Create role"
+      detail="Define the role identity and its initial permissions."
+      back={{ path: "roles", label: "Back to roles" }}
+    >
+      <form className="admin-form" onSubmit={submit}>
         <p>
           Choose a stable ID and the tenant-wide permissions this role
-          delegates. The role and its first snapshot are committed together.
+          delegates. You can refine scoped grants after creating the role.
         </p>
         <label>
           Stable role ID
@@ -1120,6 +1200,7 @@ function CreateRoleModal({
             value={id}
             onChange={(event) => setID(event.target.value)}
             placeholder="role_support"
+            maxLength={256}
             required
           />
         </label>
@@ -1129,6 +1210,7 @@ function CreateRoleModal({
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Support specialist"
+            maxLength={128}
             required
           />
         </label>
@@ -1157,11 +1239,21 @@ function CreateRoleModal({
           ))}
         </fieldset>
         {error ? <p className="form-error">{error}</p> : null}
-        <button className="primary-button" disabled={busy}>
-          {busy ? "Creating…" : "Create role"}
-          <ArrowRight size={16} />
-        </button>
+        <div className="form-actions">
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={busy}
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button className="primary-button" disabled={busy}>
+            {busy ? "Creating…" : "Create role"}
+            <ArrowRight size={16} />
+          </button>
+        </div>
       </form>
-    </Modal>
+    </FormPage>
   );
 }

@@ -7,8 +7,10 @@ seven administration permissions.
 
 ## Account and sessions
 
-Open **Account settings** beside the account avatar. Save a display name, change
-your password using the current password, or revoke a signed-in device. Passwords
+Open **Account settings** beside the account avatar, then choose **Profile**,
+**Password**, or **Devices**. Each is a separate page with its own form or
+workflow. Save a display name on Profile, change your password using the current
+password and matching confirmation on Password, or sign out devices on Devices. Passwords
 must contain 12–128 Unicode characters. A successful password change revokes all
 access and refresh tokens and requires signing in again. Password verification
 uses the existing account lockout policy. Profiles and sessions are always scoped
@@ -19,6 +21,27 @@ it invalidates both token types. The session list contains timestamps and browse
 metadata, never token hashes or secrets. Remote addresses come from the API's
 connection, so reverse-proxy addresses may appear. Activity updates are throttled
 to once per minute.
+
+The Devices page loads independently from Profile, shows its own loading and
+failure states, and offers **Refresh devices** and **Retry devices**. A failed
+device refresh hides obsolete results until a successful retry. Profile has its
+own loading and retry states. Password does not fetch either collection.
+Signing out one device opens a confirmation; choosing this device returns to
+sign-in after successful revocation, even if the subsequent cookie cleanup fails.
+
+Use **Sign out other devices** to revoke all other families on your account
+across all tenants after confirmation. Your current family stays signed in and
+can still refresh. The operation also covers devices created since the list was
+loaded. Future password sign-ins remain allowed. The endpoint is
+`POST /api/v1/auth/sessions/revoke-others` with an empty JSON object. It derives
+the retained family from the live bearer inside the account-locked transaction;
+no client-selected account or family is accepted. The account lock serializes
+with login, refresh, password changes and device revocation. Both token types
+are revoked atomically, repeated requests are safe, and another account's
+sessions remain untouched. The existing account-wide response to replaying an
+already rotated refresh token still applies. No migration or runtime grant is
+needed. Session results and action completions from an unmounted account view
+cannot trigger a later view's logout or replace its device list.
 
 The console restores a signed-in session from the HttpOnly refresh cookie when a
 new tab has no access token. The optional `POST /api/v1/auth/restore` endpoint
@@ -57,7 +80,8 @@ permission denied during refresh triggers one bounded capability recheck.
 
 ## Members and invitations
 
-In **Members**, choose **Invite member**, enter an email, and privately share the
+In **Invitations**, choose **Invite member**, enter an email in the dedicated
+creation form, and privately share the
 one-time link. Core displays the secret once and stores only its hash. No email
 is sent. A link expires after seven days; re-inviting an email revokes its earlier
 pending link. Search all invitations by email or ID and filter pending, accepted,
@@ -68,11 +92,15 @@ enter HTTP paths or referrers. Do not post invitation links publicly.
 A new account chooses a password when accepting. An existing account proves its
 current password; accepting never resets it. Suspended membership cannot be
 bypassed by an invitation. A joined member starts without roles. Administrators
-assign roles from the member's **Roles** action. A member with no read permissions
+assign roles from the member's **Roles** page. A member with no read permissions
 can still open the console and account settings without denied collection calls.
 
-Suspend retains role bindings and blocks tenant access. Resume restores those
-bindings. Remove deletes membership, subject-role bindings, and incoming grant
+Open **Members → Manage member** to view exact identity and membership details.
+The status form saves Active or Suspended membership; **Cancel** returns to the
+list. Suspended membership retains role bindings and blocks tenant access.
+Resuming restores those bindings. **Remove membership** is a separate form that
+requires entering the member's email before submission. Removal deletes membership,
+subject-role bindings, and incoming grant
 edges; the account and other tenant memberships remain. Rejoining requires a new
 invitation. Another active administrator must exist before suspending/removing
 the last tenant administrator. Removing a member does not revoke grants they
@@ -103,10 +131,14 @@ list method contracts are unchanged.
 
 ## Roles and audit
 
-Use **Roles → View role** to edit details, add/revoke scoped grants, inspect
-member binding counts, and read version snapshots. The history loads 20 versions
-at a time. Each mutation uses the currently displayed role version; a conflict
-asks the operator to refresh. Only empty, unassigned roles can be retired.
+Use **Roles → New role** for a full-page creation form with stable ID, name,
+description and initial permissions. **View role** opens separate **Basic details**,
+**Permissions**, **Members**, **History** and **Retirement** pages. Editing details
+and adding a grant have dedicated forms with save/cancel controls. The grant form
+is reached through **Permissions → New permission grant**; it does not share the
+listing or other role tasks. History loads 20 versions at a time. Each mutation
+uses the displayed role version; a conflict asks for a deliberate retry. Only
+empty, unassigned roles can be retired.
 
 The role's **Role members** section lists assigned people and available tenant
 members with search, status filters and 30-row cursor pages. Member identities
@@ -167,6 +199,33 @@ Generated `X-Request-ID` values connect HTTP requests and mutation audit records
 Global account/profile/session changes are not tenant audit events. Kernel
 mutation failures are audited; malformed requests and pre-authentication failures
 are handled by HTTP logs rather than a tenant audit stream.
+
+
+## Page addresses and forms
+
+Console pages use hash routes, so they can be reloaded, bookmarked, and navigated
+with browser back/forward under the existing static deployment. Tenant pages use
+the currently selected tenant, validated against the account's live membership.
+Changing tenants returns a nested tenant page to its collection, discarding the
+previous tenant's form. IDs in route segments are URL-encoded.
+
+| Task | Address |
+| --- | --- |
+| Create tenant | `#/tenants/new` |
+| Member list / status / roles / removal | `#/members`, `#/members/{id}/details`, `#/members/{id}/roles`, `#/members/{id}/remove` |
+| Invitation list / create | `#/invitations`, `#/invitations/new` |
+| Role list / create | `#/roles`, `#/roles/new` |
+| Role details / grants / grant form | `#/roles/{id}/details`, `#/roles/{id}/permissions`, `#/roles/{id}/permissions/new` |
+| Role members / history / retirement | `#/roles/{id}/members`, `#/roles/{id}/history`, `#/roles/{id}/retire` |
+| Account profile / password / devices | `#/account/profile`, `#/account/password`, `#/account/devices` |
+
+Lists contain search, pagination and task entry points. Creation and editing use
+page-level forms; dialogs are reserved for short confirmations. Permission gates
+apply to direct addresses as well as visible controls. The exact
+`GET /api/v1/tenants/{tenant_id}/members/{account_id}` endpoint powers member forms
+and requires member-read access; missing/out-of-tenant targets return 404. It
+returns only account ID, email, membership status and join time. Existing list
+and kernel contracts remain unchanged.
 
 ## Upgrade
 

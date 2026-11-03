@@ -37,6 +37,7 @@ const props = {
 };
 beforeEach(() => {
   vi.restoreAllMocks();
+  history.replaceState(null, "", "/#/roles");
   props.onChange.mockClear();
 });
 afterEach(cleanup);
@@ -175,12 +176,18 @@ it("refreshes the displayed role version after a binding conflict without replay
   );
   await screen.findByText("Support");
   fireEvent.click(screen.getByRole("button", { name: "View role" }));
-  const dialog = within(screen.getByRole("dialog"));
-  await dialog.findByText("person@example.test");
+  await screen.findByRole("link", { name: "Retirement" });
+  fireEvent.click(screen.getByRole("link", { name: "Retirement" }));
+  const dialog = screen;
   expect(
-    (dialog.getByRole("button", { name: "Retire role" }) as HTMLButtonElement)
-      .disabled,
+    (
+      (await dialog.findByRole("button", {
+        name: "Retire role",
+      })) as HTMLButtonElement
+    ).disabled,
   ).toBe(true);
+  fireEvent.click(screen.getByRole("link", { name: "Members" }));
+  await screen.findByText("person@example.test");
   fireEvent.click(dialog.getByRole("button", { name: "Remove from role" }));
   await dialog.findByText("The resource changed. Refresh and try again.");
   await dialog.findByText(/Version 5 · 1 member bindings/);
@@ -195,6 +202,6 @@ it("refreshes the displayed role version after a binding conflict without replay
     { ...role, version: 5 },
     false,
   );
-  expect(loadDetail).toHaveBeenCalledTimes(3);
+  expect(loadDetail).toHaveBeenCalledTimes(5);
   await waitFor(() => expect(changed).toHaveBeenCalledOnce());
 });

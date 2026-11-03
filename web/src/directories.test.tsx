@@ -6,8 +6,8 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
+import { InvitationsPage } from "./Invitations";
 import { MembersPage } from "./Members";
 import { RolesPage } from "./Roles";
 import { api } from "./api";
@@ -29,6 +29,7 @@ const role = (id: string): Role => ({
 const changed = vi.fn().mockResolvedValue(undefined);
 beforeEach(() => {
   vi.restoreAllMocks();
+  history.replaceState(null, "", "/");
   changed.mockClear();
 });
 afterEach(cleanup);
@@ -188,7 +189,7 @@ it("reaches older pending invitations and refreshes their status after revocatio
       revoked = true;
     });
   render(
-    <MembersPage
+    <InvitationsPage
       tenant="tenant"
       revision={1}
       capabilities={{ permissions: { "iam:member:manage": true } }}
@@ -199,12 +200,16 @@ it("reaches older pending invitations and refreshes their status after revocatio
   fireEvent.click(screen.getByRole("button", { name: "Next invitations" }));
   await screen.findByText("old@example.test");
   fireEvent.click(screen.getByRole("button", { name: "Revoke invitation" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Confirm revocation" }),
+  );
   await screen.findByText("Invitation revoked.");
   await screen.findByText("No invitations match these filters.");
   expect(revoke).toHaveBeenCalledWith("tenant", "old");
 });
 
 it("preserves assignments across role pages and saves with the displayed role version", async () => {
+  vi.spyOn(api, "member").mockResolvedValue(member("person"));
   vi.spyOn(api, "members").mockResolvedValue({
     items: [member("person")],
     total: 1,
@@ -234,7 +239,8 @@ it("preserves assignments across role pages and saves with the displayed role ve
   );
   await screen.findByText("person@example.test");
   fireEvent.click(screen.getByRole("button", { name: "Roles" }));
-  const modal = within(screen.getByRole("dialog"));
+  await screen.findByText("1 assigned roles across all pages.");
+  const modal = screen;
   await modal.findByText("1 assigned roles across all pages.");
   await modal.findByText("first-role");
   fireEvent.click(modal.getByRole("button", { name: "Next roles" }));

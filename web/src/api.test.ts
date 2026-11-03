@@ -563,19 +563,17 @@ describe("audit CSV downloads", () => {
   it("preserves structured export errors instead of downloading JSON", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          jsonResponse(
-            {
-              error: {
-                code: "audit_export_too_large",
-                message: "Narrow the date range.",
-              },
+      vi.fn().mockResolvedValue(
+        jsonResponse(
+          {
+            error: {
+              code: "audit_export_too_large",
+              message: "Narrow the date range.",
             },
-            { status: 422 },
-          ),
+          },
+          { status: 422 },
         ),
+      ),
     );
     await expect(api.exportAudit("t", {})).rejects.toMatchObject({
       status: 422,
@@ -583,4 +581,23 @@ describe("audit CSV downloads", () => {
       message: "Narrow the date range.",
     });
   });
+});
+
+it("derives bulk device revocation authority solely from the bearer", async () => {
+  setToken("current-device-token");
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValue(new Response(null, { status: 204 }));
+  vi.stubGlobal("fetch", fetchMock);
+  await api.revokeOtherSessions();
+  expect(fetchMock).toHaveBeenCalledWith(
+    "/api/v1/auth/sessions/revoke-others",
+    expect.objectContaining({
+      method: "POST",
+      body: "{}",
+      headers: expect.objectContaining({
+        Authorization: "Bearer current-device-token",
+      }),
+    }),
+  );
 });
