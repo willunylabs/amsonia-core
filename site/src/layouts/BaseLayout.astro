@@ -9,10 +9,11 @@ interface Props {
   title: string;
   description: string;
   canonicalPath: string;
+  noindex?: boolean;
   schemas?: Record<string, unknown>[];
 }
 
-const { title, description, canonicalPath, schemas = [] } = Astro.props;
+const { title, description, canonicalPath, noindex = false, schemas = [] } = Astro.props;
 const canonical = absoluteUrl(canonicalPath);
 const fullTitle = canonicalPath === '/' ? `${SITE_NAME} — SaaS Starters by Willuny Labs` : `${title} | ${SITE_NAME}`;
 ---
@@ -24,10 +25,10 @@ const fullTitle = canonicalPath === '/' ? `${SITE_NAME} — SaaS Starters by Wil
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
     <meta name="theme-color" content="#635bff" />
-    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+    <meta name="robots" content={noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'} />
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical} />
+    {!noindex && <link rel="canonical" href={canonical} />}
     <link rel="icon" href="/amsonia-mark-v2.svg" type="image/svg+xml" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Amsonia" />

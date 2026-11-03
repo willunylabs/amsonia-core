@@ -59,6 +59,10 @@ for (const route of requiredRoutes) {
 }
 
 const htmlFiles = collectHtml(distRoot);
+const errorHtml = readFileSync(pageFile('/404'), 'utf8');
+assert.match(errorHtml, /<meta name="robots" content="noindex,follow"/, 'the error document must remain excluded even when requested directly');
+assert.doesNotMatch(errorHtml, /<link rel="canonical"/, 'missing pages must not share a canonical error-document URL');
+
 for (const file of htmlFiles) {
   const html = readFileSync(file, 'utf8');
   const demoLinks = [...html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*data-cta-target="demo"/g)];
@@ -90,6 +94,26 @@ for (const file of htmlFiles) {
     assert.ok(existsSync(target) || existsSync(publicTarget), `${file} links to missing internal target: ${href}`);
   }
 }
+
+// A sitemap can expose pages that readers cannot reach. Verify the actual
+// anchor graph, ignoring fragment/self links, rather than only target existence.
+const routesByPath = new Map(requiredRoutes.map((route) => [new URL(canonicalFor(route)).pathname, route]));
+const pending = ['/'];
+const reachable = new Set(pending);
+while (pending.length > 0) {
+  const route = pending.shift();
+  const html = readFileSync(pageFile(route), 'utf8');
+  for (const match of html.matchAll(/<a\b[^>]*\bhref="([^"]+)"/g)) {
+    const target = new URL(match[1], canonicalFor(route));
+    if (target.origin !== origin) continue;
+    const next = routesByPath.get(target.pathname);
+    if (next !== undefined && !reachable.has(next)) {
+      reachable.add(next);
+      pending.push(next);
+    }
+  }
+}
+assert.deepEqual(requiredRoutes.filter((route) => !reachable.has(route)), [], 'every sitemap page needs a crawlable path from the homepage');
 
 const homepage = readFileSync(pageFile('/'), 'utf8');
 const homepageGraph = [...homepage.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
