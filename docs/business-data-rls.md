@@ -115,7 +115,7 @@ See [web.go](../examples/business-data-rls/web.go) for the HTTP and storage
 path, [invoices.html](../examples/business-data-rls/invoices.html) for the form,
 and [web_test.go](../examples/business-data-rls/web_test.go) for the denial and
 validation cases. The example binds only to 127.0.0.1. Its generated
-credentials and in-memory grants are development fixtures; use your own
+access codes and in-memory grants are development fixtures; use your own
 authentication and membership/policy source in a real application. The
 browser example uses distinct fixture tenant IDs and leaves its invoices in
 the demo database. It does not add routes to the default console.

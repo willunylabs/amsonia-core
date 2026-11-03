@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/subtle"
 	_ "embed"
 	"encoding/base64"
@@ -31,10 +30,10 @@ const (
 )
 
 type demoIdentity struct {
-	principal amsonia.Principal
-	org       string
-	editor    bool
-	password  [32]byte // hash of a fresh per-process demo credential
+	principal  amsonia.Principal
+	org        string
+	editor     bool
+	accessCode string // random, process-local demo token, never a user password
 }
 
 func exampleIdentities() map[string]demoIdentity {
@@ -214,10 +213,9 @@ func invoiceHandler(host string, identities map[string]demoIdentity, data invoic
 	mux := http.NewServeMux()
 	authenticated := func(next func(http.ResponseWriter, *http.Request, demoIdentity)) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			user, password, basic := r.BasicAuth()
+			user, code, basic := r.BasicAuth()
 			actor, found := identities[user]
-			digest := sha256.Sum256([]byte(password))
-			if !basic || !found || subtle.ConstantTimeCompare(digest[:], actor.password[:]) != 1 {
+			if !basic || !found || subtle.ConstantTimeCompare([]byte(code), []byte(actor.accessCode)) != 1 {
 				w.Header().Set("WWW-Authenticate", `Basic realm="Amsonia invoice example"`)
 				http.Error(w, "Use the credentials printed by the local example.", http.StatusUnauthorized)
 				return
@@ -255,11 +253,11 @@ func serveInvoices(store *postgres.Store) error {
 		if _, err := rand.Read(secret); err != nil {
 			return err
 		}
-		password := base64.RawURLEncoding.EncodeToString(secret)
+		code := base64.RawURLEncoding.EncodeToString(secret)
 		actor := identities[name]
-		actor.password = sha256.Sum256([]byte(password))
+		actor.accessCode = code
 		identities[name] = actor
-		fmt.Printf("  %s: %s\n", name, password)
+		fmt.Printf("  %s: %s\n", name, code)
 	}
 	handler, err := invoiceHandler(host, identities, postgresInvoices{store})
 	if err != nil {

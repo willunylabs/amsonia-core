@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -27,7 +26,7 @@ func (t testInvoices) insert(_ context.Context, tenant amsonia.TenantID, item in
 func TestInvoiceFormAuthorityAndPersistence(t *testing.T) {
 	ids := exampleIdentities()
 	for name, identity := range ids {
-		identity.password = sha256.Sum256([]byte("test-" + name))
+		identity.accessCode = "test-" + name
 		ids[name] = identity
 	}
 	repo := testInvoices{items: map[amsonia.TenantID][]invoice{}}
@@ -56,6 +55,14 @@ func TestInvoiceFormAuthorityAndPersistence(t *testing.T) {
 	}
 	const valid = "description=Annual+service&amount_cents=1250"
 	request("GET", "/", "", "", "", 401)
+	impersonation := httptest.NewRequest("GET", "http://127.0.0.1:1234/", nil)
+	impersonation.SetBasicAuth("acme-editor", "test-acme-viewer")
+	unauthorized := httptest.NewRecorder()
+	handler.ServeHTTP(unauthorized, impersonation)
+	if unauthorized.Code != 401 {
+		t.Fatal("viewer code authenticated as editor")
+	}
+
 	request("GET", "/invoices/new", "acme-viewer", "", "", 403)
 	request("POST", "/invoices", "acme-viewer", valid, "", 403)
 	request("POST", "/invoices", "acme-editor", valid, "https://elsewhere.example", 403)
