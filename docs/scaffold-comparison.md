@@ -37,8 +37,8 @@ not claim that they cannot.
 - Complete the distribution path: release notes, matching CLI/API/console
   revisions and tested upgrade/restore instructions. Prebuilt versioned
   images are still a packaging gap.
-- Make the existing RLS example the extension reference, including how to
-  wire a real permission check and a negative test. Do not ship a second
-  business administration console merely for demonstration.
+- Use the existing RLS example as the extension reference. Its opt-in list
+  and creation form include a real permission check, read-only denial, and
+  a negative isolation test. The default console has no invoice routes.
 - Revisit self-service email recovery or external identity only if the
   intended audience expands beyond invitation-only internal administration.

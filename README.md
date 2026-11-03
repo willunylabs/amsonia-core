@@ -120,7 +120,9 @@ stops the stack without deleting its PostgreSQL volume.
 Then run the host-table proof in
 [`examples/business-data-rls`](examples/business-data-rls): two tenants query
 the same invoice table without tenant predicates, each sees only its own row,
-and a cross-tenant insert is rejected by PostgreSQL RLS. The walkthrough is in
+and a cross-tenant insert is rejected by PostgreSQL RLS. The same example
+can serve a local invoice list and creation form without changing the default
+console. The walkthrough is in
 [`docs/business-data-rls.md`](docs/business-data-rls.md).
 
 ## Evidence, not feature claims
