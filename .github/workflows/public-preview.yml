@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   public-preview-install:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       RELEASE_TAG: ${{ inputs.tag || 'v0.2.0-preview.2' }}
