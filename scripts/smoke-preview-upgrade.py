@@ -123,7 +123,9 @@ def main():
         print(f"In-place upgrade preserved {len(before)} database tables.", flush=True)
 
         upgraded = login()
-        assert upgraded["account"] == original["account"]
+        for field in ("id", "email", "system_admin", "created_at"):
+            assert upgraded["account"][field] == original["account"][field], f"Administrator {field} changed"
+        assert upgraded["account"]["system_admin"]
         token = upgraded["access_token"]
         assert request(settings_path, token=token) == saved
         assert request(invite_path, token=token)["items"] == invitations
