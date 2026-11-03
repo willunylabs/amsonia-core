@@ -42,7 +42,20 @@ described in its [release history](https://github.com/willunylabs/amsonia-core/r
 - Publish release notes with the supported installation path and links to
   operator recovery, upgrade, and application extension documentation.
 - Run the **Preview bundle** workflow on the exact release commit. Download
-  its archive and checksum only after the archive installation smoke test passes.
+  its archive and checksum only after the archive installation and browser
+  sign-in checks pass.
 - Create a draft GitHub prerelease at the revision recorded in the bundle.
   Run **Stage preview draft** with the successful workflow run ID to transfer
   verified assets on GitHub. Review the draft and publish separately.
+- After publishing, dispatch **Public preview install** from `main`. Run
+  it once with the published tag alone for a clean install and again with
+  `from_tag` set to the prior supported preview for an in-place upgrade.
+  For example, the preview.2 to preview.3 verification uses:
+
+  ```sh
+  gh workflow run public-preview.yml --ref main -f tag=v0.2.0-preview.3
+  gh workflow run public-preview.yml --ref main -f tag=v0.2.0-preview.3 -f from_tag=v0.2.0-preview.2
+  ```
+
+  Confirm both runs succeeded before linking them from the release notes.
+  Record the upgrade source and the platform tested.
