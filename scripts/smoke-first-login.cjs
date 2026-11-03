@@ -33,7 +33,8 @@ async function main() {
         await page.getByLabel("Password", { exact: true }).fill(process.env.SMOKE_LOGIN_PASSWORD);
         await page.getByRole("button", { name: "Enter the console" }).click();
         await page.getByRole("heading", { name: "Boundaries are explicit." }).waitFor();
-        await page.getByText("My organization", { exact: false }).first().waitFor();
+        const organization = process.env.SMOKE_ORGANIZATION ?? "My organization";
+        await page.getByText(organization, { exact: false }).first().waitFor();
         assert.equal(await page.getByRole("button", { name: "Create tenant", exact: true }).count(), 0);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         assert.deepEqual(failures, []);
