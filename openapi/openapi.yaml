@@ -92,7 +92,7 @@ paths:
       summary: Rotate a session
       tags: [Authentication]
       operationId: refreshSession
-      description: Rotates the HttpOnly refresh cookie and returns a new access token.
+      description: Rotates the HttpOnly refresh cookie and returns a new access token. Invalid credentials clear the cookie; service failures preserve it for retry. Reuse of a rotated token revokes all account sessions; an explicitly revoked current token is rejected without revoking other devices.
       security:
         - refreshCookie: []
       responses:
@@ -105,17 +105,59 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Session" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "500":
+          description: Service failure; refresh cookie is preserved for retry.
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/Error" } },
+            }
+  /api/v1/auth/restore:
+    post:
+      summary: Restore the browser session or return anonymous
+      tags: [Authentication]
+      operationId: restoreSession
+      description: Optional cookie-based startup. A valid HttpOnly refresh cookie is rotated and returns a session. Missing, expired, revoked, or replayed credentials clear the cookie and return 204. Replay detection is identical to refresh. Service failures preserve the cookie for retry.
+      security: []
+      responses:
+        "200":
+          description: Session restored and refresh cookie rotated.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "204":
+          description: Anonymous browser; no session body. Refresh cookie cleared.
+        "500":
+          description: Service failure; cookie preserved for retry.
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/Error" } },
+            }
   /api/v1/auth/logout:
     post:
       summary: Revoke a session
       tags: [Authentication]
       operationId: logout
-      description: Revokes supplied access and refresh credentials. It is safe to call after access expiry.
+      description: Atomically revokes the device session families identified by supplied access and refresh credentials, including older live access tokens from rotation. Other device families remain active. It is safe to call after access expiry. Failed requests retain the refresh cookie for an explicit retry.
       security:
         - bearerAuth: []
         - refreshCookie: []
       responses:
-        "204": { description: Credentials revoked and refresh cookie cleared. }
+        "204":
+          {
+            description: Device session families revoked and refresh cookie cleared.,
+          }
+        "500":
+          description: Logout failed; credentials and cookie are retained for retry.
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/Error" } },
+            }
   /api/v1/auth/me:
     get:
       summary: Read the current account

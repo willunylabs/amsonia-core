@@ -339,6 +339,17 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 	}
 	defer tx.Rollback(context.Background())
 
+	// Always lock the account before session rows, matching logout and password
+	// changes. A competing serializable rotation may still request a retry.
+	var lockedAccount string
+	if err := tx.QueryRow(ctx, `SELECT account_id FROM amsonia.accounts
+ WHERE account_id=(SELECT account_id FROM amsonia.refresh_sessions WHERE token_hash=$1)
+ FOR UPDATE`, tokenHash(input.RefreshToken)).Scan(&lockedAccount); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Session{}, ErrSessionInvalid
+		}
+		return Session{}, err
+	}
 	var account Account
 	var accountStatus string
 	var refreshExpires time.Time
@@ -354,7 +365,7 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 		FROM amsonia.refresh_sessions r
 		JOIN amsonia.accounts a ON a.account_id = r.account_id
 		WHERE r.token_hash = $1
-		FOR UPDATE OF r, a
+		FOR UPDATE OF r
 	`, tokenHash(input.RefreshToken)).Scan(
 		&account.ID, &account.Email, &accountStatus, &account.CreatedAt, &lastLoginAt,
 		&account.SystemAdmin, &refreshExpires, &revokedAt, &rotatedTo, &family,
@@ -371,7 +382,7 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 	if lastLoginAt != nil {
 		account.LastLoginAt = *lastLoginAt
 	}
-	if revokedAt != nil || len(rotatedTo) > 0 {
+	if len(rotatedTo) > 0 {
 		if _, err := tx.Exec(ctx, `UPDATE amsonia.refresh_sessions SET revoked_at = COALESCE(revoked_at, $1) WHERE account_id = $2`, now, account.ID); err != nil {
 			return Session{}, err
 		}
@@ -381,6 +392,9 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 		if err := tx.Commit(ctx); err != nil {
 			return Session{}, err
 		}
+		return Session{}, ErrSessionInvalid
+	}
+	if revokedAt != nil {
 		return Session{}, ErrSessionInvalid
 	}
 	if !refreshExpires.After(now) {
@@ -471,20 +485,55 @@ func (s *Service) Authenticate(ctx context.Context, accessToken string) (Account
 	return account, nil
 }
 
+// Logout revokes the device family identified by an access token.
 func (s *Service) Logout(ctx context.Context, accessToken string) error {
-	if !strings.HasPrefix(accessToken, "as_") || len(accessToken) > 128 {
-		return nil
-	}
-	_, err := s.pool.Exec(ctx, `UPDATE amsonia.access_sessions SET revoked_at = now() WHERE token_hash = $1`, tokenHash(accessToken))
-	return err
+	return s.logoutSessions(ctx, accessToken, "")
 }
 
+// RevokeRefresh revokes the device family identified by a refresh token.
 func (s *Service) RevokeRefresh(ctx context.Context, refreshToken string) error {
-	if !strings.HasPrefix(refreshToken, "rs_") || len(refreshToken) > 160 {
+	return s.logoutSessions(ctx, "", refreshToken)
+}
+
+// logoutSessions locks accounts in a consistent order with refresh/password
+// changes, then revokes both supplied token families in one transaction.
+func (s *Service) logoutSessions(ctx context.Context, accessToken, refreshToken string) error {
+	var accessHash, refreshHash []byte
+	if strings.HasPrefix(accessToken, "as_") && len(accessToken) <= 128 {
+		accessHash = tokenHash(accessToken)
+	}
+	if strings.HasPrefix(refreshToken, "rs_") && len(refreshToken) <= 160 {
+		refreshHash = tokenHash(refreshToken)
+	}
+	if accessHash == nil && refreshHash == nil {
 		return nil
 	}
-	_, err := s.pool.Exec(ctx, `UPDATE amsonia.refresh_sessions SET revoked_at = COALESCE(revoked_at, now()) WHERE token_hash = $1`, tokenHash(refreshToken))
-	return err
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+	rows, err := tx.Query(ctx, `SELECT account_id FROM amsonia.accounts WHERE account_id IN (
+ SELECT account_id FROM amsonia.access_sessions WHERE token_hash=$1
+ UNION SELECT account_id FROM amsonia.refresh_sessions WHERE token_hash=$2
+ ) ORDER BY account_id FOR UPDATE`, accessHash, refreshHash)
+	if err != nil {
+		return err
+	}
+	if _, err := pgx.CollectRows(rows, pgx.RowTo[string]); err != nil {
+		return err
+	}
+	for _, table := range []string{"access_sessions", "refresh_sessions"} {
+		_, err = tx.Exec(ctx, `UPDATE amsonia.`+table+` SET revoked_at=COALESCE(revoked_at,$3)
+   WHERE (account_id,session_id) IN (
+    SELECT account_id,session_id FROM amsonia.access_sessions WHERE token_hash=$1
+    UNION SELECT account_id,session_id FROM amsonia.refresh_sessions WHERE token_hash=$2
+   )`, accessHash, refreshHash, s.now())
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 func (s *Service) ListTenants(ctx context.Context, accountID string) ([]Tenant, error) {

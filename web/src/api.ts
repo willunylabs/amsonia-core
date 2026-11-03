@@ -31,7 +31,66 @@ if (configuredURL.origin !== window.location.origin) {
 }
 const API_BASE = CONFIGURED_API_BASE;
 const TOKEN_KEY = "amsonia.core.access.v1";
-let refreshInFlight: Promise<boolean> | null = null;
+let authEpoch = 0;
+let activeAccountID = "";
+let authQueue: Promise<unknown> = Promise.resolve();
+let refreshInFlight: {
+  epoch: number;
+  promise: Promise<Session | null>;
+} | null = null;
+type SessionListener = (account: Account | null, expired: boolean) => void;
+const sessionListeners = new Set<SessionListener>();
+
+export function subscribeSession(listener: SessionListener): () => void {
+  sessionListeners.add(listener);
+  return () => {
+    sessionListeners.delete(listener);
+  };
+}
+
+function notifySession(account: Account | null, expired = false): void {
+  for (const listener of sessionListeners) listener(account, expired);
+}
+
+// The cookie is shared by tabs; the access token stays in this tab. Queue all
+// cookie-changing auth calls. Web Locks extend that ordering to other tabs.
+function withAuthLock<T>(action: () => Promise<T>): Promise<T> {
+  const run = async (): Promise<T> => {
+    if (navigator.locks)
+      return await navigator.locks.request(
+        `amsonia.core.auth:${API_BASE}`,
+        action,
+      );
+    return action();
+  };
+  const pending = authQueue.then(run, run);
+  authQueue = pending.catch(() => undefined);
+  return pending;
+}
+
+function sessionChanged(): APIError {
+  return new APIError(
+    409,
+    "session_changed",
+    "Your signed-in account changed. Please try again.",
+  );
+}
+
+function acceptSession(session: Session, epoch: number): Session {
+  if (epoch !== authEpoch) throw sessionChanged();
+  sessionStorage.setItem(TOKEN_KEY, session.access_token);
+  activeAccountID = session.account.id;
+  notifySession(session.account);
+  return session;
+}
+
+function expireSession(epoch: number): void {
+  if (epoch !== authEpoch) return;
+  authEpoch++;
+  activeAccountID = "";
+  sessionStorage.removeItem(TOKEN_KEY);
+  notifySession(null, true);
+}
 
 export class APIError extends Error {
   readonly code: string;
@@ -50,8 +109,13 @@ export function getToken(): string {
 }
 
 export function setToken(token: string): void {
+  authEpoch++;
+  activeAccountID = "";
   if (token) sessionStorage.setItem(TOKEN_KEY, token);
-  else sessionStorage.removeItem(TOKEN_KEY);
+  else {
+    sessionStorage.removeItem(TOKEN_KEY);
+    notifySession(null);
+  }
 }
 
 async function execute<T>(path: string, init: RequestInit): Promise<T> {
@@ -79,49 +143,99 @@ async function execute<T>(path: string, init: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function refreshAccess(): Promise<boolean> {
-  if (!refreshInFlight) {
-    refreshInFlight = execute<Session>("/api/v1/auth/refresh", {
-      method: "POST",
-    })
-      .then((session) => {
-        setToken(session.access_token);
-        return true;
-      })
-      .catch(() => {
-        setToken("");
-        return false;
-      })
+async function refreshAccess(optional = false): Promise<Session | null> {
+  const epoch = authEpoch;
+  if (!refreshInFlight || refreshInFlight.epoch !== epoch) {
+    const pending = {
+      epoch,
+      promise: withAuthLock(async () => {
+        if (epoch !== authEpoch) throw sessionChanged();
+        try {
+          const session = await execute<Session | undefined>(
+            optional ? "/api/v1/auth/restore" : "/api/v1/auth/refresh",
+            { method: "POST" },
+          );
+          return session ? acceptSession(session, epoch) : null;
+        } catch (error) {
+          // Offline/service errors are retryable. Only a definitive denial
+          // invalidates local credentials and returns the app to sign-in.
+          if (error instanceof APIError && error.status === 401)
+            expireSession(epoch);
+          throw error;
+        }
+      }),
+    };
+    refreshInFlight = pending;
+    void pending.promise
       .finally(() => {
-        refreshInFlight = null;
-      });
+        if (refreshInFlight === pending) refreshInFlight = null;
+      })
+      .catch(() => undefined);
   }
-  return refreshInFlight;
+  return refreshInFlight.promise;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const epoch = authEpoch;
+  const token = getToken();
+  const accountID = activeAccountID;
   try {
     return await execute<T>(path, init);
   } catch (error) {
     const canRefresh =
       error instanceof APIError &&
       error.status === 401 &&
+      !path.startsWith("/api/v1/invitations/") &&
       path !== "/api/v1/auth/login" &&
       path !== "/api/v1/auth/refresh" &&
+      path !== "/api/v1/auth/restore" &&
       path !== "/api/v1/auth/logout";
-    if (!canRefresh || !(await refreshAccess())) throw error;
-    return execute<T>(path, init);
+    if (!canRefresh || epoch !== authEpoch) throw error;
+    // A late 401 may belong to the old token, after another request refreshed.
+    if (!getToken() || token === getToken()) {
+      if (!(await refreshAccess())) {
+        expireSession(epoch);
+        throw error;
+      }
+    }
+    if (epoch !== authEpoch || (accountID && accountID !== activeAccountID))
+      throw sessionChanged();
+    try {
+      return await execute<T>(path, init);
+    } catch (retryError) {
+      if (retryError instanceof APIError && retryError.status === 401)
+        expireSession(epoch);
+      throw retryError;
+    }
   }
 }
 
 export const api = {
   async login(email: string, password: string): Promise<Session> {
-    const session = await request<Session>("/api/v1/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-    setToken(session.access_token);
-    return session;
+    const epoch = ++authEpoch;
+    return withAuthLock(async () =>
+      acceptSession(
+        await execute<Session>("/api/v1/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        }),
+        epoch,
+      ),
+    );
+  },
+  async restoreSession(): Promise<Account | null> {
+    const epoch = authEpoch;
+    try {
+      const account = getToken()
+        ? await request<Account>("/api/v1/auth/me")
+        : ((await refreshAccess(true))?.account ?? null);
+      if (epoch !== authEpoch) throw sessionChanged();
+      activeAccountID = account?.id ?? "";
+      return account;
+    } catch (error) {
+      if (error instanceof APIError && error.status === 401) return null;
+      throw error;
+    }
   },
   profile: () => request<Profile>("/api/v1/auth/profile"),
   updateProfile: (display_name: string) =>
@@ -239,11 +353,15 @@ export const api = {
     ),
   me: () => request<Account>("/api/v1/auth/me"),
   logout: async () => {
-    try {
-      await request<void>("/api/v1/auth/logout", { method: "POST" });
-    } finally {
-      setToken("");
-    }
+    const epoch = ++authEpoch;
+    const token = getToken();
+    await withAuthLock(() =>
+      execute<void>("/api/v1/auth/logout", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }),
+    );
+    if (epoch === authEpoch) setToken("");
   },
   tenants: async () =>
     (await request<{ items: Tenant[] }>("/api/v1/tenants")).items,

@@ -273,3 +273,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .table-card { overflow-x: auto; }
 @media(max-width: 900px) { .audit-filters { grid-template-columns: 1fr 1fr; } }
 @media(max-width: 680px) { .admin-grid, .audit-filters { grid-template-columns: 1fr; } .admin-form { padding: 18px; } .admin-row { align-items: flex-start; flex-direction: column; } .account-menu > span:not(.avatar) { display: none; } .modal { max-height: calc(100dvh - 24px); } .table-card table { min-width: 600px; } .timeline dl { grid-template-columns: 65px minmax(0,1fr); } }
+.session-notice { margin: 0; padding: 14px 24px; background: #fff4d9; color: #694e17; text-align: center; font-size: 14px; }
+@media(max-width: 680px) { .account-menu { gap: 9px; } .tenant-picker { min-width: 0; } .tenant-picker > span:nth-child(2) { max-width: 155px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+
+.tenant-switcher { display: flex; align-items: center; gap: 8px; min-width: 0; }
+@media(max-width: 680px) { .tenant-picker > span:nth-child(2) { max-width: 120px; } .account-menu > .avatar { display: none; } }
