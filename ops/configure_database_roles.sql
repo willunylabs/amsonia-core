@@ -70,6 +70,7 @@ GRANT EXECUTE ON FUNCTION amsonia.actor_id() TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION amsonia.bind_actor(TEXT, BIGINT, TEXT, TEXT) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION amsonia.list_account_tenants() TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION amsonia.resolve_invitation(BYTEA) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION amsonia.inspect_invitation(BYTEA) TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION amsonia.activate_tenant() TO :"runtime_role";
 GRANT EXECUTE ON FUNCTION amsonia.fail_created_tenant(TEXT) TO :"runtime_role";
 

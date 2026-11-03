@@ -61,7 +61,7 @@ application-owned PostgreSQL tables.
 ## What it provides
 
 - Tenant-first delegated authorization with `own`, `workspace`, and `tenant`
-  scopes, evaluated by Casbin.
+  scopes, evaluated by typed Go predicates.
 - PostgreSQL-enforced tenant isolation with signed transaction-local bindings
   and `FORCE ROW LEVEL SECURITY`.
 - Argon2id administrator authentication, lockout, rotating refresh sessions,
@@ -71,9 +71,11 @@ application-owned PostgreSQL tables.
 - A standalone Go API, migration/administration CLI, in-memory adapter, and
   React management console.
 
-Casbin evaluates access and administrative grant coverage using the existing
-tenant-scoped policy store. The embedded model, policy ownership, and host
-integration are documented in [Casbin authorization](docs/casbin-authorization.md).
+Daily administration includes profiles and password changes, device session
+revocation, one-use member invitations, member suspension/removal, role editing,
+scoped grants, member role bindings, version history, and filtered audit paging.
+See the [administration guide](docs/core-administration.md) and
+[authorization contract](docs/authorization.md).
 
 ## Verify it in five minutes
 

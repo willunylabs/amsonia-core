@@ -20,6 +20,8 @@ func TestDecodeJSONPreservesValidUnicodeAndRejectsInvalidEncoding(t *testing.T) 
 		{name: "trailing whitespace", body: "{\"id\":\"reader\"}\n\t ", valid: true, wantID: "reader"},
 		{name: "invalid UTF-8", body: "{\"id\":\"id-\xff\"}"},
 		{name: "truncated UTF-8", body: "{\"id\":\"id-\xe2\x82\"}"},
+		{name: "null object", body: `null`},
+		{name: "array", body: `[]`},
 		{name: "unknown field", body: `{"id":"reader","extra":true}`},
 		{name: "multiple JSON values", body: `{"id":"reader"} {"id":"admin"}`},
 		{name: "body limit", body: `{"id":"` + strings.Repeat("a", 1<<20) + `"}`},

@@ -7,11 +7,7 @@ import (
 	"testing"
 )
 
-func TestCasbinModelEnforcesTenantAndPermission(t *testing.T) {
-	engine, err := newPolicyEngine()
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestPolicyEnforcesTenantAndPermission(t *testing.T) {
 	for _, scope := range []Scope{ScopeTenant, ScopeWorkspace, ScopeOwn} {
 		t.Run(string(scope), func(t *testing.T) {
 			request := tenantRequest("alice", ResourceExisting, ResourceContext{
@@ -20,9 +16,9 @@ func TestCasbinModelEnforcesTenantAndPermission(t *testing.T) {
 			grant := EffectiveGrant{RoleID: "reader", Permission: testPerm, Scope: scope}
 			check := func(want bool) {
 				t.Helper()
-				allowed, err := engine.allowAccess(request, grant, WorkspaceMembership{Role: "editor"}, true)
-				if err != nil || allowed != want {
-					t.Fatalf("allowed = %t, err = %v; want %t", allowed, err, want)
+				allowed := allowAccess(request, grant, WorkspaceMembership{Role: "editor"}, true)
+				if allowed != want {
+					t.Fatalf("allowed = %t; want %t", allowed, want)
 				}
 			}
 			check(true)
@@ -35,11 +31,7 @@ func TestCasbinModelEnforcesTenantAndPermission(t *testing.T) {
 	}
 }
 
-func TestCasbinDelegationCoverage(t *testing.T) {
-	engine, err := newPolicyEngine()
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestDelegationCoverage(t *testing.T) {
 	tests := []struct {
 		name        string
 		actorScope  Scope
@@ -76,27 +68,16 @@ func TestCasbinDelegationCoverage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			grant := EffectiveGrant{RoleID: "delegator", Permission: testPerm, Scope: tt.actorScope, WorkspaceRoles: tt.actorRoles}
-			allowed, err := engine.allowDelegation(testPerm, tt.targetScope, tt.targetRoles, tt.exact, grant)
-			if err != nil || allowed != tt.allowed {
-				t.Fatalf("allowed = %t, err = %v; want %t", allowed, err, tt.allowed)
+			allowed := allowDelegation(testPerm, tt.targetScope, tt.targetRoles, tt.exact, grant)
+			if allowed != tt.allowed {
+				t.Fatalf("allowed = %t; want %t", allowed, tt.allowed)
 			}
 			// Even a tenant-wide grant must never cover a different permission.
-			allowed, err = engine.allowDelegation("billing:invoice:write", tt.targetScope, tt.targetRoles, tt.exact, grant)
-			if err != nil || allowed {
-				t.Fatalf("different permission allowed = %t, err = %v", allowed, err)
+			allowed = allowDelegation("billing:invoice:write", tt.targetScope, tt.targetRoles, tt.exact, grant)
+			if allowed {
+				t.Fatalf("different permission allowed = %t", allowed)
 			}
 		})
-	}
-}
-
-func TestCasbinEnforcementErrorsFailClosed(t *testing.T) {
-	engine, err := newPolicyEngine()
-	if err != nil {
-		t.Fatal(err)
-	}
-	allowed, err := engine.enforce("invalid fact shape")
-	if allowed || !errors.Is(err, ErrDependencyUnavailable) {
-		t.Fatalf("allowed = %t, err = %v; want dependency failure", allowed, err)
 	}
 }
 
@@ -128,7 +109,7 @@ func TestInvalidGrantsCannotBeHiddenByAnAllow(t *testing.T) {
 			if err != nil || decision.Allowed || decision.Reason != ReasonInvalidPolicy {
 				t.Fatalf("grants %+v: decision = %+v, err = %v", grants, decision, err)
 			}
-			manager := &Manager{engine: authorizer.engine}
+			manager := &Manager{}
 			for _, exact := range []bool{false, true} {
 				err := manager.requireGrant(t.Context(), grantOnlyTx{grants: grants}, request.Principal, testPerm, ScopeTenant, nil, exact)
 				if !errors.Is(err, ErrInvalidPolicy) {
@@ -139,7 +120,7 @@ func TestInvalidGrantsCannotBeHiddenByAnAllow(t *testing.T) {
 	}
 }
 
-func TestWorkspaceRoleNormalizationWithCasbin(t *testing.T) {
+func TestWorkspaceRoleNormalization(t *testing.T) {
 	authorizer := mustAuthorizer(t, []EffectiveGrant{
 		{RoleID: "editor", Permission: testPerm, Scope: ScopeWorkspace, WorkspaceRoles: []string{"editor"}},
 	}, map[string]string{"tenant-a/workspace-1/alice": " \tEDITOR\n"})

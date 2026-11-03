@@ -111,6 +111,7 @@ func configureTestRoles(t *testing.T, admin *pgxpool.Pool) {
 		GRANT EXECUTE ON FUNCTION amsonia.bind_actor(TEXT, BIGINT, TEXT, TEXT) TO amsonia_test_runtime;
 		GRANT EXECUTE ON FUNCTION amsonia.list_account_tenants() TO amsonia_test_runtime;
 		GRANT EXECUTE ON FUNCTION amsonia.resolve_invitation(BYTEA) TO amsonia_test_runtime;
+		GRANT EXECUTE ON FUNCTION amsonia.inspect_invitation(BYTEA) TO amsonia_test_runtime;
 		GRANT EXECUTE ON FUNCTION amsonia.activate_tenant() TO amsonia_test_runtime;
 		GRANT EXECUTE ON FUNCTION amsonia.fail_created_tenant(TEXT) TO amsonia_test_runtime;
 		GRANT SELECT, DELETE ON
