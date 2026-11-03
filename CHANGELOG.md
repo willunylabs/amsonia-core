@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-preview.3
+
+- Fix the packaged console failing to render its sign-in page because the
+  production image was missing required link configuration.
+- Verify first login on desktop and mobile Chromium before staging an archive,
+  and verify the published archive separately through its public download URLs.
+
 ## 0.2.0-preview.2
 
 - Standalone deployments default to one organization. Multi mode is opt-in;
