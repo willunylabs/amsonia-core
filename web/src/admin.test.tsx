@@ -17,6 +17,7 @@ vi.mock("./api", async (importOriginal) => {
     api: {
       ...actual.api,
       application: vi.fn(),
+      organization: vi.fn(),
       me: vi.fn(),
       restoreSession: vi.fn(),
       tenants: vi.fn(),
@@ -414,4 +415,27 @@ it("guides a single-organization account without membership to its administrator
   expect(api.capabilities).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Account settings" }));
   await screen.findByRole("heading", { name: "Account profile" });
+});
+
+it("opens organization settings independently for a member", async () => {
+  mockWorkspace();
+  vi.mocked(api.application).mockResolvedValue({ tenancy_mode: "single" });
+  vi.mocked(api.tenants).mockResolvedValue([tenantA]);
+  vi.mocked(api.organization).mockResolvedValue({
+    ...tenantA,
+    version: 1,
+    updated_at: account.created_at,
+    can_manage: false,
+  });
+  render(<App />);
+  await screen.findByRole("button", { name: "Organization settings" });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Organization settings" }),
+  );
+  const field = await screen.findByLabelText("Organization name");
+  expect((field as HTMLInputElement).readOnly).toBe(true);
+  expect(api.organization).toHaveBeenCalledWith("tenant-a");
+  expect(
+    screen.queryByRole("button", { name: "Save organization" }),
+  ).toBeNull();
 });

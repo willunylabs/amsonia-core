@@ -43,8 +43,8 @@ func normalizeApplicationOptions(options ApplicationOptions) (ApplicationOptions
 	if options.OrganizationID != "" && (options.TenancyMode == "multi" || amsonia.TenantID(options.OrganizationID).Validate() != nil) {
 		return ApplicationOptions{}, fmt.Errorf("AMSONIA_ORGANIZATION_ID must be a valid tenant ID in single mode")
 	}
-	if len(options.OrganizationName) > 80 {
-		return ApplicationOptions{}, fmt.Errorf("AMSONIA_ORGANIZATION_NAME must be at most 80 bytes")
+	if _, err := normalizeOrganizationName(options.OrganizationName); err != nil {
+		return ApplicationOptions{}, fmt.Errorf("AMSONIA_ORGANIZATION_NAME must be a nonempty name without control characters, at most 80 bytes")
 	}
 	return options, nil
 }

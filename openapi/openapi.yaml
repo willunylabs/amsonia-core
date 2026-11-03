@@ -188,6 +188,57 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Account" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/v1/tenants/{tenant_id}/settings:
+    get:
+      summary: Read organization identity and settings
+      operationId: getOrganizationSettings
+      tags: [Tenants]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      description: Requires active membership. Single mode also enforces the configured organization. can_manage indicates current system administrator status.
+      responses:
+        "200":
+          description: Current organization settings and edit capability.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationSettings" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Update the organization name
+      operationId: updateOrganizationSettings
+      tags: [Tenants]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      description: Requires an active system administrator with active membership in the selected organization. Compares settings version and commits name and audit atomically. Unchanged names emit noop without advancing version. A conflict requires fetching current settings and deliberate resubmission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, expected_version]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                  description: Trimmed, nonempty UTF-8 name of at most 80 bytes, without control characters.
+                expected_version: { type: integer, format: int64, minimum: 1 }
+      responses:
+        "200":
+          description: Saved organization settings, including current version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationSettings" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /api/v1/tenants:
     get:
       summary: List visible tenants
@@ -1938,6 +1989,18 @@ components:
       content:
         { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   schemas:
+    OrganizationSettings:
+      type: object
+      required: [id, name, state, version, created_at, updated_at, can_manage]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        state: { type: string, const: active }
+        version: { type: integer, format: int64, minimum: 1 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        can_manage: { type: boolean }
+
     Account:
       type: object
       required: [id, email, system_admin, created_at]

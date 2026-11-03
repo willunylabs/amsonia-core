@@ -129,7 +129,7 @@ replica and operator command. The existing tenant creation, switching and
 invitation workflows then remain available. The embedded kernel and `NewService`
 composition keep their existing tenant contracts.
 
-When upgrading, first apply migration 8 as owner, then rerun
+When upgrading, first apply all pending migrations (including 8 and 9) as owner, then rerun
 `ops/configure_database_roles.sql` as role administrator. Restart with explicit
 mode settings. A single active tenant is used automatically in single mode;
 multiple active tenants require `multi` or `AMSONIA_ORGANIZATION_ID` selecting an

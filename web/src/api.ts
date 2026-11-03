@@ -1,4 +1,5 @@
 import type {
+  OrganizationSettings,
   Account,
   DirectoryFilter,
   DirectoryPage,
@@ -288,6 +289,18 @@ export const api = {
       method: "POST",
       body: "{}",
     }),
+  organization: (tenant: string) =>
+    request<OrganizationSettings>(
+      `/api/v1/tenants/${encodeURIComponent(tenant)}/settings`,
+    ),
+  updateOrganization: (tenant: string, name: string, version: number) =>
+    request<OrganizationSettings>(
+      `/api/v1/tenants/${encodeURIComponent(tenant)}/settings`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ name, expected_version: version }),
+      },
+    ),
   member: (tenant: string, id: string) =>
     request<Member>(
       `/api/v1/tenants/${encodeURIComponent(tenant)}/members/${encodeURIComponent(id)}`,

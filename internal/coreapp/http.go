@@ -59,6 +59,8 @@ func (api *API) Handler() http.Handler {
 		mux.Handle(pattern, api.auth(handler))
 	}
 	for pattern, handler := range map[string]http.HandlerFunc{
+		"GET /api/v1/tenants/{tenant_id}/settings":                                api.organizationSettings,
+		"PATCH /api/v1/tenants/{tenant_id}/settings":                              api.renameOrganization,
 		"GET /api/v1/tenants/{tenant_id}/members/{account_id}":                    api.memberDetail,
 		"GET /api/v1/tenants/{tenant_id}/invitations":                             api.invitations,
 		"POST /api/v1/tenants/{tenant_id}/invitations":                            api.createInvitation,

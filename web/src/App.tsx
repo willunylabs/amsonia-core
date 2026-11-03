@@ -24,6 +24,7 @@ import {
   Plus,
   RefreshCw,
   ScrollText,
+  Settings,
   ShieldCheck,
   UsersRound,
   X,
@@ -45,8 +46,10 @@ import { InvitationsPage } from "./Invitations";
 import { FormPage } from "./navigation";
 import { RolesPage } from "./Roles";
 import { AuditWorkspace } from "./Audit";
+import { OrganizationPage } from "./Organization";
 
 type Section =
+  | "organization"
   | "overview"
   | "members"
   | "roles"
@@ -565,6 +568,7 @@ function Console({
               <span className="nav-short" aria-hidden="true">
                 {
                   {
+                    organization: "Settings",
                     overview: "Home",
                     members: "Members",
                     invitations: "Invites",
@@ -617,6 +621,16 @@ function Console({
                 </select>
               ) : null}
             </div>
+            {selectedTenant ? (
+              <button
+                className="icon-button"
+                aria-label="Organization settings"
+                aria-current={section === "organization" ? "page" : undefined}
+                onClick={() => navigate("organization")}
+              >
+                <Settings size={17} />
+              </button>
+            ) : null}
             {multiTenant && account.system_admin && tenants.length > 0 ? (
               <button
                 className="icon-button"
@@ -717,20 +731,28 @@ function Console({
               !tenantLoading &&
               selectedTenant &&
               loadedTenantID === tenantID ? (
-                <SectionView
-                  key={selectedTenant.id}
-                  section={section}
-                  tenant={selectedTenant}
-                  account={account}
-                  revision={revision}
-                  members={members}
-                  roles={roles}
-                  permissions={permissions}
-                  audit={audit}
-                  capabilities={capabilities}
-                  onChanged={refreshWorkspace}
-                  onCreateRole={() => navigate("roles/new")}
-                />
+                section === "organization" ? (
+                  <OrganizationPage
+                    key={selectedTenant.id}
+                    tenant={selectedTenant.id}
+                    onChanged={refreshWorkspace}
+                  />
+                ) : (
+                  <SectionView
+                    key={selectedTenant.id}
+                    section={section}
+                    tenant={selectedTenant}
+                    account={account}
+                    revision={revision}
+                    members={members}
+                    roles={roles}
+                    permissions={permissions}
+                    audit={audit}
+                    capabilities={capabilities}
+                    onChanged={refreshWorkspace}
+                    onCreateRole={() => navigate("roles/new")}
+                  />
+                )
               ) : null}
             </>
           )}

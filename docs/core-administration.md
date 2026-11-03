@@ -7,6 +7,33 @@ administration permissions. Multi-tenant deployments explicitly set
 `AMSONIA_TENANCY_MODE=multi`, then create tenants in the Console. See
 [organization setup and upgrades](getting-started.md#organization-model).
 
+## Organization settings
+
+Open **Organization settings** beside the organization name, or use
+`#/organization`. This dedicated page shows the ID, active status, creation/update
+times and a name form. Members may inspect these details. Only an active system
+administrator with active membership in the current organization may edit the
+name; tenant role grants do not confer global registry administration.
+
+Choose **Save organization** to update the name and the workspace header, or
+**Cancel** to return to Overview without saving. Names are trimmed, contain no
+control characters and use at most 80 UTF-8 bytes. The same validation applies
+to tenant creation and the initial organization name configuration.
+
+Concurrent edits return a conflict and keep your draft. **Reload latest
+settings** deliberately replaces the draft with the current server settings;
+review and resubmit. Saves include the displayed version. A no-op does not
+advance it. `organization.update` success/noop audit records include the actor
+and request ID and commit atomically with the update. Other organizations and
+single-mode selection remain isolated. Switching organizations discards the old
+form and ignores its late completion.
+
+Upgrade requires migration `000009_organization_settings` and refreshed
+`ops/configure_database_roles.sql` grants. Existing names remain unchanged and
+settings versions start at one. Runtime gains only two narrow function grants,
+without global tenant SELECT/UPDATE. Kernel APIs and permission catalogs stay
+unchanged.
+
 ## Account and sessions
 
 Open **Account settings** beside the account avatar, then choose **Profile**,
@@ -213,6 +240,7 @@ previous tenant's form. IDs in route segments are URL-encoded.
 
 | Task | Address |
 | --- | --- |
+| Organization settings | `#/organization` |
 | Create tenant (multi mode only) | `#/tenants/new` |
 | Member list / status / roles / removal | `#/members`, `#/members/{id}/details`, `#/members/{id}/roles`, `#/members/{id}/remove` |
 | Invitation list / create | `#/invitations`, `#/invitations/new` |

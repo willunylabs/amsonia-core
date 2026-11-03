@@ -73,7 +73,7 @@ application-owned PostgreSQL tables.
 - A standalone Go API, migration/administration CLI, in-memory adapter, and
   React management console.
 
-Daily administration includes profiles and password changes, device session
+Daily administration includes organization settings, profiles and password changes, device session
 revocation, one-use member invitations, member suspension/removal, role editing,
 scoped grants, member role bindings, version history, and filtered audit paging.
 See the [administration guide](docs/core-administration.md) and
@@ -89,7 +89,7 @@ bootstrap automatically prepares `My organization` (customize with
 For multi-tenant SaaS, set `AMSONIA_TENANCY_MODE=multi` on the API and operator CLI.
 For an existing database with multiple active tenants, explicitly enable multi
 mode or select an existing tenant using `AMSONIA_ORGANIZATION_ID` in single mode.
-An ambiguous deployment refuses to start. Apply migration 8 and rerun the
+An ambiguous deployment refuses to start. Apply all pending migrations and rerun the
 [role provisioning script](ops/configure_database_roles.sql) before upgrading.
 See [the setup guide](docs/getting-started.md#organization-model) for configuration.
 
