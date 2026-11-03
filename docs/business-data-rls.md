@@ -83,3 +83,22 @@ table operations the runtime needs.
   check first.
 - Do not expose the binding secret to browser code, logs, or source control.
 - Do not share the migration/owner DSN with the running API.
+
+## Extend the scaffold with one business route
+
+For a first application route, use the invoice schema above as the template.
+Add a permission such as `billing:invoice:read` to the host catalog, following
+[`examples/saas`](../examples/saas/main.go). In the handler, authenticate the
+caller, resolve active membership on the server and use that trusted tenant
+and subject in the authorization check. Only on an allowed decision, call
+`RunTenant` with that same tenant and query the invoice table through the
+transaction. For detail or edit routes, check the required permission and
+scope against the actual resource; use a read-only transaction for reads
+and a write transaction for changes. Use normal request validation and
+return not found for invisible rows.
+
+To adapt this to projects or another resource, start with three checks:
+authorized reads work, an in-tenant caller without the permission is denied,
+and an otherwise authorized caller cannot read or insert another tenant's
+record. See [the authorization contract](authorization.md) and the existing
+[`postgres` host table integration test](../postgres/host_table_integration_test.go).
