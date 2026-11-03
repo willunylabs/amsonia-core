@@ -46,6 +46,7 @@ func (api *API) Handler() http.Handler {
 	mux.HandleFunc("GET /readyz", api.ready)
 	mux.HandleFunc("POST /api/v1/auth/login", api.login)
 	mux.HandleFunc("POST /api/v1/auth/refresh", api.refresh)
+	mux.HandleFunc("POST /api/v1/auth/restore", api.restoreSession)
 	mux.HandleFunc("POST /api/v1/auth/logout", api.logout)
 	mux.HandleFunc("POST /api/v1/invitations/preview", api.previewInvitation)
 	mux.HandleFunc("POST /api/v1/invitations/accept", api.acceptInvitation)
@@ -286,9 +287,22 @@ func (api *API) login(response http.ResponseWriter, request *http.Request) {
 }
 
 func (api *API) refresh(response http.ResponseWriter, request *http.Request) {
+	api.rotateSession(response, request, false)
+}
+
+// restoreSession makes an absent/expired cookie an ordinary anonymous result.
+func (api *API) restoreSession(response http.ResponseWriter, request *http.Request) {
+	api.rotateSession(response, request, true)
+}
+
+func (api *API) rotateSession(response http.ResponseWriter, request *http.Request, optional bool) {
 	cookie, err := request.Cookie("amsonia_refresh")
 	if err != nil {
 		api.clearRefreshCookie(response, request)
+		if optional {
+			response.WriteHeader(http.StatusNoContent)
+			return
+		}
 		writeError(response, http.StatusUnauthorized, "refresh_invalid", "Your session has expired. Sign in again.")
 		return
 	}
@@ -298,10 +312,14 @@ func (api *API) refresh(response http.ResponseWriter, request *http.Request) {
 		UserAgent:     request.UserAgent(),
 	})
 	if err != nil {
-		api.clearRefreshCookie(response, request)
 		if !errors.Is(err, ErrSessionInvalid) {
 			api.logger.Error("session refresh failed", "error", err)
 			writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
+			return
+		}
+		api.clearRefreshCookie(response, request)
+		if optional {
+			response.WriteHeader(http.StatusNoContent)
 			return
 		}
 		writeError(response, http.StatusUnauthorized, "refresh_invalid", "Your session has expired. Sign in again.")
@@ -318,11 +336,7 @@ func (api *API) logout(response http.ResponseWriter, request *http.Request) {
 	if cookie, err := request.Cookie("amsonia_refresh"); err == nil {
 		refreshToken = cookie.Value
 	}
-	if err := api.service.Logout(request.Context(), accessToken); err != nil {
-		writeDomainError(response, err)
-		return
-	}
-	if err := api.service.RevokeRefresh(request.Context(), refreshToken); err != nil {
+	if err := api.service.logoutSessions(request.Context(), accessToken, refreshToken); err != nil {
 		writeDomainError(response, err)
 		return
 	}

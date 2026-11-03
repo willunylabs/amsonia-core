@@ -17,6 +17,7 @@ vi.mock("./api", async (importOriginal) => {
     api: {
       ...actual.api,
       me: vi.fn(),
+      restoreSession: vi.fn(),
       tenants: vi.fn(),
       permissions: vi.fn(),
       capabilities: vi.fn(),
@@ -44,12 +45,13 @@ const account: Account = {
 beforeEach(() => {
   vi.resetAllMocks();
   sessionStorage.clear();
+  localStorage.clear();
   history.replaceState(null, "", "/");
 });
 afterEach(cleanup);
 it("opens a zero-permission tenant without requesting protected collections", async () => {
   setToken("session");
-  vi.mocked(api.me).mockResolvedValue(account);
+  vi.mocked(api.restoreSession).mockResolvedValue(account);
   vi.mocked(api.tenants).mockResolvedValue([
     {
       id: "tenant",
@@ -158,4 +160,189 @@ it("changes the account password and drops the local access credential after suc
     "replacement-password",
   );
   expect(sessionStorage.length).toBe(0);
+});
+
+const tenantA = {
+  id: "tenant-a",
+  name: "Tenant A",
+  state: "active",
+  created_at: account.created_at,
+};
+const tenantB = { ...tenantA, id: "tenant-b", name: "Tenant B" };
+function mockWorkspace() {
+  vi.mocked(api.restoreSession).mockResolvedValue(account);
+  vi.mocked(api.tenants).mockResolvedValue([tenantA, tenantB]);
+  vi.mocked(api.permissions).mockResolvedValue([]);
+  vi.mocked(api.capabilities).mockResolvedValue({
+    permissions: { "iam:member:read": true },
+  });
+  vi.mocked(api.members).mockImplementation(async (tenant) => [
+    {
+      account_id: tenant,
+      email: `${tenant}@example.test`,
+      status: "active",
+      joined_at: account.created_at,
+    },
+  ]);
+}
+
+it("restores startup without a tab token and preserves it when retrying a network failure", async () => {
+  mockWorkspace();
+  setToken("preserved-token");
+  vi.mocked(api.restoreSession).mockRejectedValueOnce(new TypeError("offline"));
+  render(<App />);
+  await screen.findByRole("heading", {
+    name: "Unable to restore your session",
+  });
+  expect(api.logout).not.toHaveBeenCalled();
+  expect(sessionStorage.getItem("amsonia.core.access.v1")).toBe(
+    "preserved-token",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Retry connection" }));
+  await screen.findByText("Boundaries are explicit.");
+  expect(api.restoreSession).toHaveBeenCalledTimes(2);
+});
+it("recovers a session even when sessionStorage has no access credential", async () => {
+  mockWorkspace();
+  render(<App />);
+  await screen.findByText("Boundaries are explicit.");
+  expect(api.restoreSession).toHaveBeenCalledOnce();
+  expect(api.me).not.toHaveBeenCalled();
+});
+it("remembers a tenant per account and validates the preference against current membership", async () => {
+  mockWorkspace();
+  localStorage.setItem("amsonia.core.tenant.v1:account", tenantB.id);
+  render(<App />);
+  await screen.findByText("Boundaries are explicit.");
+  expect(api.capabilities).toHaveBeenCalledWith(tenantB.id);
+  expect(
+    (
+      screen.getByRole("combobox", {
+        name: "Current tenant",
+      }) as HTMLSelectElement
+    ).value,
+  ).toBe(tenantB.id);
+  fireEvent.change(screen.getByRole("combobox", { name: "Current tenant" }), {
+    target: { value: tenantA.id },
+  });
+  await waitFor(() => expect(api.members).toHaveBeenCalledWith(tenantA.id));
+  expect(localStorage.getItem("amsonia.core.tenant.v1:account")).toBe(
+    tenantA.id,
+  );
+});
+it("ignores an obsolete tenant response before fetching its protected collections", async () => {
+  mockWorkspace();
+  let resolve!: (value: { permissions: Record<string, boolean> }) => void;
+  const pending = new Promise<{ permissions: Record<string, boolean> }>(
+    (done) => {
+      resolve = done;
+    },
+  );
+  vi.mocked(api.capabilities).mockImplementation((tenant) =>
+    tenant === tenantA.id
+      ? pending
+      : Promise.resolve({ permissions: { "iam:member:read": true } }),
+  );
+  render(<App />);
+  await waitFor(() =>
+    expect(api.capabilities).toHaveBeenCalledWith(tenantA.id),
+  );
+  fireEvent.change(screen.getByRole("combobox", { name: "Current tenant" }), {
+    target: { value: tenantB.id },
+  });
+  await waitFor(() => expect(api.members).toHaveBeenCalledWith(tenantB.id));
+  resolve({ permissions: { "iam:member:read": true } });
+  await waitFor(() =>
+    expect(screen.getByText("Boundaries are explicit.")).toBeTruthy(),
+  );
+  expect(api.members).not.toHaveBeenCalledWith(tenantA.id);
+});
+it("falls back to an accessible tenant when the selected membership disappears", async () => {
+  mockWorkspace();
+  vi.mocked(api.tenants)
+    .mockResolvedValueOnce([tenantA, tenantB])
+    .mockResolvedValue([tenantB]);
+  render(<App />);
+  await screen.findByText("Boundaries are explicit.");
+  fireEvent.click(screen.getByRole("button", { name: "Members" }));
+  await screen.findByText("tenant-a@example.test");
+  fireEvent.click(screen.getByRole("button", { name: "Refresh workspace" }));
+  await screen.findByText("tenant-b@example.test");
+  expect(screen.queryByText("tenant-a@example.test")).toBeNull();
+  expect(localStorage.getItem("amsonia.core.tenant.v1:account")).toBe(
+    tenantB.id,
+  );
+});
+it("clears tenant data when the last membership disappears after focus returns", async () => {
+  mockWorkspace();
+  vi.mocked(api.tenants).mockResolvedValueOnce([tenantA]).mockResolvedValue([]);
+  render(<App />);
+  await screen.findByText("Boundaries are explicit.");
+  fireEvent.click(screen.getByRole("button", { name: "Members" }));
+  await screen.findByText("tenant-a@example.test");
+  fireEvent.focus(window);
+  await screen.findByRole("heading", { name: "No tenant assigned" });
+  expect(screen.queryByText("tenant-a@example.test")).toBeNull();
+  expect(localStorage.getItem("amsonia.core.tenant.v1:account")).toBeNull();
+});
+it("rechecks capabilities once after a collection permission changes during refresh", async () => {
+  mockWorkspace();
+  vi.mocked(api.capabilities)
+    .mockResolvedValueOnce({ permissions: { "iam:member:read": true } })
+    .mockResolvedValueOnce({ permissions: { "iam:member:read": true } })
+    .mockResolvedValue({ permissions: {} });
+  vi.mocked(api.members)
+    .mockResolvedValueOnce([
+      {
+        account_id: "a",
+        email: "old-member@example.test",
+        status: "active",
+        joined_at: account.created_at,
+      },
+    ])
+    .mockRejectedValue(new APIError(403, "forbidden", "Permission changed"));
+  render(<App />);
+  await screen.findByText("Boundaries are explicit.");
+  fireEvent.click(screen.getByRole("button", { name: "Members" }));
+  await screen.findByText("old-member@example.test");
+  fireEvent.click(screen.getByRole("button", { name: "Refresh workspace" }));
+  await screen.findByText("Your role does not include member read access.");
+  expect(screen.queryByText("old-member@example.test")).toBeNull();
+  expect(api.capabilities).toHaveBeenCalledTimes(3);
+  expect(api.members).toHaveBeenCalledTimes(2);
+});
+it("keeps the sign-out control available after a failed sign-out", async () => {
+  mockWorkspace();
+  vi.mocked(api.logout)
+    .mockRejectedValueOnce(
+      new APIError(503, "unavailable", "Try sign-out again."),
+    )
+    .mockResolvedValueOnce();
+  render(<App />);
+  await screen.findByText("Boundaries are explicit.");
+  fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+  await screen.findByRole("alert");
+  expect(
+    screen.getByRole("button", { name: "Sign out" }).hasAttribute("disabled"),
+  ).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+  await screen.findByRole("heading", { name: "Welcome back" });
+});
+
+it("opens another invitation when its fragment changes in an already open console", async () => {
+  mockWorkspace();
+  vi.mocked(api.previewInvitation).mockResolvedValue({
+    id: "invite",
+    tenant_id: tenantB.id,
+    tenant_name: "Another invitation",
+    email: account.email,
+    expires_at: "2030-01-01T00:00:00Z",
+    account_exists: true,
+  });
+  render(<App />);
+  await screen.findByText("Boundaries are explicit.");
+  history.replaceState(null, "", "/#invite=next-invitation");
+  fireEvent(window, new HashChangeEvent("hashchange"));
+  await screen.findByRole("heading", { name: "Join Another invitation" });
+  expect(api.previewInvitation).toHaveBeenCalledWith("next-invitation");
 });
