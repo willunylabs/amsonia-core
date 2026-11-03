@@ -319,3 +319,15 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 
 .nav-short { display: none; }
 @media(max-width: 680px) { .sidebar nav { gap: 0; } .sidebar .nav-text { display: none; } .sidebar .nav-short { display: inline; } }
+
+.organization-metadata { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 28px; padding: 24px; margin: 0; border-bottom: 1px solid #e7e9f0; }
+.organization-metadata dt { font-size: 12px; color: #65748e; margin-bottom: 6px; }
+.organization-metadata dd { margin: 0; overflow-wrap: anywhere; }
+@media(max-width: 680px) { .organization-metadata { grid-template-columns: minmax(0,1fr); padding: 18px; } }
+
+.topbar { gap: 12px; }
+.tenant-switcher { flex: 1; }
+.tenant-picker { min-width: 0; }
+.tenant-picker > span:nth-child(2) { min-width: 0; max-width: min(32vw,420px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tenant-symbol, .tenant-picker > svg, .tenant-switcher > .icon-button, .account-menu { flex-shrink: 0; }
+@media(max-width: 680px) { .topbar { gap: 8px; } .tenant-switcher { gap: 4px; } .tenant-picker { flex: 1; gap: 6px; } .tenant-picker > span:nth-child(2) { max-width: none; } }

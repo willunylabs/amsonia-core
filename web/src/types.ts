@@ -127,3 +127,9 @@ export type DirectoryPage<T> = {
   total: number;
   next_cursor?: string;
 };
+
+export type OrganizationSettings = Tenant & {
+  version: number;
+  updated_at: string;
+  can_manage: boolean;
+};

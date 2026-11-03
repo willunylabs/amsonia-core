@@ -583,8 +583,8 @@ func (s *Service) createTenant(ctx context.Context, actor Account, input CreateT
 	if !actor.SystemAdmin {
 		return Tenant{}, amsonia.ErrForbidden
 	}
-	name := strings.TrimSpace(input.Name)
-	if name == "" || len(name) > 80 {
+	name, err := normalizeOrganizationName(input.Name)
+	if err != nil {
 		return Tenant{}, amsonia.ErrInvalidInput
 	}
 	tenantID, err := randomID("ten_", 16)
