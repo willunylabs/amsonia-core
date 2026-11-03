@@ -93,6 +93,14 @@ An ambiguous deployment refuses to start. Apply all pending migrations and rerun
 [role provisioning script](ops/configure_database_roles.sql) before upgrading.
 See [the setup guide](docs/getting-started.md#organization-model) for configuration.
 
+## Install a tagged preview
+
+For a release with a verified Linux amd64 preview asset, use the
+[install guide](deploy/preview/README.md) and the matching
+[GitHub Release](https://github.com/willunylabs/amsonia-core/releases).
+The archive includes prebuilt images and a checksum. To try an unreleased
+revision from source, use the workflow below.
+
 ## Verify it in five minutes
 
 Requirements: Docker with the Compose plugin and Go 1.26.10+.

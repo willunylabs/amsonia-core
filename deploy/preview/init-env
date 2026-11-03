@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "$0")"
+umask 077
+runtime_base64="$(openssl rand -base64 32)"
+runtime_hex="$(printf '%s' "$runtime_base64" | openssl base64 -d -A | od -An -v -tx1 | tr -d ' \n')"
+maintenance_hex="$(openssl rand -hex 32)"
+owner_password="$(openssl rand -hex 32)"
+runtime_password="$(openssl rand -hex 32)"
+maintenance_password="$(openssl rand -hex 32)"
+# Base64url-encode the bytes corresponding to the runtime hex secret.
+binding="$(printf '%s' "$runtime_base64" | tr '+/' '-_' | tr -d '=')"
+test "${#binding}" -eq 43
+set -o noclobber
+cat > .env <<VARS
+AMSONIA_POSTGRES_OWNER_PASSWORD=$owner_password
+AMSONIA_POSTGRES_RUNTIME_PASSWORD=$runtime_password
+AMSONIA_POSTGRES_MAINTENANCE_PASSWORD=$maintenance_password
+AMSONIA_RUNTIME_SECRET_HEX=$runtime_hex
+AMSONIA_MAINTENANCE_SECRET_HEX=$maintenance_hex
+AMSONIA_TENANT_BINDING_SECRET=$binding
+AMSONIA_TENANCY_MODE=single
+AMSONIA_WEB_PORT=8080
+VARS
+echo 'Created .env with owner-only permissions.'
