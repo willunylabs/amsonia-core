@@ -32,9 +32,7 @@ import type {
   Account,
   AuditEvent,
   Capabilities,
-  Member,
   Permission,
-  Role,
   Tenant,
 } from "./types";
 
@@ -346,8 +344,9 @@ function Console({
   const [section, setSection] = useState<Section>("overview");
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantID, setTenantID] = useState(() => preferredTenant(account.id));
-  const [members, setMembers] = useState<Member[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [members, setMembers] = useState<number | null>(null);
+  const [roles, setRoles] = useState<number | null>(null);
+  const [revision, setRevision] = useState(0);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [audit, setAudit] = useState<AuditEvent[]>([]);
   const [capabilities, setCapabilities] = useState<Capabilities>({
@@ -416,8 +415,8 @@ function Console({
     async (id: string, refresh = false, retryAccess = true): Promise<void> => {
       const serial = ++tenantRequest.current;
       const clear = () => {
-        setMembers([]);
-        setRoles([]);
+        setMembers(null);
+        setRoles(null);
         setAudit([]);
         setCapabilities({ permissions: {} });
         setLoadedTenantID("");
@@ -435,14 +434,19 @@ function Console({
           return;
         const allowed = capabilityItems.permissions;
         const [memberItems, roleItems, auditItems] = await Promise.all([
-          allowed["iam:member:read"] ? api.members(id) : Promise.resolve([]),
-          allowed["iam:role:read"] ? api.roles(id) : Promise.resolve([]),
+          allowed["iam:member:read"]
+            ? api.members(id, { status: "active", limit: 1 })
+            : Promise.resolve(null),
+          allowed["iam:role:read"]
+            ? api.roles(id, { limit: 1 })
+            : Promise.resolve(null),
           allowed["iam:audit:read"] ? api.audit(id) : Promise.resolve([]),
         ]);
         if (serial !== tenantRequest.current || id !== tenantRef.current)
           return;
-        setMembers(memberItems);
-        setRoles(roleItems);
+        setMembers(memberItems?.total ?? null);
+        setRoles(roleItems?.total ?? null);
+        setRevision((value) => value + 1);
         setAudit(auditItems);
         setCapabilities(capabilityItems);
         setLoadedTenantID(id);
@@ -662,6 +666,7 @@ function Console({
                   section={section}
                   tenant={selectedTenant}
                   account={account}
+                  revision={revision}
                   members={members}
                   roles={roles}
                   permissions={permissions}
@@ -735,8 +740,9 @@ type SectionProps = {
   section: Section;
   tenant: Tenant;
   account: Account;
-  members: Member[];
-  roles: Role[];
+  members: number | null;
+  roles: number | null;
+  revision: number;
   permissions: Permission[];
   audit: AuditEvent[];
   capabilities: Capabilities;
@@ -750,8 +756,7 @@ function SectionView(props: SectionProps) {
       return (
         <MembersPage
           tenant={props.tenant.id}
-          items={props.members}
-          roles={props.roles}
+          revision={props.revision}
           capabilities={props.capabilities}
           onChanged={props.onChanged}
         />
@@ -760,7 +765,7 @@ function SectionView(props: SectionProps) {
       return (
         <RolesPage
           tenant={props.tenant.id}
-          items={props.roles}
+          revision={props.revision}
           permissions={props.permissions}
           capabilities={props.capabilities}
           onChanged={props.onChanged}
@@ -805,7 +810,12 @@ function Overview({
   audit,
 }: Omit<
   SectionProps,
-  "section" | "account" | "capabilities" | "onCreateRole" | "onChanged"
+  | "section"
+  | "account"
+  | "capabilities"
+  | "onCreateRole"
+  | "onChanged"
+  | "revision"
 >) {
   const latest = audit[0];
   return (
@@ -818,12 +828,16 @@ function Overview({
       <section className="metric-grid">
         <article>
           <span>Members</span>
-          <strong>{members.length.toString().padStart(2, "0")}</strong>
-          <small>active identities</small>
+          <strong>
+            {members === null ? "—" : members.toString().padStart(2, "0")}
+          </strong>
+          <small>active memberships</small>
         </article>
         <article>
           <span>Roles</span>
-          <strong>{roles.length.toString().padStart(2, "0")}</strong>
+          <strong>
+            {roles === null ? "—" : roles.toString().padStart(2, "0")}
+          </strong>
           <small>versioned definitions</small>
         </article>
         <article>

@@ -95,6 +95,28 @@ describe("API client", () => {
     expect(getToken()).toBe("");
   });
 
+  it("encodes directory filters and keeps pagination metadata", async () => {
+    const page = { items: [], total: 245, next_cursor: "opaque_cursor" };
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(page));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      api.invitations("tenant/a", {
+        q: "100%_ + 文字",
+        status: "pending",
+        after: "cursor+value",
+        limit: 30,
+      }),
+    ).resolves.toEqual(page);
+    const target = new URL(fetchMock.mock.calls[0][0], "https://console.test");
+    expect(target.pathname).toBe("/api/v1/tenants/tenant%2Fa/invitations");
+    expect(Object.fromEntries(target.searchParams)).toEqual({
+      q: "100%_ + 文字",
+      status: "pending",
+      after: "cursor+value",
+      limit: "30",
+    });
+  });
+
   it("keeps credentials for an explicit retry when logout fails", async () => {
     setToken("expired-token");
     vi.stubGlobal(

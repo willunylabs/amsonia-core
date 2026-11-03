@@ -11,21 +11,30 @@ import type {
   ScopedPermission,
 } from "./types";
 
+import { useDirectory } from "./useDirectory";
+import { DirectorySearch, DirectoryNavigation } from "./DirectoryControls";
+
 export function RolesPage({
   tenant,
-  items,
+  revision,
   permissions,
   capabilities,
   onCreate,
   onChanged,
 }: {
   tenant: string;
-  items: Role[];
+  revision: number;
   permissions: Permission[];
   capabilities: Capabilities;
   onCreate: () => void;
   onChanged: () => Promise<void>;
 }) {
+  const directory = useDirectory(
+    api.roles,
+    tenant,
+    !!capabilities.permissions["iam:role:read"],
+    revision,
+  );
   const [selected, setSelected] = useState<Role | null>(null);
   if (!capabilities.permissions["iam:role:read"])
     return (
@@ -47,8 +56,17 @@ export function RolesPage({
           ) : undefined
         }
       />
+      <DirectorySearch
+        label="Find a role"
+        placeholder="Name, description or role ID"
+        onSearch={directory.search}
+      />
+      <DirectoryNavigation directory={directory} label="Roles" />
+      {directory.page && !directory.page.items.length ? (
+        <p className="quiet-state">No roles match these filters.</p>
+      ) : null}
       <section className="role-grid">
-        {items.map((role, index) => (
+        {directory.page?.items.map((role, index) => (
           <article className="role-card" key={role.role_id}>
             <span className="role-index">
               R-{String(index + 1).padStart(2, "0")}

@@ -1,5 +1,7 @@
 import type {
   Account,
+  DirectoryFilter,
+  DirectoryPage,
   Profile,
   AccountSession,
   Invitation,
@@ -15,6 +17,13 @@ import type {
   Session,
   Tenant,
 } from "./types";
+
+function directoryQuery(filter: DirectoryFilter): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filter))
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  return params.size ? `?${params}` : "";
+}
 
 const CONFIGURED_API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(
   /\/$/,
@@ -264,12 +273,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ token, password }),
     }),
-  invitations: async (tenant: string) =>
-    (
-      await request<{ items: Invitation[] }>(
-        `/api/v1/tenants/${encodeURIComponent(tenant)}/invitations`,
-      )
-    ).items,
+  invitations: (tenant: string, filter: DirectoryFilter = {}) =>
+    request<DirectoryPage<Invitation>>(
+      `/api/v1/tenants/${encodeURIComponent(tenant)}/invitations${directoryQuery(filter)}`,
+    ),
   createInvitation: (tenant: string, email: string) =>
     request<Invitation & { token: string }>(
       `/api/v1/tenants/${encodeURIComponent(tenant)}/invitations`,
@@ -372,18 +379,14 @@ export const api = {
     }),
   permissions: async () =>
     (await request<{ items: Permission[] }>("/api/v1/permissions")).items,
-  members: async (tenant: string) =>
-    (
-      await request<{ items: Member[] }>(
-        `/api/v1/tenants/${encodeURIComponent(tenant)}/members`,
-      )
-    ).items,
-  roles: async (tenant: string) =>
-    (
-      await request<{ items: Role[] }>(
-        `/api/v1/tenants/${encodeURIComponent(tenant)}/roles`,
-      )
-    ).items,
+  members: (tenant: string, filter: DirectoryFilter = {}) =>
+    request<DirectoryPage<Member>>(
+      `/api/v1/tenants/${encodeURIComponent(tenant)}/members${directoryQuery(filter)}`,
+    ),
+  roles: (tenant: string, filter: DirectoryFilter = {}) =>
+    request<DirectoryPage<Role>>(
+      `/api/v1/tenants/${encodeURIComponent(tenant)}/roles${directoryQuery(filter)}`,
+    ),
   capabilities: (tenant: string) =>
     request<Capabilities>(
       `/api/v1/tenants/${encodeURIComponent(tenant)}/capabilities`,

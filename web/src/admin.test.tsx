@@ -176,14 +176,17 @@ function mockWorkspace() {
   vi.mocked(api.capabilities).mockResolvedValue({
     permissions: { "iam:member:read": true },
   });
-  vi.mocked(api.members).mockImplementation(async (tenant) => [
-    {
-      account_id: tenant,
-      email: `${tenant}@example.test`,
-      status: "active",
-      joined_at: account.created_at,
-    },
-  ]);
+  vi.mocked(api.members).mockImplementation(async (tenant) => ({
+    total: 1,
+    items: [
+      {
+        account_id: tenant,
+        email: `${tenant}@example.test`,
+        status: "active",
+        joined_at: account.created_at,
+      },
+    ],
+  }));
 }
 
 it("restores startup without a tab token and preserves it when retrying a network failure", async () => {
@@ -225,7 +228,12 @@ it("remembers a tenant per account and validates the preference against current 
   fireEvent.change(screen.getByRole("combobox", { name: "Current tenant" }), {
     target: { value: tenantA.id },
   });
-  await waitFor(() => expect(api.members).toHaveBeenCalledWith(tenantA.id));
+  await waitFor(() =>
+    expect(api.members).toHaveBeenCalledWith(tenantA.id, {
+      status: "active",
+      limit: 1,
+    }),
+  );
   expect(localStorage.getItem("amsonia.core.tenant.v1:account")).toBe(
     tenantA.id,
   );
@@ -250,12 +258,17 @@ it("ignores an obsolete tenant response before fetching its protected collection
   fireEvent.change(screen.getByRole("combobox", { name: "Current tenant" }), {
     target: { value: tenantB.id },
   });
-  await waitFor(() => expect(api.members).toHaveBeenCalledWith(tenantB.id));
+  await waitFor(() =>
+    expect(api.members).toHaveBeenCalledWith(tenantB.id, {
+      status: "active",
+      limit: 1,
+    }),
+  );
   resolve({ permissions: { "iam:member:read": true } });
   await waitFor(() =>
     expect(screen.getByText("Boundaries are explicit.")).toBeTruthy(),
   );
-  expect(api.members).not.toHaveBeenCalledWith(tenantA.id);
+  expect(api.members).not.toHaveBeenCalledWith(tenantA.id, expect.anything());
 });
 it("falls back to an accessible tenant when the selected membership disappears", async () => {
   mockWorkspace();
@@ -292,14 +305,28 @@ it("rechecks capabilities once after a collection permission changes during refr
     .mockResolvedValueOnce({ permissions: { "iam:member:read": true } })
     .mockResolvedValue({ permissions: {} });
   vi.mocked(api.members)
-    .mockResolvedValueOnce([
-      {
-        account_id: "a",
-        email: "old-member@example.test",
-        status: "active",
-        joined_at: account.created_at,
-      },
-    ])
+    .mockResolvedValueOnce({
+      total: 1,
+      items: [
+        {
+          account_id: "a",
+          email: "old-member@example.test",
+          status: "active",
+          joined_at: account.created_at,
+        },
+      ],
+    })
+    .mockResolvedValueOnce({
+      total: 1,
+      items: [
+        {
+          account_id: "a",
+          email: "old-member@example.test",
+          status: "active",
+          joined_at: account.created_at,
+        },
+      ],
+    })
     .mockRejectedValue(new APIError(403, "forbidden", "Permission changed"));
   render(<App />);
   await screen.findByText("Boundaries are explicit.");
@@ -309,7 +336,7 @@ it("rechecks capabilities once after a collection permission changes during refr
   await screen.findByText("Your role does not include member read access.");
   expect(screen.queryByText("old-member@example.test")).toBeNull();
   expect(api.capabilities).toHaveBeenCalledTimes(3);
-  expect(api.members).toHaveBeenCalledTimes(2);
+  expect(api.members).toHaveBeenCalledTimes(3);
 });
 it("keeps the sign-out control available after a failed sign-out", async () => {
   mockWorkspace();
