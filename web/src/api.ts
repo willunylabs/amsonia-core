@@ -238,6 +238,8 @@ async function request<T>(
 }
 
 export const api = {
+  application: () =>
+    request<{ tenancy_mode: "single" | "multi" }>("/api/v1/application"),
   async login(email: string, password: string): Promise<Session> {
     const epoch = ++authEpoch;
     return withAuthLock(async () =>

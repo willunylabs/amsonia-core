@@ -96,14 +96,15 @@ type ProvisionMemberInput struct {
 }
 
 type Service struct {
-	pool      *pgxpool.Pool
-	store     *postgres.Store
-	passwords *security.PasswordHasher
-	dummyHash string
-	bootstrap *amsonia.Bootstrapper
-	sessions  time.Duration
-	refresh   time.Duration
-	now       func() time.Time
+	pool        *pgxpool.Pool
+	store       *postgres.Store
+	passwords   *security.PasswordHasher
+	dummyHash   string
+	bootstrap   *amsonia.Bootstrapper
+	sessions    time.Duration
+	refresh     time.Duration
+	now         func() time.Time
+	application ApplicationOptions
 }
 
 func NewService(pool *pgxpool.Pool, store *postgres.Store, bootstrap *amsonia.Bootstrapper) (*Service, error) {
@@ -120,20 +121,25 @@ func NewService(pool *pgxpool.Pool, store *postgres.Store, bootstrap *amsonia.Bo
 		return nil, fmt.Errorf("hash dummy password: %w", err)
 	}
 	return &Service{
-		pool:      pool,
-		store:     store,
-		passwords: passwords,
-		dummyHash: dummyHash,
-		bootstrap: bootstrap,
-		sessions:  15 * time.Minute,
-		refresh:   30 * 24 * time.Hour,
-		now:       func() time.Time { return time.Now().UTC() },
+		application: ApplicationOptions{TenancyMode: "multi"},
+		pool:        pool,
+		store:       store,
+		passwords:   passwords,
+		dummyHash:   dummyHash,
+		bootstrap:   bootstrap,
+		sessions:    15 * time.Minute,
+		refresh:     30 * 24 * time.Hour,
+		now:         func() time.Time { return time.Now().UTC() },
 	}, nil
 }
 
 // Ready verifies that the database schema exactly matches this binary.
 func (s *Service) Ready(ctx context.Context) error {
-	return postgres.VerifyMigrationState(ctx, s.pool)
+	if err := postgres.VerifyMigrationState(ctx, s.pool); err != nil {
+		return err
+	}
+	_, err := s.organizationID(ctx)
+	return err
 }
 
 func normalizeEmail(raw string) (string, error) {
@@ -204,7 +210,11 @@ func (s *Service) BootstrapAdmin(ctx context.Context, input BootstrapInput) (Acc
 	if err := tx.Commit(ctx); err != nil {
 		return Account{}, err
 	}
-	return Account{ID: accountID, Email: strings.TrimSpace(input.Email), SystemAdmin: true, CreatedAt: createdAt}, nil
+	account := Account{ID: accountID, Email: strings.TrimSpace(input.Email), SystemAdmin: true, CreatedAt: createdAt}
+	if _, err := s.SetupOrganization(ctx, account); err != nil {
+		return Account{}, fmt.Errorf("administrator created; run amsonia setup-organization to resume: %w", err)
+	}
+	return account, nil
 }
 
 func (s *Service) Login(ctx context.Context, input LoginInput) (Session, error) {
@@ -537,8 +547,12 @@ func (s *Service) logoutSessions(ctx context.Context, accessToken, refreshToken 
 }
 
 func (s *Service) ListTenants(ctx context.Context, accountID string) ([]Tenant, error) {
+	organizationID, err := s.organizationID(ctx)
+	if err != nil {
+		return nil, err
+	}
 	tenants := make([]Tenant, 0)
-	err := s.store.RunActor(ctx, accountID, func(tx pgx.Tx) error {
+	err = s.store.RunActor(ctx, accountID, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `SELECT tenant_id, name, state, created_at FROM amsonia.list_account_tenants()`)
 		if err != nil {
 			return err
@@ -549,7 +563,9 @@ func (s *Service) ListTenants(ctx context.Context, accountID string) ([]Tenant, 
 			if err := rows.Scan(&tenant.ID, &tenant.Name, &tenant.State, &tenant.CreatedAt); err != nil {
 				return err
 			}
-			tenants = append(tenants, tenant)
+			if s.application.TenancyMode == "multi" || tenant.ID == organizationID {
+				tenants = append(tenants, tenant)
+			}
 		}
 		return rows.Err()
 	})
@@ -557,6 +573,13 @@ func (s *Service) ListTenants(ctx context.Context, accountID string) ([]Tenant, 
 }
 
 func (s *Service) CreateTenant(ctx context.Context, actor Account, input CreateTenantInput) (Tenant, error) {
+	if s.application.TenancyMode != "multi" {
+		return Tenant{}, amsonia.ErrForbidden
+	}
+	return s.createTenant(ctx, actor, input)
+}
+
+func (s *Service) createTenant(ctx context.Context, actor Account, input CreateTenantInput) (Tenant, error) {
 	if !actor.SystemAdmin {
 		return Tenant{}, amsonia.ErrForbidden
 	}
@@ -576,11 +599,15 @@ func (s *Service) CreateTenant(ctx context.Context, actor Account, input CreateT
 		return Tenant{}, err
 	}
 	ownerRoleID := amsonia.RoleID("role_owner")
+	ownerRoleName := "Tenant owner"
+	if s.application.TenancyMode == "single" {
+		ownerRoleName = "Organization owner"
+	}
 	_, err = s.bootstrap.BootstrapTenant(ctx, amsonia.BootstrapInput{
 		TenantID:       amsonia.TenantID(tenant.ID),
 		OwnerSubjectID: amsonia.SubjectID(actor.ID),
 		OwnerRoleID:    ownerRoleID,
-		OwnerRoleName:  "Tenant owner",
+		OwnerRoleName:  ownerRoleName,
 		Grants:         ownerGrants(ownerRoleID),
 		Metadata:       amsonia.MutationMetadata{ReasonCode: "tenant_creation", RequestID: mutationMetadata(ctx).RequestID},
 	})
@@ -710,6 +737,9 @@ func (s *Service) failCreatedTenant(ctx context.Context, accountID, tenantID str
 }
 
 func (s *Service) RequireMembership(ctx context.Context, tenantID, accountID string) error {
+	if err := s.allowOrganization(ctx, tenantID); err != nil {
+		return err
+	}
 	return s.store.RunTenant(ctx, amsonia.TenantID(tenantID), true, func(tx pgx.Tx) error {
 		var found bool
 		if err := tx.QueryRow(ctx, `

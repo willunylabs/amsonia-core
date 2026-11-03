@@ -16,6 +16,7 @@ vi.mock("./api", async (importOriginal) => {
     ...actual,
     api: {
       ...actual.api,
+      application: vi.fn(),
       me: vi.fn(),
       restoreSession: vi.fn(),
       tenants: vi.fn(),
@@ -44,6 +45,7 @@ const account: Account = {
 };
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(api.application).mockResolvedValue({ tenancy_mode: "multi" });
   sessionStorage.clear();
   localStorage.clear();
   history.replaceState(null, "", "/");
@@ -375,4 +377,41 @@ it("opens another invitation when its fragment changes in an already open consol
   fireEvent(window, new HashChangeEvent("hashchange"));
   await screen.findByRole("heading", { name: "Join Another invitation" });
   expect(api.previewInvitation).toHaveBeenCalledWith("next-invitation");
+});
+
+it("uses one organization without a tenant picker or creation route", async () => {
+  mockWorkspace();
+  vi.mocked(api.restoreSession).mockResolvedValue({
+    ...account,
+    system_admin: true,
+  });
+  vi.mocked(api.application).mockResolvedValue({ tenancy_mode: "single" });
+  vi.mocked(api.tenants).mockResolvedValue([tenantA]);
+  history.replaceState(null, "", "/#/tenants/new");
+  render(<App />);
+  await screen.findByText(
+    "This deployment uses one organization. Tenant creation is unavailable.",
+  );
+  await screen.findByText("Tenant A");
+  expect(screen.queryByRole("button", { name: "Create tenant" })).toBeNull();
+  expect(screen.queryByRole("combobox", { name: "Current tenant" })).toBeNull();
+  expect(screen.queryByRole("textbox", { name: "Tenant name" })).toBeNull();
+  expect(screen.getByText("Organization console")).toBeTruthy();
+});
+it("guides a single-organization account without membership to its administrator", async () => {
+  mockWorkspace();
+  vi.mocked(api.profile).mockResolvedValue({
+    id: account.id,
+    email: account.email,
+    display_name: "Member",
+    created_at: account.created_at,
+  });
+  vi.mocked(api.application).mockResolvedValue({ tenancy_mode: "single" });
+  vi.mocked(api.tenants).mockResolvedValue([]);
+  render(<App />);
+  await screen.findByRole("heading", { name: "No organization access" });
+  expect(screen.queryByRole("button", { name: "Create tenant" })).toBeNull();
+  expect(api.capabilities).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Account settings" }));
+  await screen.findByRole("heading", { name: "Account profile" });
 });

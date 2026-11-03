@@ -196,7 +196,7 @@ function InviteForm({
   return (
     <FormPage
       title="Invite member"
-      detail="Create a private, single-use invitation for this tenant."
+      detail="Create a private, single-use organization invitation."
       back={{ path: "invitations", label: "Back to invitations" }}
     >
       <form className="admin-form" onSubmit={submit}>

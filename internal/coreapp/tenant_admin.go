@@ -87,7 +87,13 @@ func (s *Service) PreviewInvitation(ctx context.Context, token string) (Invitati
 	var item InvitationPreview
 	err := s.pool.QueryRow(ctx, `SELECT tenant_id, invitation_id, display_email, tenant_name, expires_at, account_exists FROM amsonia.inspect_invitation($1)`, tokenHash(token)).
 		Scan(&item.TenantID, &item.ID, &item.Email, &item.TenantName, &item.ExpiresAt, &item.AccountExists)
-	return item, accountNotFound(err)
+	if err != nil {
+		return InvitationPreview{}, accountNotFound(err)
+	}
+	if err := s.allowOrganization(ctx, item.TenantID); err != nil {
+		return InvitationPreview{}, err
+	}
+	return item, nil
 }
 
 func (s *Service) CreateInvitation(ctx context.Context, tenant, actor, email string) (CreatedInvitation, error) {

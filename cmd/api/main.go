@@ -84,9 +84,16 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	service, err := coreapp.NewService(pool, store, bootstrap)
+	options, err := coreapp.ApplicationOptionsFromEnv(os.Getenv)
 	if err != nil {
 		return err
+	}
+	service, err := coreapp.NewApplicationService(pool, store, bootstrap, options)
+	if err != nil {
+		return err
+	}
+	if err := service.Ready(startupContext); err != nil {
+		return fmt.Errorf("application is not ready: %w", err)
 	}
 	manager, err := amsonia.NewManager(catalog, service.PolicyStore(), noMemberships{}, controls, service, amsonia.RealClock{})
 	if err != nil {

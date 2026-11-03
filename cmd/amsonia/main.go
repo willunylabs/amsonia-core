@@ -28,11 +28,11 @@ func main() {
 }
 
 func run(ctx context.Context, args []string) error {
-	if len(args) != 1 || (args[0] != "migrate" && args[0] != "migration-status" && args[0] != "admin-status" && args[0] != "bootstrap-admin" && args[0] != "provision-demo-viewer") {
-		return errors.New("usage: amsonia migrate | migration-status | admin-status | bootstrap-admin | provision-demo-viewer")
+	if len(args) != 1 || (args[0] != "migrate" && args[0] != "migration-status" && args[0] != "admin-status" && args[0] != "bootstrap-admin" && args[0] != "provision-demo-viewer" && args[0] != "setup-organization") {
+		return errors.New("usage: amsonia migrate | migration-status | admin-status | bootstrap-admin | setup-organization | provision-demo-viewer")
 	}
 	dsnName := "AMSONIA_MIGRATION_DSN"
-	if args[0] == "admin-status" || args[0] == "bootstrap-admin" || args[0] == "provision-demo-viewer" {
+	if args[0] == "admin-status" || args[0] == "bootstrap-admin" || args[0] == "provision-demo-viewer" || args[0] == "setup-organization" {
 		dsnName = "AMSONIA_DATABASE_DSN"
 	}
 	dsn := os.Getenv(dsnName)
@@ -59,6 +59,23 @@ func run(ctx context.Context, args []string) error {
 		return adminStatus(ctx, pool)
 	case "bootstrap-admin":
 		return bootstrapAdmin(ctx, pool)
+	case "setup-organization":
+		service, err := newCLIService(pool)
+		if err != nil {
+			return err
+		}
+		admin, err := loadOnlySystemAdministrator(ctx, pool)
+		if err != nil {
+			return err
+		}
+		tenant, err := service.SetupOrganization(ctx, admin)
+		if err != nil {
+			return err
+		}
+		if tenant.ID != "" {
+			fmt.Fprintf(os.Stdout, "Organization ready: %s (%s)\n", tenant.Name, tenant.ID)
+		}
+		return nil
 	case "provision-demo-viewer":
 		return provisionDemoViewer(ctx, pool)
 	}
@@ -97,26 +114,7 @@ func bootstrapAdmin(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return fmt.Errorf("read password: %w", err)
 	}
-	// Bootstrap only uses the identity tables, but NewService deliberately
-	// requires the complete runtime composition. Build a minimal safe
-	// bootstrapper and Store using the configured tenant binding.
-	secret, err := decodeBindingSecret()
-	if err != nil {
-		return err
-	}
-	store, err := postgres.NewStore(pool, secret)
-	if err != nil {
-		return err
-	}
-	catalog, controls, err := coreapp.CoreCatalog()
-	if err != nil {
-		return err
-	}
-	bootstrapper, err := amsonia.NewBootstrapper(catalog, store, controls, cliHostAuthority{}, amsonia.RealClock{})
-	if err != nil {
-		return err
-	}
-	service, err := coreapp.NewService(pool, store, bootstrapper)
+	service, err := newCLIService(pool)
 	if err != nil {
 		return err
 	}
@@ -162,7 +160,11 @@ func provisionDemoViewer(ctx context.Context, pool *pgxpool.Pool) error {
 	if err != nil {
 		return err
 	}
-	service, err := coreapp.NewService(pool, store, bootstrapper)
+	options, err := coreapp.ApplicationOptionsFromEnv(os.Getenv)
+	if err != nil {
+		return err
+	}
+	service, err := coreapp.NewApplicationService(pool, store, bootstrapper, options)
 	if err != nil {
 		return err
 	}
@@ -232,6 +234,13 @@ func loadOnlySystemAdministrator(ctx context.Context, pool *pgxpool.Pool) (corea
 }
 
 func ensureDemoTenant(ctx context.Context, service *coreapp.Service, admin coreapp.Account, name string) (coreapp.Tenant, error) {
+	options, err := coreapp.ApplicationOptionsFromEnv(os.Getenv)
+	if err != nil {
+		return coreapp.Tenant{}, err
+	}
+	if options.TenancyMode == "single" {
+		return service.SetupOrganization(ctx, admin)
+	}
 	tenants, err := service.ListTenants(ctx, admin.ID)
 	if err != nil {
 		return coreapp.Tenant{}, err
@@ -334,4 +343,28 @@ func decodeBindingSecret() ([]byte, error) {
 		return nil, errors.New("AMSONIA_TENANT_BINDING_SECRET must be unpadded base64url encoding of at least 32 random bytes")
 	}
 	return secret, nil
+}
+
+func newCLIService(pool *pgxpool.Pool) (*coreapp.Service, error) {
+	secret, err := decodeBindingSecret()
+	if err != nil {
+		return nil, err
+	}
+	store, err := postgres.NewStore(pool, secret)
+	if err != nil {
+		return nil, err
+	}
+	catalog, controls, err := coreapp.CoreCatalog()
+	if err != nil {
+		return nil, err
+	}
+	bootstrapper, err := amsonia.NewBootstrapper(catalog, store, controls, cliHostAuthority{}, amsonia.RealClock{})
+	if err != nil {
+		return nil, err
+	}
+	options, err := coreapp.ApplicationOptionsFromEnv(os.Getenv)
+	if err != nil {
+		return nil, err
+	}
+	return coreapp.NewApplicationService(pool, store, bootstrapper, options)
 }

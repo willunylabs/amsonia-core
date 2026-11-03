@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Amsonia Core API
   version: 0.2.0-preview.1
-  description: Tenant administration and delegated authorization API for Amsonia Core.
+  description: Organization administration and delegated authorization API. Standalone deployments default to one organization; multi-tenancy is opt in. In single mode, other tenant IDs and their invitation links return 404; membership and permission checks still apply.
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -59,6 +59,23 @@ paths:
               application/json:
                 { schema: { $ref: "#/components/schemas/Error" } },
             }
+  /api/v1/application:
+    get:
+      summary: Read the deployment organization model
+      tags: [Tenants]
+      operationId: getApplication
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Authenticated deployment configuration used by the Console.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tenancy_mode]
+                properties:
+                  tenancy_mode: { type: string, enum: [single, multi] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
   /api/v1/auth/login:
     post:
       summary: Sign in an account
@@ -179,7 +196,7 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         "200":
-          description: Active tenants visible to the current account.
+          description: Active tenants visible to the current account. Single mode returns only the configured organization, and still requires membership.
           content:
             application/json:
               schema:
@@ -194,7 +211,7 @@ paths:
       summary: Provision a tenant
       tags: [Tenants]
       operationId: createTenant
-      description: System-administrator-only tenant provisioning.
+      description: System-administrator-only tenant provisioning, available only in multi mode. Single mode returns 403.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true

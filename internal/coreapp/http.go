@@ -77,6 +77,9 @@ func (api *API) Handler() http.Handler {
 	} {
 		mux.Handle(pattern, api.tenant(handler))
 	}
+	mux.Handle("GET /api/v1/application", api.auth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{"tenancy_mode": api.service.application.TenancyMode})
+	})))
 	mux.Handle("GET /api/v1/auth/me", api.auth(http.HandlerFunc(api.me)))
 	mux.Handle("GET /api/v1/tenants", api.auth(http.HandlerFunc(api.listTenants)))
 	mux.Handle("POST /api/v1/tenants", api.auth(http.HandlerFunc(api.createTenant)))
