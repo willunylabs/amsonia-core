@@ -24,8 +24,9 @@ described in its [release history](https://github.com/willunylabs/amsonia-core/r
 - Choose one commit and check its OpenAPI and package version metadata against
   the intended release tag.
 - Verify clean installation from that exact revision and restore/upgrade from
-  the prior supported application release. Record prerequisites and any
-  incompatible configuration changes.
+  the prior supported application release. The PostgreSQL CI job checks the
+  pinned migration 9 baseline; test additional supported sources as needed.
+  Record prerequisites and incompatible configuration changes.
 - Publish release notes with the supported installation path and links to
   operator recovery, upgrade, and application extension documentation.
 - Run the **Preview bundle** workflow on the exact release commit. Download
