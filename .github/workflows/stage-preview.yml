@@ -1,0 +1,32 @@
+name: Stage preview draft
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Preview bundle run ID from main
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: stage-preview-draft
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Stage verified archive without publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIEW_RUN_ID: ${{ inputs.run_id }}
+        run: scripts/stage-preview.sh

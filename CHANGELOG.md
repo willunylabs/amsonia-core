@@ -31,4 +31,5 @@ described in its [release history](https://github.com/willunylabs/amsonia-core/r
 - Run the **Preview bundle** workflow on the exact release commit. Download
   its archive and checksum only after the archive installation smoke test passes.
 - Create a draft GitHub prerelease at the revision recorded in the bundle.
-  Attach the tarball and its checksum together, verify the target, then publish.
+  Run **Stage preview draft** with the successful workflow run ID to transfer
+  verified assets on GitHub. Review the draft and publish separately.
