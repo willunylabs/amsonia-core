@@ -1,0 +1,32 @@
+name: Preview bundle
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build pinned image bundle
+        run: scripts/build-preview.sh "$RUNNER_TEMP/preview"
+      - name: Install and verify archive
+        run: |
+          cd "$RUNNER_TEMP/preview"
+          sha256sum --check SHA256SUMS
+          tar -xzf amsonia-core-*-linux-amd64.tar.gz
+          python3 "$GITHUB_WORKSPACE/scripts/smoke-preview.py" amsonia-core-*-linux-amd64
+      - uses: actions/upload-artifact@v7
+        with:
+          name: amsonia-preview-linux-amd64
+          path: |
+            ${{ runner.temp }}/preview/*.tar.gz
+            ${{ runner.temp }}/preview/SHA256SUMS
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
