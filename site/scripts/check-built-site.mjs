@@ -105,7 +105,7 @@ while (pending.length > 0) {
   const html = readFileSync(pageFile(route), 'utf8');
   for (const match of html.matchAll(/<a\b[^>]*\bhref="([^"]+)"/g)) {
     const target = new URL(match[1], canonicalFor(route));
-    if (target.origin !== origin) continue;
+    if (target.origin !== new URL(origin).origin) continue;
     const next = routesByPath.get(target.pathname);
     if (next !== undefined && !reachable.has(next)) {
       reachable.add(next);
