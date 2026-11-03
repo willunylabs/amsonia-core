@@ -1,5 +1,8 @@
 ---
+import { COMPANY_ORIGIN, SITE_ORIGIN } from '../lib/site';
+
 const gaId = import.meta.env.PUBLIC_GA_ID;
+const analyticsDomains = [new URL(COMPANY_ORIGIN).hostname, new URL(SITE_ORIGIN).hostname];
 ---
 
 {gaId ? (
@@ -11,7 +14,7 @@ const gaId = import.meta.env.PUBLIC_GA_ID;
         <button type="button" class="consent-accept" data-consent="granted">Allow analytics</button>
       </div>
     </aside>
-    <script is:inline define:vars={{ gaId }}>
+    <script is:inline define:vars={{ gaId, analyticsDomains }}>
       (() => {
         const consentKey = 'amsonia-analytics-consent';
         const card = document.querySelector('[data-consent-card]');
@@ -33,6 +36,7 @@ const gaId = import.meta.env.PUBLIC_GA_ID;
           script.async = true;
           script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`;
           document.head.appendChild(script);
+          window.gtag('set', 'linker', { domains: analyticsDomains });
           window.gtag('js', new Date());
           window.gtag('config', gaId);
         };
