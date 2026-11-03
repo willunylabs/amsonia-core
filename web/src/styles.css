@@ -292,3 +292,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .role-members .table-card { max-height: 360px; overflow: auto; }
 .role-members td button { white-space: nowrap; }
 @media(max-width: 680px) { .role-members .directory-filters { grid-template-columns: 1fr; } }
+.audit-range-filters { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.audit-range-note { margin: -8px 0 24px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+@media(max-width: 900px) { .audit-range-filters { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media(max-width: 680px) { .audit-range-filters { grid-template-columns: 1fr; } }

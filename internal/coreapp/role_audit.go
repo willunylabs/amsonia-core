@@ -3,9 +3,7 @@ package coreapp
 import (
 	"context"
 	"encoding/json"
-	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/willunylabs/amsonia-core"
@@ -132,60 +130,4 @@ func (s *Service) MemberRoleIDs(ctx context.Context, tenant, account string) ([]
 		return err
 	})
 	return items, err
-}
-
-type AuditFilter struct {
-	Query, Outcome, Operation string
-	Before                    int64
-	Limit                     int
-}
-type AuditRecord struct {
-	ID int64 `json:"id"`
-	amsonia.MutationAuditEvent
-}
-type AuditPage struct {
-	Items      []AuditRecord `json:"items"`
-	NextCursor int64         `json:"next_cursor,omitempty"`
-}
-
-func (s *Service) AuditLog(ctx context.Context, tenant string, filter AuditFilter) (AuditPage, error) {
-	if filter.Before < 0 || !utf8.ValidString(filter.Query) || utf8.RuneCountInString(filter.Query) > 128 || len(filter.Operation) > 64 {
-		return AuditPage{}, amsonia.ErrInvalidInput
-	}
-	switch filter.Outcome {
-	case "", "success", "noop", "denied", "conflict", "failed":
-	default:
-		return AuditPage{}, amsonia.ErrInvalidInput
-	}
-	if filter.Limit < 1 || filter.Limit > 200 {
-		filter.Limit = 50
-	}
-	page := AuditPage{Items: make([]AuditRecord, 0)}
-	err := s.store.RunTenant(ctx, amsonia.TenantID(tenant), true, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT id,tenant_id,actor_subject,host_initiator,operation,phase,target_type,target_id,outcome,reason_code,request_id,role_version,at
-		    FROM amsonia.audit_events WHERE tenant_id=$1 AND ($2::bigint=0 OR id<$2)
-		    AND ($4::text='' OR position(lower($4) in lower(operation||' '||COALESCE(actor_subject,'')||' '||target_id||' '||COALESCE(reason_code,'')||' '||COALESCE(request_id,'')))>0)
-		    AND ($5::text='' OR outcome=$5) AND ($6::text='' OR operation=$6)
-		    ORDER BY id DESC LIMIT $3`, tenant, filter.Before, filter.Limit+1, strings.TrimSpace(filter.Query), filter.Outcome, strings.TrimSpace(filter.Operation))
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var e AuditRecord
-			if err := rows.Scan(&e.ID, &e.TenantID, &e.ActorSubjectID, &e.HostInitiator, &e.Operation, &e.Phase, &e.TargetType, &e.TargetID, &e.Outcome, &e.ReasonCode, &e.RequestID, &e.RoleVersion, &e.At); err != nil {
-				return err
-			}
-			page.Items = append(page.Items, e)
-		}
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		if len(page.Items) > filter.Limit {
-			page.Items = page.Items[:filter.Limit]
-			page.NextCursor = page.Items[len(page.Items)-1].ID
-		}
-		return nil
-	})
-	return page, err
 }

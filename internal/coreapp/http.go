@@ -85,6 +85,7 @@ func (api *API) Handler() http.Handler {
 	mux.Handle("GET /api/v1/tenants/{tenant_id}/capabilities", api.tenant(http.HandlerFunc(api.capabilities)))
 	mux.Handle("POST /api/v1/tenants/{tenant_id}/roles", api.tenant(http.HandlerFunc(api.createRole)))
 	mux.Handle("GET /api/v1/tenants/{tenant_id}/audit-events", api.tenant(http.HandlerFunc(api.auditEvents)))
+	mux.Handle("GET /api/v1/tenants/{tenant_id}/audit-events/export", api.tenant(http.HandlerFunc(api.exportAudit)))
 	return api.securityHeaders(api.recover(api.requestLog(mux)))
 }
 
@@ -476,31 +477,6 @@ func (api *API) createRole(response http.ResponseWriter, request *http.Request) 
 		return
 	}
 	writeJSON(response, http.StatusCreated, role)
-}
-
-func (api *API) auditEvents(response http.ResponseWriter, request *http.Request) {
-	if !api.requirePermission(response, request, "iam:audit:read") {
-		return
-	}
-	before, ok := queryNumber(response, request, "before")
-	if !ok {
-		return
-	}
-	limit, ok := queryNumber(response, request, "limit")
-	if !ok || limit > 200 {
-		if ok {
-			writeDomainError(response, amsonia.ErrInvalidInput)
-		}
-		return
-	}
-	page, err := api.service.AuditLog(request.Context(), request.PathValue("tenant_id"), AuditFilter{
-		Query: request.URL.Query().Get("q"), Operation: request.URL.Query().Get("operation"), Outcome: request.URL.Query().Get("outcome"), Before: before, Limit: int(limit),
-	})
-	if err != nil {
-		writeDomainError(response, err)
-		return
-	}
-	writeJSON(response, http.StatusOK, page)
 }
 
 func (api *API) requirePermission(response http.ResponseWriter, request *http.Request, permission amsonia.PermissionKey) bool {

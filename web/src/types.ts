@@ -107,6 +107,8 @@ export type RoleDetail = {
 };
 export type AuditPage = { items: AuditEvent[]; next_cursor?: number };
 export type AuditFilter = {
+  from?: string;
+  until?: string;
   q?: string;
   outcome?: string;
   operation?: string;

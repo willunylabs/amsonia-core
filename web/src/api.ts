@@ -27,6 +27,14 @@ function directoryQuery(
   return params.size ? `?${params}` : "";
 }
 
+function auditQuery(filter: AuditFilter): string {
+  return new URLSearchParams(
+    Object.entries(filter)
+      .filter(([, value]) => value !== undefined && value !== "")
+      .map(([key, value]) => [key, String(value)]),
+  ).toString();
+}
+
 const CONFIGURED_API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(
   /\/$/,
   "",
@@ -129,7 +137,11 @@ export function setToken(token: string): void {
   }
 }
 
-async function execute<T>(path: string, init: RequestInit): Promise<T> {
+async function execute<T>(
+  path: string,
+  init: RequestInit,
+  read?: (response: Response) => Promise<T>,
+): Promise<T> {
   const token = getToken();
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -151,7 +163,7 @@ async function execute<T>(path: string, init: RequestInit): Promise<T> {
     );
   }
   if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+  return read ? read(response) : (response.json() as Promise<T>);
 }
 
 async function refreshAccess(optional = false): Promise<Session | null> {
@@ -186,12 +198,16 @@ async function refreshAccess(optional = false): Promise<Session | null> {
   return refreshInFlight.promise;
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  read?: (response: Response) => Promise<T>,
+): Promise<T> {
   const epoch = authEpoch;
   const token = getToken();
   const accountID = activeAccountID;
   try {
-    return await execute<T>(path, init);
+    return await execute<T>(path, init, read);
   } catch (error) {
     const canRefresh =
       error instanceof APIError &&
@@ -212,7 +228,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (epoch !== authEpoch || (accountID && accountID !== activeAccountID))
       throw sessionChanged();
     try {
-      return await execute<T>(path, init);
+      return await execute<T>(path, init, read);
     } catch (retryError) {
       if (retryError instanceof APIError && retryError.status === 401)
         expireSession(epoch);
@@ -363,12 +379,22 @@ export const api = {
     ),
   auditPage: (tenant: string, filter: AuditFilter) =>
     request<AuditPage>(
-      `/api/v1/tenants/${encodeURIComponent(tenant)}/audit-events?${new URLSearchParams(
-        Object.entries(filter)
-          .filter(([, value]) => value !== undefined && value !== "")
-          .map(([key, value]) => [key, String(value)]),
-      )}`,
+      `/api/v1/tenants/${encodeURIComponent(tenant)}/audit-events?${auditQuery(filter)}`,
     ),
+  exportAudit: (tenant: string, filter: AuditFilter, signal?: AbortSignal) => {
+    const { q, outcome, operation, from, until } = filter;
+    return request<{ blob: Blob; filename: string }>(
+      `/api/v1/tenants/${encodeURIComponent(tenant)}/audit-events/export?${auditQuery({ q, outcome, operation, from, until })}`,
+      { signal },
+      async (response) => ({
+        blob: await response.blob(),
+        filename:
+          response.headers
+            .get("Content-Disposition")
+            ?.match(/filename="([A-Za-z0-9_.-]+)"/)?.[1] ?? "amsonia-audit.csv",
+      }),
+    );
+  },
   me: () => request<Account>("/api/v1/auth/me"),
   logout: async () => {
     const epoch = ++authEpoch;
