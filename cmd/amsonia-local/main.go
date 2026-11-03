@@ -66,6 +66,9 @@ func run(ctx context.Context, args []string) error {
 		default:
 			return fmt.Errorf("unexpected administrator status %q", strings.TrimSpace(state))
 		}
+		if err := composeInteractive(ctx, "exec", "-T", "api", "/usr/local/bin/amsonia", "setup-organization"); err != nil {
+			return fmt.Errorf("prepare local organization: %w", err)
+		}
 		fmt.Fprintln(os.Stdout, "Amsonia Core is ready at http://127.0.0.1:8080")
 		fmt.Fprintln(os.Stdout, "API health: http://127.0.0.1:8080/health")
 		return nil

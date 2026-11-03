@@ -1,12 +1,13 @@
-# Amsonia Core — Tenant authorization for Go, enforced in PostgreSQL
+# Amsonia Core — Go/PostgreSQL administration scaffold
 
 [![Apache-2.0 license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/willunylabs/amsonia-core/actions/workflows/ci.yml/badge.svg)](https://github.com/willunylabs/amsonia-core/actions/workflows/ci.yml)
 
-**Amsonia Core** is a self-hosted authorization foundation for Go teams building
-multi-tenant SaaS. It keeps tenant membership, delegated RBAC, administrator
-sessions, policy audit, and PostgreSQL row-level isolation in one source-owned
-system instead of leaving those boundaries to every handler.
+**Amsonia Core** is a self-hosted administration scaffold for Go/PostgreSQL
+applications. It starts with one organization, accounts, member invitations,
+roles, permissions, sessions, and audit history. Multi-tenancy is an explicit
+deployment option for SaaS applications. The authorization kernel retains
+PostgreSQL row-level isolation in both modes.
 
 [Visit Amsonia](https://amsonia.dev) · [Read the Core documentation](docs/getting-started.md) · [Explore Amsonia Platform](https://amsonia.dev/platform/) · [View the API contract](openapi/openapi.yaml)
 
@@ -40,9 +41,10 @@ Core makes those invariants explicit:
 
 ## Fit
 
-Use Core when you are building a Go/PostgreSQL multi-tenant product, want RBAC
-and tenant isolation to share one tested boundary, and prefer operating source
-code over depending on a hosted authorization control plane.
+Use Core as the administration foundation for a Go/PostgreSQL application.
+The default single-organization workflow needs no tenant creation or switching.
+Enable multi mode when one deployment must serve independent customer
+organizations. RBAC, audit and storage isolation use the same tested kernel.
 
 Core is not a general-purpose relationship graph, not an OAuth/OIDC identity
 provider, and not a drop-in replacement for every policy engine. The host
@@ -53,7 +55,7 @@ application-owned PostgreSQL tables.
 
 | Approach | Best fit | Tenant data isolation | Operating shape |
 | --- | --- | --- | --- |
-| **Amsonia Core** | Go SaaS with tenant RBAC, admin sessions, audit, and PostgreSQL | Signed context plus reference `FORCE RLS` policies | Self-hosted source, API, CLI, Console |
+| **Amsonia Core** | Go applications with RBAC, sessions, audit, and optional tenancy | Signed context plus reference `FORCE RLS` policies | Self-hosted source, API, CLI, Console |
 | Embedded policy library | Application-specific RBAC/ABAC logic | Designed separately by the application | Linked into each service |
 | Relationship/ReBAC service | Fine-grained object relationship graphs | Application database remains a separate boundary | Dedicated authorization service |
 | Identity platform | Login, federation, and user lifecycle | Depends on the product and integration | Hosted or self-hosted identity service |
@@ -76,6 +78,20 @@ revocation, one-use member invitations, member suspension/removal, role editing,
 scoped grants, member role bindings, version history, and filtered audit paging.
 See the [administration guide](docs/core-administration.md) and
 [authorization contract](docs/authorization.md).
+
+## Organization model
+
+The standalone API and CLI default to `AMSONIA_TENANCY_MODE=single`. Administrator
+bootstrap automatically prepares `My organization` (customize with
+`AMSONIA_ORGANIZATION_NAME`). The Console opens directly into that organization.
+`amsonia setup-organization` safely resumes an incomplete setup.
+
+For multi-tenant SaaS, set `AMSONIA_TENANCY_MODE=multi` on the API and operator CLI.
+For an existing database with multiple active tenants, explicitly enable multi
+mode or select an existing tenant using `AMSONIA_ORGANIZATION_ID` in single mode.
+An ambiguous deployment refuses to start. Apply migration 8 and rerun the
+[role provisioning script](ops/configure_database_roles.sql) before upgrading.
+See [the setup guide](docs/getting-started.md#organization-model) for configuration.
 
 ## Verify it in five minutes
 

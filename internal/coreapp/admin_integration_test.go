@@ -36,6 +36,10 @@ func (testWorkspaces) LookupWorkspaceMembership(context.Context, amsonia.TenantI
 }
 
 func coreFixture(t *testing.T) (*Service, *amsonia.Manager, http.Handler, *pgxpool.Pool) {
+	return coreApplicationFixture(t, nil)
+}
+
+func coreApplicationFixture(t *testing.T, options *ApplicationOptions) (*Service, *amsonia.Manager, http.Handler, *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
 	dsn := os.Getenv("TEST_DATABASE_ADMIN_URL")
@@ -118,6 +122,12 @@ func coreFixture(t *testing.T) (*Service, *amsonia.Manager, http.Handler, *pgxpo
 	service, err := NewService(pool, store, bootstrap)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if options != nil {
+		service, err = NewApplicationService(pool, store, bootstrap, *options)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	manager, err := amsonia.NewManager(catalog, service.PolicyStore(), testWorkspaces{}, controls, service, amsonia.RealClock{})
 	if err != nil {

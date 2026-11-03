@@ -17,7 +17,7 @@ On first run, the command creates `.amsonia/local.env` with owner-only file
 permissions, generates independent high-entropy infrastructure credentials,
 builds the full stack, and asks interactively for the one system administrator.
 The administrator password is read without echo and is not stored by the
-launcher.
+launcher. The default organization is prepared automatically.
 
 Open `http://127.0.0.1:8080`. Re-running `make demo` is idempotent.
 
@@ -103,6 +103,42 @@ VITE_API_PROXY_TARGET='http://127.0.0.1:8080' npm --prefix web run dev
 
 Open `http://127.0.0.1:3000` and sign in with the bootstrap administrator.
 
+## Organization model
+
+The standalone API and operator CLI default to one organization. New administrator
+bootstrap prepares its owner membership, roles, grants and audit history. Set
+`AMSONIA_ORGANIZATION_NAME` before bootstrap to change the initial name; changing
+it later does not rename an existing organization. No tenant creation form or
+switcher is shown in single mode.
+
+If an administrator already exists but organization setup did not finish, run:
+
+```bash
+go run ./cmd/amsonia setup-organization
+# Compose equivalent:
+docker compose exec -T api /usr/local/bin/amsonia setup-organization
+```
+
+This command is idempotent and serializes concurrent setup attempts. `make demo`
+also runs it after checking/bootstraping the administrator. A fresh API may be
+ready before an organization exists so the local stack can start and bootstrap;
+an account without membership sees an organization invitation/setup message.
+
+For a SaaS deployment, set `AMSONIA_TENANCY_MODE=multi` consistently on every API
+replica and operator command. The existing tenant creation, switching and
+invitation workflows then remain available. The embedded kernel and `NewService`
+composition keep their existing tenant contracts.
+
+When upgrading, first apply migration 8 as owner, then rerun
+`ops/configure_database_roles.sql` as role administrator. Restart with explicit
+mode settings. A single active tenant is used automatically in single mode;
+multiple active tenants require `multi` or `AMSONIA_ORGANIZATION_ID` selecting an
+existing active tenant. A missing or inactive explicit ID and an ambiguous
+selection fail startup/readiness. Other tenants remain stored but inaccessible
+through that single-mode API, including their outstanding invitation links.
+No data is moved. All replicas and operator commands must share the same mode
+and selected ID. The organization name setting affects creation only.
+
 ## Configuration
 
 | Variable | Required by | Meaning |
@@ -111,6 +147,9 @@ Open `http://127.0.0.1:3000` and sign in with the bootstrap administrator.
 | `AMSONIA_ROLE_ADMIN_DSN` | Role provisioning | Operator-only role administrator connection |
 | `AMSONIA_DATABASE_DSN` | API/bootstrap | Non-superuser runtime connection |
 | `AMSONIA_TENANT_BINDING_SECRET` | API/bootstrap | Base64url runtime binding secret |
+| `AMSONIA_TENANCY_MODE` | API/operator CLI | `single` (default) or `multi` |
+| `AMSONIA_ORGANIZATION_NAME` | Organization setup | Initial name, default `My organization`, at most 80 bytes |
+| `AMSONIA_ORGANIZATION_ID` | Optional single mode | Existing active tenant ID, required for ambiguous databases |
 | `AMSONIA_HTTP_ADDR` | Optional | API listen address, default `:8080` |
 | `VITE_API_PROXY_TARGET` | Web development | Vite proxy target, default `http://127.0.0.1:8080` |
 | `VITE_API_URL` | Web build | Optional same-origin API path prefix |

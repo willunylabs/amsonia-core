@@ -101,13 +101,13 @@ function Login({ onLogin }: { onLogin: (account: Account) => void }) {
         <div className="story-copy">
           <span className="eyebrow">Open-source Go SaaS foundation</span>
           <h1>
-            Tenant access
+            Organization access
             <br />
             you can own.
           </h1>
           <p>
-            Explore multi-tenant authorization, RBAC, PostgreSQL row-level
-            security, and audit history in the Amsonia Core demo.
+            Manage accounts, roles, permissions, and audit history with the
+            Amsonia Core admin scaffold.
           </p>
           <p className="fine-print">
             <a href={SOURCE_URL} target="_blank" rel="noreferrer">
@@ -121,7 +121,7 @@ function Login({ onLogin }: { onLogin: (account: Account) => void }) {
         </div>
         <div className="trust-strip">
           <ShieldCheck size={22} />
-          <span>Tenant-first RBAC · PostgreSQL RLS · Apache-2.0</span>
+          <span>Role-based access · PostgreSQL RLS · Apache-2.0</span>
         </div>
       </section>
       <section className="login-panel">
@@ -129,7 +129,7 @@ function Login({ onLogin }: { onLogin: (account: Account) => void }) {
           <header>
             <span className="folio">01 / CONSOLE</span>
             <h2>Welcome back</h2>
-            <p>Sign in to explore the live tenant authorization workspace.</p>
+            <p>Sign in to your administration workspace.</p>
           </header>
           {hasPublicDemo ? (
             <section
@@ -351,6 +351,10 @@ function Console({
   const { segments, navigate } = useConsoleRoute();
   const section = (segments[0] ?? "overview") as Section;
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [application, setApplication] = useState<{
+    tenancy_mode: "single" | "multi";
+  } | null>(null);
+  const multiTenant = application?.tenancy_mode === "multi";
   const [tenantID, setTenantID] = useState(() => preferredTenant(account.id));
   const [members, setMembers] = useState<number | null>(null);
   const [roles, setRoles] = useState<number | null>(null);
@@ -398,10 +402,12 @@ function Console({
   const loadGlobal = useCallback(async (): Promise<string | null> => {
     const serial = ++globalRequest.current;
     try {
-      const [tenantItems, permissionItems] = await Promise.all([
-        api.tenants(),
-        api.permissions(),
-      ]);
+      const [tenantItems, permissionItems, applicationOptions] =
+        await Promise.all([
+          api.tenants(),
+          api.permissions(),
+          api.application(),
+        ]);
       if (serial !== globalRequest.current) return null;
       const current = tenantRef.current;
       const preferred = preferredTenant(account.id);
@@ -410,6 +416,7 @@ function Console({
         tenantItems.find((tenant) => tenant.id === preferred)?.id ??
         tenantItems[0]?.id ??
         "";
+      setApplication(applicationOptions);
       setTenants(tenantItems);
       setPermissions(permissionItems);
       if (next !== current) selectTenant(next);
@@ -542,7 +549,9 @@ function Console({
           <span>AMSONIA</span>
         </div>
         <nav aria-label="Primary navigation">
-          <span className="nav-label">Tenant console</span>
+          <span className="nav-label">
+            {multiTenant ? "Tenant console" : "Organization console"}
+          </span>
           {sections.map((item) => (
             <button
               key={item.id}
@@ -589,11 +598,12 @@ function Console({
                 <Building2 size={16} />
               </span>
               <span>
-                <small>Current tenant</small>
-                {selectedTenant?.name ?? "No tenant yet"}
+                <small>{multiTenant ? "Current tenant" : "Organization"}</small>
+                {selectedTenant?.name ??
+                  (multiTenant ? "No tenant yet" : "No organization access")}
               </span>
-              <ChevronDown size={15} />
-              {tenants.length > 1 ? (
+              {multiTenant ? <ChevronDown size={15} /> : null}
+              {multiTenant && tenants.length > 1 ? (
                 <select
                   aria-label="Current tenant"
                   value={tenantID}
@@ -607,7 +617,7 @@ function Console({
                 </select>
               ) : null}
             </div>
-            {account.system_admin && tenants.length > 0 ? (
+            {multiTenant && account.system_admin && tenants.length > 0 ? (
               <button
                 className="icon-button"
                 aria-label="Create tenant"
@@ -641,7 +651,9 @@ function Console({
               <small>
                 {account.system_admin
                   ? "System administrator"
-                  : "Tenant member"}
+                  : multiTenant
+                    ? "Tenant member"
+                    : "Organization member"}
               </small>
             </span>
             <button
@@ -675,7 +687,7 @@ function Console({
           {section === "account" ? (
             <AccountPage onLogout={onLogout} email={account.email} />
           ) : section === "tenants" && segments[1] === "new" ? (
-            account.system_admin ? (
+            multiTenant && account.system_admin ? (
               <CreateTenantForm
                 onClose={() => navigate("overview")}
                 onCreated={async (tenant) => {
@@ -686,20 +698,21 @@ function Console({
               />
             ) : (
               <p className="quiet-state">
-                Only system administrators can create tenants.
+                {multiTenant
+                  ? "Only system administrators can create tenants."
+                  : "This deployment uses one organization. Tenant creation is unavailable."}
               </p>
             )
           ) : (
             <>
               {!loading && !selectedTenant ? (
                 <EmptyTenant
-                  canCreate={account.system_admin}
+                  multiTenant={multiTenant}
+                  canCreate={multiTenant && account.system_admin}
                   onCreate={() => navigate("tenants/new")}
                 />
               ) : null}
-              {tenantLoading ? (
-                <p role="status">Loading tenant access…</p>
-              ) : null}
+              {tenantLoading ? <p role="status">Loading access…</p> : null}
               {!loading &&
               !tenantLoading &&
               selectedTenant &&
@@ -728,9 +741,11 @@ function Console({
 }
 
 function EmptyTenant({
+  multiTenant,
   canCreate,
   onCreate,
 }: {
+  multiTenant: boolean;
   canCreate: boolean;
   onCreate: () => void;
 }) {
@@ -739,12 +754,22 @@ function EmptyTenant({
       <div className="empty-orbit">
         <Building2 size={30} />
       </div>
-      <span className="eyebrow">Tenant workspace</span>
-      <h1>{canCreate ? "Create your first tenant" : "No tenant assigned"}</h1>
+      <span className="eyebrow">
+        {multiTenant ? "Tenant workspace" : "Organization workspace"}
+      </span>
+      <h1>
+        {canCreate
+          ? "Create your first tenant"
+          : multiTenant
+            ? "No tenant assigned"
+            : "No organization access"}
+      </h1>
       <p>
         {canCreate
           ? "A tenant is the hard security boundary for members, roles, policy, and audit history."
-          : "Ask your tenant administrator for an invitation link."}
+          : multiTenant
+            ? "Ask your tenant administrator for an invitation link."
+            : "Ask your administrator for an organization invitation. For a new installation, the deployment administrator must finish organization setup."}
       </p>
       {canCreate ? (
         <button className="primary-button" onClick={onCreate}>
@@ -950,7 +975,7 @@ function Overview({
           ) : (
             <>
               <h2>No events yet</h2>
-              <p>Your tenant is quiet. Policy changes will appear here.</p>
+              <p>No recent activity. Policy changes will appear here.</p>
             </>
           )}
         </article>

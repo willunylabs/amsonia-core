@@ -1,9 +1,11 @@
 # Daily Core administration
 
-Core provides a small, usable multi-tenant administration foundation. Open the
-console using the existing local deployment workflow, bootstrap the first system
-administrator with the CLI, and create a tenant. The tenant owner receives all
-seven administration permissions.
+Core defaults to a single-organization administration scaffold. Bootstrap the
+first system administrator with the CLI; the organization and its owner
+membership are prepared automatically. The owner receives all seven
+administration permissions. Multi-tenant deployments explicitly set
+`AMSONIA_TENANCY_MODE=multi`, then create tenants in the Console. See
+[organization setup and upgrades](getting-started.md#organization-model).
 
 ## Account and sessions
 
@@ -211,7 +213,7 @@ previous tenant's form. IDs in route segments are URL-encoded.
 
 | Task | Address |
 | --- | --- |
-| Create tenant | `#/tenants/new` |
+| Create tenant (multi mode only) | `#/tenants/new` |
 | Member list / status / roles / removal | `#/members`, `#/members/{id}/details`, `#/members/{id}/roles`, `#/members/{id}/remove` |
 | Invitation list / create | `#/invitations`, `#/invitations/new` |
 | Role list / create | `#/roles`, `#/roles/new` |
@@ -230,9 +232,11 @@ and kernel contracts remain unchanged.
 ## Upgrade
 
 Apply all pending migrations, including `000006_core_administration` and
-`000007_context_transaction_errors`, then rerun
+`000007_context_transaction_errors` and `000008_single_organization`, then rerun
 `ops/configure_database_roles.sql` before starting the new API. It grants the
-narrow token-authorized invitation preview function. Startup readiness requires
+narrow token-authorized invitation preview and organization-selection functions.
+Configure the organization model before restarting; see
+[upgrading organization deployments](getting-started.md#organization-model). Startup readiness requires
 an exact clean migration state. The migration adds display names and session
 family IDs without invalidating existing credentials. Legacy refresh rotations
 cannot always be reconstructed into one family: pre-upgrade live tokens may
