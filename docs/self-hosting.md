@@ -65,3 +65,19 @@ create cluster roles on the restore server.
    a fresh database and switch back to the matching prior binaries and
    configuration. Do not point old binaries at a newer schema or manually
    mark a failed migration clean. A pre-upgrade restore discards later writes.
+
+## What CI verifies
+
+The PostgreSQL job runs [the upgrade smoke check](https://github.com/willunylabs/amsonia-core/blob/main/scripts/smoke-upgrade.py).
+It starts from the application at commit `d0f90fb` (schema 9), creates a system
+administrator and a read-only member, and changes the organization name to
+produce an audit event. It restores a custom-format dump into an empty database,
+checks it with the old API, then runs the current migration CLI and API.
+Both users keep their identities and can sign in; the name, version and audit
+history are preserved, and the read-only member still receives HTTP 403 on
+a settings update.
+
+This is a PostgreSQL 16 test using two databases in one disposable cluster. It
+does not prove every historical upgrade, a PostgreSQL major version upgrade, or
+cluster role restoration on another server. Rehearse each deployment's own
+backup and restore before cutting over.

@@ -162,3 +162,27 @@ jobs:
         env:
           TEST_DATABASE_ADMIN_URL: "postgres://amsonia_admin:test-only@localhost:5432/amsonia_test?sslmode=disable"
         run: go test -tags postgres -count=1 -p 1 ./postgres/ ./internal/coreapp/
+      - name: Check out the migration 9 application baseline
+        uses: actions/checkout@v7
+        with:
+          ref: d0f90fb81d49ea5fadea537ec3d3efd8a3d44dd1
+          path: .upgrade-baseline
+          persist-credentials: false
+      - name: Verify backup restore and application upgrade
+        env:
+          TEST_DATABASE_ADMIN_URL: "postgres://amsonia_admin:test-only@localhost:5432/amsonia_test?sslmode=disable"
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          bin="$RUNNER_TEMP/upgrade-binaries"
+          mkdir -p "$bin"
+          (
+            cd .upgrade-baseline
+            go build -o "$bin/old-cli" ./cmd/amsonia
+            go build -o "$bin/old-api" ./cmd/api
+          )
+          go build -o "$bin/new-cli" ./cmd/amsonia
+          go build -o "$bin/new-api" ./cmd/api
+          python3 -B scripts/smoke-upgrade.py --pg-container "$PG_CONTAINER" \
+            --old-cli "$bin/old-cli" --old-api "$bin/old-api" \
+            --old-role-sql .upgrade-baseline/ops/configure_database_roles.sql \
+            --new-cli "$bin/new-cli" --new-api "$bin/new-api"
