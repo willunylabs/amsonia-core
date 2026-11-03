@@ -202,6 +202,13 @@ type tenantTx struct {
 	tenantID amsonia.TenantID
 }
 
+// Query lets the internal Core host enforce its membership invariants within
+// this existing tenant transaction. It is deliberately absent from TenantTx's
+// portable kernel contract.
+func (tx *tenantTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return tx.tx.Query(ctx, sql, args...)
+}
+
 func (tx *tenantTx) reader() *tenantReader {
 	return &tenantReader{tx: tx.tx, tenantID: tx.tenantID}
 }
@@ -300,10 +307,14 @@ func (tx *tenantTx) InsertRolePermissionGrant(ctx context.Context, grant amsonia
 }
 
 func (tx *tenantTx) DeleteRolePermissionGrant(ctx context.Context, grant amsonia.RolePermissionGrant) (bool, error) {
+	roles := grant.WorkspaceRoles
+	if roles == nil {
+		roles = []string{}
+	}
 	tag, err := tx.tx.Exec(ctx, `
 		DELETE FROM amsonia.role_permission_grants
 		WHERE tenant_id = $1 AND role_id = $2 AND permission_key = $3 AND scope = $4 AND workspace_roles = $5
-	`, string(tx.tenantID), string(grant.RoleID), string(grant.Permission), string(grant.Scope), grant.WorkspaceRoles)
+	`, string(tx.tenantID), string(grant.RoleID), string(grant.Permission), string(grant.Scope), roles)
 	if err != nil {
 		return false, wrapPgxErr(err)
 	}

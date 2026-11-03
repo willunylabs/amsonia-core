@@ -5,13 +5,12 @@ import (
 	"errors"
 )
 
-// Authorizer evaluates authorization requests with Casbin against the catalog
+// Authorizer evaluates authorization requests against the catalog
 // and the injected policy reader. It is safe for concurrent use.
 type Authorizer struct {
 	catalog     *Catalog
 	policies    PolicyReader
 	memberships WorkspaceMembershipReader
-	engine      *policyEngine
 }
 
 // NewAuthorizer constructs an Authorizer. All dependencies are required; a
@@ -24,15 +23,10 @@ func NewAuthorizer(
 	if catalog == nil || policies == nil || memberships == nil {
 		return nil, ErrInvalidInput
 	}
-	engine, err := newPolicyEngine()
-	if err != nil {
-		return nil, err
-	}
 	return &Authorizer{
 		catalog:     catalog,
 		policies:    policies,
 		memberships: memberships,
-		engine:      engine,
 	}, nil
 }
 
@@ -268,15 +262,12 @@ func (a *Authorizer) evaluate(ctx context.Context, request CheckRequest, grant E
 		}
 	}
 
-	allowed, err := a.engine.allowAccess(request, grant, workspace.membership, workspace.member)
-	if err != nil {
-		return false, deniedNone, err
-	}
+	allowed := allowAccess(request, grant, workspace.membership, workspace.member)
 	if allowed {
 		return true, deniedNone, nil
 	}
 
-	// Casbin owns the allow/deny result. Translate denials only to preserve
+	// Translate denials to preserve
 	// the public reason codes and their deterministic precedence.
 	if request.Resource.TenantID != "" && request.Resource.TenantID != request.Principal.TenantID {
 		return false, deniedTenantMismatch, nil

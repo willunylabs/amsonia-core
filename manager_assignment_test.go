@@ -65,7 +65,7 @@ func TestAssignRoleRetriesReportVersionAndRecheckCoverage(t *testing.T) {
 	}
 	retry(1, amsonia.ErrConflict, amsonia.AuditOutcomeConflict)
 	retry(2, nil, amsonia.AuditOutcomeNoop)
-	// An existing binding must not bypass fresh Casbin grant coverage on retry.
+	// An existing binding must not bypass fresh grant coverage on retry.
 	if _, err := manager.RevokePermission(ctx, actor, meta(), amsonia.RevokePermissionInput{
 		RoleID: "owner-role", ExpectedVersion: 1, Permission: permInvoiceRead, Scope: amsonia.ScopeTenant,
 	}); err != nil {

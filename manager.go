@@ -90,7 +90,6 @@ type Manager struct {
 	controls      ControlPermissions
 	securityAudit SecurityAuditSink
 	clock         Clock
-	engine        *policyEngine
 }
 
 // NewManager constructs a Manager. All dependencies are required.
@@ -108,10 +107,6 @@ func NewManager(
 	if err := validateControls(catalog, controls); err != nil {
 		return nil, err
 	}
-	engine, err := newPolicyEngine()
-	if err != nil {
-		return nil, err
-	}
 	return &Manager{
 		catalog:       catalog,
 		store:         store,
@@ -119,7 +114,6 @@ func NewManager(
 		controls:      controls,
 		securityAudit: securityAudit,
 		clock:         clock,
-		engine:        engine,
 	}, nil
 }
 
@@ -886,7 +880,7 @@ func (m *Manager) requireActorForGrant(ctx context.Context, tx TenantTx, actor P
 }
 
 // requireGrant evaluates fresh grants inside the existing tenant transaction;
-// Casbin never maintains a second policy copy outside that boundary.
+// No second policy copy or decision cache exists outside that boundary.
 func (m *Manager) requireGrant(ctx context.Context, tx TenantTx, actor Principal, permission PermissionKey, target Scope, targetRoles []string, exactScope bool) error {
 	grants, err := tx.ListEffectiveGrants(ctx, actor.SubjectID, permission)
 	if err != nil {
@@ -898,11 +892,7 @@ func (m *Manager) requireGrant(ctx context.Context, tx TenantTx, actor Principal
 		}
 	}
 	for _, g := range grants {
-		allowed, err := m.engine.allowDelegation(permission, target, targetRoles, exactScope, g)
-		if err != nil {
-			return err
-		}
-		if allowed {
+		if allowDelegation(permission, target, targetRoles, exactScope, g) {
 			return nil
 		}
 	}

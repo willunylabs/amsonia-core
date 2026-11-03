@@ -262,15 +262,19 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (Session, error) 
 		}
 		return Session{}, ErrInvalidCredentials
 	}
-	return s.issueSession(ctx, account, input.RemoteAddress, input.UserAgent)
+	return s.issueSession(ctx, account, input.RemoteAddress, input.UserAgent, passwordHash)
 }
 
-func (s *Service) issueSession(ctx context.Context, account Account, remoteAddress, userAgent string) (Session, error) {
+func (s *Service) issueSession(ctx context.Context, account Account, remoteAddress, userAgent, verifiedHash string) (Session, error) {
 	access, err := randomID("as_", 32)
 	if err != nil {
 		return Session{}, err
 	}
 	refresh, err := randomID("rs_", 40)
+	if err != nil {
+		return Session{}, err
+	}
+	family, err := randomID("ses_", 18)
 	if err != nil {
 		return Session{}, err
 	}
@@ -281,6 +285,13 @@ func (s *Service) issueSession(ctx context.Context, account Account, remoteAddre
 		return Session{}, err
 	}
 	defer tx.Rollback(context.Background())
+	var currentHash, status string
+	if err := tx.QueryRow(ctx, `SELECT password_hash, status FROM amsonia.accounts WHERE account_id = $1 FOR UPDATE`, account.ID).Scan(&currentHash, &status); err != nil {
+		return Session{}, err
+	}
+	if currentHash != verifiedHash || status != "active" {
+		return Session{}, ErrInvalidCredentials
+	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE amsonia.accounts SET failed_login_count = 0, locked_until = NULL, last_login_at = $1, updated_at = $1
 		WHERE account_id = $2
@@ -288,15 +299,15 @@ func (s *Service) issueSession(ctx context.Context, account Account, remoteAddre
 		return Session{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO amsonia.access_sessions (token_hash, account_id, expires_at, remote_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5)
-	`, tokenHash(access), account.ID, expiresAt, bounded(remoteAddress, 128), bounded(userAgent, 512)); err != nil {
+		INSERT INTO amsonia.access_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, tokenHash(access), account.ID, expiresAt, bounded(remoteAddress, 128), bounded(userAgent, 512), family); err != nil {
 		return Session{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO amsonia.refresh_sessions (token_hash, account_id, expires_at, remote_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5)
-	`, tokenHash(refresh), account.ID, now.Add(s.refresh), bounded(remoteAddress, 128), bounded(userAgent, 512)); err != nil {
+		INSERT INTO amsonia.refresh_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, tokenHash(refresh), account.ID, now.Add(s.refresh), bounded(remoteAddress, 128), bounded(userAgent, 512), family); err != nil {
 		return Session{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -334,18 +345,19 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 	var revokedAt *time.Time
 	var rotatedTo []byte
 	var lastLoginAt *time.Time
+	var family string
 	err = tx.QueryRow(ctx, `
 		SELECT a.account_id, a.email, a.status, a.created_at,
 		       a.last_login_at,
 		       EXISTS (SELECT 1 FROM amsonia.system_administrators sa WHERE sa.account_id = a.account_id),
-		       r.expires_at, r.revoked_at, r.rotated_to_hash
+		       r.expires_at, r.revoked_at, r.rotated_to_hash, r.session_id
 		FROM amsonia.refresh_sessions r
 		JOIN amsonia.accounts a ON a.account_id = r.account_id
 		WHERE r.token_hash = $1
-		FOR UPDATE OF r
+		FOR UPDATE OF r, a
 	`, tokenHash(input.RefreshToken)).Scan(
 		&account.ID, &account.Email, &accountStatus, &account.CreatedAt, &lastLoginAt,
-		&account.SystemAdmin, &refreshExpires, &revokedAt, &rotatedTo,
+		&account.SystemAdmin, &refreshExpires, &revokedAt, &rotatedTo, &family,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Session{}, ErrSessionInvalid
@@ -390,15 +402,15 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 	}
 	expiresAt := now.Add(s.sessions)
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO amsonia.access_sessions (token_hash, account_id, expires_at, remote_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5)
-	`, tokenHash(access), account.ID, expiresAt, bounded(input.RemoteAddress, 128), bounded(input.UserAgent, 512)); err != nil {
+		INSERT INTO amsonia.access_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, tokenHash(access), account.ID, expiresAt, bounded(input.RemoteAddress, 128), bounded(input.UserAgent, 512), family); err != nil {
 		return Session{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO amsonia.refresh_sessions (token_hash, account_id, expires_at, remote_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5)
-	`, tokenHash(nextRefresh), account.ID, now.Add(s.refresh), bounded(input.RemoteAddress, 128), bounded(input.UserAgent, 512)); err != nil {
+		INSERT INTO amsonia.refresh_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, tokenHash(nextRefresh), account.ID, now.Add(s.refresh), bounded(input.RemoteAddress, 128), bounded(input.UserAgent, 512), family); err != nil {
 		return Session{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -452,6 +464,9 @@ func (s *Service) Authenticate(ctx context.Context, accessToken string) (Account
 	}
 	if lastLoginAt != nil {
 		account.LastLoginAt = *lastLoginAt
+	}
+	if _, err := s.pool.Exec(ctx, `UPDATE amsonia.access_sessions SET last_seen_at=$2 WHERE token_hash=$1 AND last_seen_at<$2::timestamptz-interval '1 minute' AND revoked_at IS NULL`, tokenHash(accessToken), s.now()); err != nil {
+		return Account{}, err
 	}
 	return account, nil
 }
@@ -518,7 +533,7 @@ func (s *Service) CreateTenant(ctx context.Context, actor Account, input CreateT
 		OwnerRoleID:    ownerRoleID,
 		OwnerRoleName:  "Tenant owner",
 		Grants:         ownerGrants(ownerRoleID),
-		Metadata:       amsonia.MutationMetadata{ReasonCode: "tenant_creation"},
+		Metadata:       amsonia.MutationMetadata{ReasonCode: "tenant_creation", RequestID: mutationMetadata(ctx).RequestID},
 	})
 	if err != nil {
 		_ = s.failCreatedTenant(ctx, actor.ID, tenant.ID)

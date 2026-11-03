@@ -33,13 +33,6 @@ func (noMemberships) LookupWorkspaceMembership(context.Context, amsonia.TenantID
 	return amsonia.WorkspaceMembership{}, amsonia.ErrNotFound
 }
 
-type logAudit struct{ logger *slog.Logger }
-
-func (audit logAudit) RecordSecurityEvent(_ context.Context, event amsonia.MutationAuditEvent) error {
-	audit.logger.Warn("security audit", "tenant", event.TenantID, "operation", event.Operation, "outcome", event.Outcome, "reason", event.ReasonCode)
-	return nil
-}
-
 func main() {
 	if len(os.Args) == 2 && os.Args[1] == "healthcheck" {
 		client := &http.Client{Timeout: 3 * time.Second}
@@ -83,12 +76,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	audit := logAudit{logger: slog.Default()}
 	bootstrap, err := amsonia.NewBootstrapper(catalog, store, controls, hostAuthority{}, amsonia.RealClock{})
-	if err != nil {
-		return err
-	}
-	manager, err := amsonia.NewManager(catalog, store, noMemberships{}, controls, audit, amsonia.RealClock{})
 	if err != nil {
 		return err
 	}
@@ -97,6 +85,10 @@ func run(ctx context.Context) error {
 		return err
 	}
 	service, err := coreapp.NewService(pool, store, bootstrap)
+	if err != nil {
+		return err
+	}
+	manager, err := amsonia.NewManager(catalog, service.PolicyStore(), noMemberships{}, controls, service, amsonia.RealClock{})
 	if err != nil {
 		return err
 	}

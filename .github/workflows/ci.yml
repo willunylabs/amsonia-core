@@ -161,4 +161,4 @@ jobs:
       - name: Integration tests (PostgreSQL)
         env:
           TEST_DATABASE_ADMIN_URL: "postgres://amsonia_admin:test-only@localhost:5432/amsonia_test?sslmode=disable"
-        run: go test -tags postgres -count=1 ./postgres/
+        run: go test -tags postgres -count=1 -p 1 ./postgres/ ./internal/coreapp/

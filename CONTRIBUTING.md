@@ -27,7 +27,7 @@ PostgreSQL integration tests run only with the `postgres` build tag:
 
 ```bash
 TEST_DATABASE_ADMIN_URL=postgres://... TEST_DATABASE_URL=postgres://... \
-  go test -tags postgres -count=1 ./postgres/
+  go test -tags postgres -count=1 -p 1 ./postgres/ ./internal/coreapp/
 ```
 
 The test applies the reference migration to the target database and truncates

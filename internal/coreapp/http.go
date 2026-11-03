@@ -10,11 +10,11 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/willunylabs/amsonia-core"
 )
 
@@ -47,6 +47,32 @@ func (api *API) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/login", api.login)
 	mux.HandleFunc("POST /api/v1/auth/refresh", api.refresh)
 	mux.HandleFunc("POST /api/v1/auth/logout", api.logout)
+	mux.HandleFunc("POST /api/v1/invitations/preview", api.previewInvitation)
+	mux.HandleFunc("POST /api/v1/invitations/accept", api.acceptInvitation)
+	for pattern, handler := range map[string]http.HandlerFunc{
+		"GET /api/v1/auth/profile": api.profile, "PATCH /api/v1/auth/profile": api.updateProfile,
+		"POST /api/v1/auth/password": api.changePassword, "GET /api/v1/auth/sessions": api.sessions,
+		"DELETE /api/v1/auth/sessions/{session_id}": api.revokeSession,
+	} {
+		mux.Handle(pattern, api.auth(handler))
+	}
+	for pattern, handler := range map[string]http.HandlerFunc{
+		"GET /api/v1/tenants/{tenant_id}/invitations":                             api.invitations,
+		"POST /api/v1/tenants/{tenant_id}/invitations":                            api.createInvitation,
+		"DELETE /api/v1/tenants/{tenant_id}/invitations/{invitation_id}":          api.revokeInvitation,
+		"PATCH /api/v1/tenants/{tenant_id}/members/{account_id}":                  api.manageMember,
+		"DELETE /api/v1/tenants/{tenant_id}/members/{account_id}":                 api.manageMember,
+		"GET /api/v1/tenants/{tenant_id}/members/{account_id}/roles":              api.memberRoles,
+		"PUT /api/v1/tenants/{tenant_id}/members/{account_id}/roles/{role_id}":    api.bindRole,
+		"DELETE /api/v1/tenants/{tenant_id}/members/{account_id}/roles/{role_id}": api.bindRole,
+		"GET /api/v1/tenants/{tenant_id}/roles/{role_id}":                         api.roleDetail,
+		"PATCH /api/v1/tenants/{tenant_id}/roles/{role_id}":                       api.updateRole,
+		"DELETE /api/v1/tenants/{tenant_id}/roles/{role_id}":                      api.deleteRole,
+		"POST /api/v1/tenants/{tenant_id}/roles/{role_id}/grants":                 api.changeGrant,
+		"DELETE /api/v1/tenants/{tenant_id}/roles/{role_id}/grants":               api.changeGrant,
+	} {
+		mux.Handle(pattern, api.tenant(handler))
+	}
 	mux.Handle("GET /api/v1/auth/me", api.auth(http.HandlerFunc(api.me)))
 	mux.Handle("GET /api/v1/tenants", api.auth(http.HandlerFunc(api.listTenants)))
 	mux.Handle("POST /api/v1/tenants", api.auth(http.HandlerFunc(api.createTenant)))
@@ -63,8 +89,15 @@ func (api *API) Handler() http.Handler {
 func (api *API) requestLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		started := time.Now()
+		id, err := randomID("req_", 18)
+		if err != nil {
+			writeDomainError(response, err)
+			return
+		}
+		response.Header().Set("X-Request-ID", id)
+		request = request.WithContext(context.WithValue(request.Context(), requestIDKey{}, id))
 		next.ServeHTTP(response, request)
-		api.logger.Info("http request", "method", request.Method, "path", request.URL.Path, "duration_ms", time.Since(started).Milliseconds())
+		api.logger.Info("http request", "method", request.Method, "path", request.URL.Path, "request_id", id, "duration_ms", time.Since(started).Milliseconds())
 	})
 }
 
@@ -108,6 +141,7 @@ func (api *API) auth(next http.Handler) http.Handler {
 			return
 		}
 		ctx := context.WithValue(request.Context(), accountContextKey, account)
+		ctx = withPolicyGuard(ctx, policyGuard{Actor: account.ID})
 		next.ServeHTTP(response, request.WithContext(ctx))
 	})
 }
@@ -149,7 +183,7 @@ func accountFromContext(ctx context.Context) Account {
 func decodeJSON(response http.ResponseWriter, request *http.Request, target any) bool {
 	request.Body = http.MaxBytesReader(response, request.Body, 1<<20)
 	body, err := io.ReadAll(request.Body)
-	if err != nil || !utf8.Valid(body) {
+	if err != nil || !utf8.Valid(body) || len(bytes.TrimSpace(body)) == 0 || bytes.TrimSpace(body)[0] != '{' {
 		writeError(response, http.StatusBadRequest, "invalid_request", "Check the request fields and try again.")
 		return false
 	}
@@ -178,7 +212,18 @@ func writeError(response http.ResponseWriter, status int, code, message string) 
 }
 
 func writeDomainError(response http.ResponseWriter, err error) {
+	var pgError *pgconn.PgError
 	switch {
+	case errors.Is(err, ErrInvalidCredentials):
+		writeError(response, http.StatusBadRequest, "invalid_credentials", "The current password is incorrect.")
+	case errors.Is(err, ErrAccountLocked):
+		writeError(response, http.StatusTooManyRequests, "login_temporarily_locked", "Too many attempts. Try again later.")
+	case errors.Is(err, amsonia.ErrLastAdministrator):
+		writeError(response, http.StatusConflict, "last_administrator", "Assign another active tenant administrator before removing this access.")
+	case errors.Is(err, amsonia.ErrGrantCycle):
+		writeError(response, http.StatusConflict, "grant_cycle", "This assignment would create a delegation cycle.")
+	case errors.As(err, &pgError) && (pgError.Code == "23505" || pgError.Code == "40001" || pgError.Code == "40P01"):
+		writeError(response, http.StatusConflict, "conflict", "The resource changed. Refresh and try again.")
 	case errors.Is(err, amsonia.ErrInvalidInput):
 		writeError(response, http.StatusBadRequest, "invalid_request", "Check the request fields and try again.")
 	case errors.Is(err, amsonia.ErrForbidden):
@@ -398,7 +443,11 @@ func (api *API) createRole(response http.ResponseWriter, request *http.Request) 
 	for index, permission := range input.Permissions {
 		permissions[index] = amsonia.PermissionKey(permission)
 	}
-	role, _, err := api.manager.CreateRoleWithPermissions(request.Context(), amsonia.Principal{TenantID: amsonia.TenantID(request.PathValue("tenant_id")), SubjectID: amsonia.SubjectID(account.ID)}, amsonia.MutationMetadata{ReasonCode: "api_request"}, amsonia.CreateRoleWithPermissionsInput{RoleID: amsonia.RoleID(input.ID), Name: input.Name, Description: input.Description, Permissions: permissions})
+	ctx := request.Context()
+	if len(permissions) > 0 {
+		ctx = withPolicyGuard(ctx, policyGuard{Actor: account.ID, Grant: true})
+	}
+	role, _, err := api.manager.CreateRoleWithPermissions(ctx, amsonia.Principal{TenantID: amsonia.TenantID(request.PathValue("tenant_id")), SubjectID: amsonia.SubjectID(account.ID)}, mutationMetadata(request.Context()), amsonia.CreateRoleWithPermissionsInput{RoleID: amsonia.RoleID(input.ID), Name: input.Name, Description: input.Description, Permissions: permissions})
 	if err != nil {
 		writeDomainError(response, err)
 		return
@@ -410,13 +459,25 @@ func (api *API) auditEvents(response http.ResponseWriter, request *http.Request)
 	if !api.requirePermission(response, request, "iam:audit:read") {
 		return
 	}
-	limit, _ := strconv.Atoi(request.URL.Query().Get("limit"))
-	items, err := api.service.AuditEvents(request.Context(), request.PathValue("tenant_id"), limit)
+	before, ok := queryNumber(response, request, "before")
+	if !ok {
+		return
+	}
+	limit, ok := queryNumber(response, request, "limit")
+	if !ok || limit > 200 {
+		if ok {
+			writeDomainError(response, amsonia.ErrInvalidInput)
+		}
+		return
+	}
+	page, err := api.service.AuditLog(request.Context(), request.PathValue("tenant_id"), AuditFilter{
+		Query: request.URL.Query().Get("q"), Operation: request.URL.Query().Get("operation"), Outcome: request.URL.Query().Get("outcome"), Before: before, Limit: int(limit),
+	})
 	if err != nil {
 		writeDomainError(response, err)
 		return
 	}
-	writeJSON(response, http.StatusOK, map[string]any{"items": items})
+	writeJSON(response, http.StatusOK, page)
 }
 
 func (api *API) requirePermission(response http.ResponseWriter, request *http.Request, permission amsonia.PermissionKey) bool {

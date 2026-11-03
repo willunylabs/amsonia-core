@@ -7,9 +7,12 @@ boundaries, not only application conventions.
 - Runtime SQL clients cannot manufacture tenant or account-discovery bindings
   by setting PostgreSQL GUC values directly.
 - PostgreSQL uses forced row-level security for tenant-scoped data.
-- Casbin evaluates resource access and administrative grant coverage from
-  validated, tenant-scoped grants. The enforcer holds no tenant policy or
-  decision cache; see [Casbin authorization](casbin-authorization.md).
+- Typed Go predicates evaluate resource access and administrative grant coverage
+  from validated, tenant-scoped grants without a decision cache; see the
+  [authorization contract](authorization.md).
+- Core mutations recheck active tenant membership inside the serialized policy
+  transaction. An active member must retain all four tenant administration
+  controls, including member management. Suspended administrators do not count.
 - The maintenance adapter uses a separate pool and can export or purge tenant
   policy data without reading identity or session tables.
 - Identity and session tables are global infrastructure within one deployment;
