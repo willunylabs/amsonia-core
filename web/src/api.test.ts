@@ -459,3 +459,128 @@ describe("session recovery", () => {
     expect(getToken()).toBe("");
   });
 });
+
+describe("audit CSV downloads", () => {
+  const session = (id = "account-a") => ({
+    access_token: `token-${id}`,
+    expires_at: "2030-01-01T00:00:00Z",
+    account: {
+      id,
+      email: `${id}@example.test`,
+      system_admin: true,
+      created_at: "2026-01-01T00:00:00Z",
+    },
+  });
+  beforeEach(() => {
+    setToken("");
+    vi.restoreAllMocks();
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("encodes the applied date range and exports every matching page", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response("id,tenant_id\n1,t", {
+        headers: {
+          "Content-Type": "text/csv",
+          "Content-Disposition": 'attachment; filename="amsonia-audit.csv"',
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const signal = new AbortController().signal;
+    const file = await api.exportAudit(
+      "tenant/a",
+      {
+        q: "文字 +",
+        from: "2026-10-25T08:00:00+08:00",
+        until: "2026-10-25T01:00:00Z",
+        outcome: "success",
+        operation: "role.create",
+        before: 75,
+        limit: 30,
+      },
+      signal,
+    );
+    const target = new URL(fetchMock.mock.calls[0][0], "https://console.test");
+    expect(target.pathname).toBe(
+      "/api/v1/tenants/tenant%2Fa/audit-events/export",
+    );
+    expect(Object.fromEntries(target.searchParams)).toEqual({
+      q: "文字 +",
+      from: "2026-10-25T08:00:00+08:00",
+      until: "2026-10-25T01:00:00Z",
+      outcome: "success",
+      operation: "role.create",
+    });
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      signal,
+      credentials: "same-origin",
+    });
+    expect(file.filename).toBe("amsonia-audit.csv");
+    expect(await file.blob.text()).toBe("id,tenant_id\n1,t");
+  });
+
+  it("retains the binary decoder after refreshing the same account", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(session()))
+      .mockResolvedValueOnce(
+        jsonResponse({ error: { code: "session_invalid" } }, { status: 401 }),
+      )
+      .mockResolvedValueOnce(jsonResponse(session()))
+      .mockResolvedValueOnce(
+        new Response("id\n1", { headers: { "Content-Type": "text/csv" } }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    await api.login("account-a@example.test", "password");
+    const file = await api.exportAudit("t", {});
+    expect(await file.blob.text()).toBe("id\n1");
+    expect(file.filename).toBe("amsonia-audit.csv");
+    expect(fetchMock.mock.calls.map(([path]) => path)).toEqual([
+      "/api/v1/auth/login",
+      "/api/v1/tenants/t/audit-events/export?",
+      "/api/v1/auth/refresh",
+      "/api/v1/tenants/t/audit-events/export?",
+    ]);
+  });
+
+  it("does not replay an export under a different refreshed account", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(session()))
+      .mockResolvedValueOnce(
+        jsonResponse({ error: { code: "session_invalid" } }, { status: 401 }),
+      )
+      .mockResolvedValueOnce(jsonResponse(session("account-b")));
+    vi.stubGlobal("fetch", fetchMock);
+    await api.login("account-a@example.test", "password");
+    await expect(api.exportAudit("t", {})).rejects.toMatchObject({
+      code: "session_changed",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("preserves structured export errors instead of downloading JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(
+            {
+              error: {
+                code: "audit_export_too_large",
+                message: "Narrow the date range.",
+              },
+            },
+            { status: 422 },
+          ),
+        ),
+    );
+    await expect(api.exportAudit("t", {})).rejects.toMatchObject({
+      status: 422,
+      code: "audit_export_too_large",
+      message: "Narrow the date range.",
+    });
+  });
+});

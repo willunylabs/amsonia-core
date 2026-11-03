@@ -1,5 +1,5 @@
 import { friendlyError } from "./errors";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api } from "./api";
 import { ErrorMessage, PageHeader } from "./components";
 import type { AuditFilter, AuditPage } from "./types";
@@ -10,36 +10,106 @@ export function AuditWorkspace({
   tenant: string;
   allowed: boolean;
 }) {
-  const [draft, setDraft] = useState({ q: "", outcome: "", operation: "" });
+  const [draft, setDraft] = useState({
+    q: "",
+    outcome: "",
+    operation: "",
+    from: "",
+    until: "",
+  });
   const [filter, setFilter] = useState<AuditFilter>({ limit: 30 });
-  const [page, setPage] = useState<AuditPage>({ items: [] });
+  const [result, setResult] = useState<{
+    key: string;
+    page?: AuditPage;
+    error?: string;
+  }>();
+  const [attempt, setAttempt] = useState(0);
   const [cursors, setCursors] = useState<Array<number | undefined>>([]);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [download, setDownload] = useState<{
+    key: string;
+    pending?: boolean;
+    error?: string;
+    message?: string;
+  }>();
+  const downloadRequest = useRef(0);
+  const downloadController = useRef<AbortController>();
+  const key = JSON.stringify([tenant, allowed, filter, attempt]);
+  const current = allowed && result?.key === key ? result : undefined;
+  const page = current?.page;
+  const loading = allowed && !current;
+  const exporting = download?.key === key && !!download.pending;
+  useEffect(
+    () => () => {
+      downloadController.current?.abort();
+      ++downloadRequest.current;
+    },
+    [tenant, allowed, filter, key],
+  );
   useEffect(() => {
     if (!allowed) return;
     let active = true;
-    setLoading(true);
-    setError("");
     api
       .auditPage(tenant, filter)
       .then((value) => {
-        if (active) setPage(value);
+        if (active) setResult({ key, page: value });
       })
       .catch((cause) => {
-        if (active) setError(friendlyError(cause));
-      })
-      .finally(() => {
-        if (active) setLoading(false);
+        if (active) setResult({ key, error: friendlyError(cause) });
       });
     return () => {
       active = false;
     };
-  }, [tenant, filter, allowed]);
+  }, [tenant, filter, allowed, key]);
   function search(event: FormEvent) {
     event.preventDefault();
+    if (exporting) return;
+    setError("");
+    const from = draft.from ? new Date(draft.from) : undefined;
+    const until = draft.until ? new Date(draft.until) : undefined;
+    if (
+      (from && Number.isNaN(from.getTime())) ||
+      (until && Number.isNaN(until.getTime())) ||
+      (from && until && from >= until)
+    ) {
+      setError("Choose a valid start time before the end time.");
+      return;
+    }
     setCursors([]);
-    setFilter({ ...draft, limit: 30 });
+    setFilter({
+      ...draft,
+      from: from?.toISOString(),
+      until: until?.toISOString(),
+      limit: 30,
+    });
+    setAttempt((value) => value + 1);
+  }
+  async function exportEvents() {
+    if (!allowed || exporting) return;
+    const serial = ++downloadRequest.current;
+    const controller = new AbortController();
+    downloadController.current = controller;
+    setDownload({ key, pending: true });
+    try {
+      const file = await api.exportAudit(tenant, filter, controller.signal);
+      if (controller.signal.aborted || serial !== downloadRequest.current)
+        return;
+      const url = URL.createObjectURL(file.blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.filename;
+      document.body.append(link);
+      try {
+        link.click();
+      } finally {
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      }
+      setDownload({ key, message: "Audit CSV downloaded." });
+    } catch (cause) {
+      if (!controller.signal.aborted && serial === downloadRequest.current)
+        setDownload({ key, error: friendlyError(cause) });
+    }
   }
   if (!allowed)
     return (
@@ -53,8 +123,17 @@ export function AuditWorkspace({
         eyebrow="Append-only evidence"
         title="Audit trail"
         detail="Search administration events by actor, target, operation, or request ID."
+        action={
+          <button
+            className="secondary-button"
+            disabled={loading || exporting}
+            onClick={() => void exportEvents()}
+          >
+            {exporting ? "Preparing CSV…" : "Export matching events"}
+          </button>
+        }
       />
-      <form className="audit-filters" onSubmit={search}>
+      <form className="audit-filters audit-range-filters" onSubmit={search}>
         <label>
           Search
           <input
@@ -67,6 +146,7 @@ export function AuditWorkspace({
         <label>
           Outcome
           <select
+            aria-label="Outcome"
             value={draft.outcome}
             onChange={(e) =>
               setDraft((d) => ({ ...d, outcome: e.target.value }))
@@ -89,14 +169,63 @@ export function AuditWorkspace({
             }
           />
         </label>
-        <button className="primary-button" disabled={loading}>
+        <label>
+          From (local time)
+          <input
+            type="datetime-local"
+            value={draft.from}
+            onChange={(e) => setDraft((d) => ({ ...d, from: e.target.value }))}
+          />
+        </label>
+        <label>
+          Until (local time)
+          <input
+            type="datetime-local"
+            value={draft.until}
+            onChange={(e) => setDraft((d) => ({ ...d, until: e.target.value }))}
+          />
+        </label>
+        <button className="primary-button" disabled={loading || exporting}>
           Apply filters
         </button>
       </form>
+      <p className="audit-range-note">
+        Times use your browser’s timezone. Includes events from the start,
+        before the end. Export includes all matching events at download time, up
+        to 10,000 events or 10 MiB.
+      </p>
       <ErrorMessage message={error} />
+      <ErrorMessage message={current?.error ?? ""} />
+      {current?.error ? (
+        <button
+          className="secondary-button"
+          disabled={exporting}
+          onClick={() => setAttempt((value) => value + 1)}
+        >
+          Retry audit query
+        </button>
+      ) : null}
+      <ErrorMessage
+        message={download?.key === key ? (download.error ?? "") : ""}
+      />
+      {exporting ? (
+        <button
+          className="secondary-button"
+          onClick={() => {
+            downloadController.current?.abort();
+            ++downloadRequest.current;
+            setDownload({ key, message: "Export cancelled." });
+          }}
+        >
+          Cancel export
+        </button>
+      ) : null}
+      {download?.key === key && download.message ? (
+        <p role="status">{download.message}</p>
+      ) : null}
       {loading ? <p role="status">Loading events…</p> : null}
       <section className="timeline">
-        {page.items.map((event) => (
+        {page?.items.map((event) => (
           <article key={event.id}>
             <div className="timeline-dot" />
             <time>{new Date(event.at).toLocaleString()}</time>
@@ -130,14 +259,14 @@ export function AuditWorkspace({
             </span>
           </article>
         ))}
-        {!loading && !page.items.length ? (
+        {page && !page.items.length ? (
           <div className="quiet-state">No events match these filters.</div>
         ) : null}
       </section>
       <div className="button-row pagination">
         <button
           className="secondary-button"
-          disabled={loading || !cursors.length}
+          disabled={loading || exporting || !cursors.length}
           onClick={() => {
             const previous = cursors.at(-1);
             setCursors((c) => c.slice(0, -1));
@@ -148,10 +277,10 @@ export function AuditWorkspace({
         </button>
         <button
           className="secondary-button"
-          disabled={loading || !page.next_cursor}
+          disabled={loading || exporting || !page?.next_cursor}
           onClick={() => {
             setCursors((c) => [...c, filter.before]);
-            setFilter((f) => ({ ...f, before: page.next_cursor }));
+            setFilter((f) => ({ ...f, before: page?.next_cursor }));
           }}
         >
           Older events

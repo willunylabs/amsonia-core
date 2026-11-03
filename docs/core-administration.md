@@ -138,8 +138,31 @@ are intended for host resource checks, not tenant collection management. Role
 assignment requires actual coverage of the permissions delegated, and cycle and
 last-administrator checks remain enforced by the server.
 
-**Audit trail** supports text search, exact operation and outcome filters, event
-details, and stable ID cursor paging. Newer/older navigation preserves the filter.
+**Audit trail** supports text search, exact operation and outcome filters, date
+ranges, event details, and stable ID cursor paging. The date inputs use the
+browser's local timezone and are sent as RFC3339 UTC instants. `from` includes the
+start and `until` excludes the end; both are optional, and a supplied start must
+precede the end. Newer/older navigation preserves the applied filters. Changes in
+the form take effect only after **Apply filters**.
+
+**Export matching events** downloads all events matching the applied filters,
+including when viewing an older page. It takes one read-only tenant snapshot at
+download time; newly appended events may therefore differ from an earlier page.
+The export uses the same tenant-wide `iam:audit:read` permission as the list.
+`GET /api/v1/tenants/{tenant_id}/audit-events/export` accepts `q`, `operation`,
+`outcome`, `from`, and `until`; it rejects pagination parameters. More than 10,000
+matching events or 10 MiB returns JSON `422 audit_export_too_large` before any CSV
+headers or bytes are sent. Narrow the filters and retry. Empty results produce a
+header-only file. Downloads can be cancelled; tenant, account or access changes
+invalidate pending downloads.
+
+The CSV is UTF-8 with a BOM, descending event IDs, fixed column names, and UTC
+RFC3339 timestamps. Quoted fields retain Unicode, commas, quotes and line breaks.
+Following [OWASP's spreadsheet guidance](https://community.owasp.org/attacks/CSV_Injection),
+formula-like or tab/line-break-leading text receives a leading tab inside the
+quoted cell. This tab is part of the exported value; JSON retains the original
+value. The server sends `Cache-Control: no-store` and a generated attachment
+filename. No new migration or runtime database grant is needed.
 Generated `X-Request-ID` values connect HTTP requests and mutation audit records.
 Global account/profile/session changes are not tenant audit events. Kernel
 mutation failures are audited; malformed requests and pre-authentication failures
