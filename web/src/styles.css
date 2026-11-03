@@ -283,3 +283,12 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .directory-navigation .pagination > span { margin-right: auto; color: var(--muted); font-size: 13px; }
 @media(max-width: 900px) { .directory-filters { grid-template-columns: 1fr 1fr; } }
 @media(max-width: 680px) { .directory-filters { grid-template-columns: 1fr; } .directory-navigation .pagination { flex-wrap: wrap; } .directory-navigation .pagination > span { flex-basis: 100%; } }
+
+.role-members { min-width: 0; display: grid; gap: 16px; }
+.role-members .button-row [aria-pressed="true"] { border-color: #7362ff; background: #f0edff; color: #4936c3; }
+.role-members .directory-filters, .role-members .pagination { margin: 0; }
+.modal-wide { width: min(860px, calc(100vw - 32px)); }
+.role-members .directory-filters { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+.role-members .table-card { max-height: 360px; overflow: auto; }
+.role-members td button { white-space: nowrap; }
+@media(max-width: 680px) { .role-members .directory-filters { grid-template-columns: 1fr; } }

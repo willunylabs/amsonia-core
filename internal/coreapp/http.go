@@ -67,6 +67,7 @@ func (api *API) Handler() http.Handler {
 		"PUT /api/v1/tenants/{tenant_id}/members/{account_id}/roles/{role_id}":    api.bindRole,
 		"DELETE /api/v1/tenants/{tenant_id}/members/{account_id}/roles/{role_id}": api.bindRole,
 		"GET /api/v1/tenants/{tenant_id}/roles/{role_id}":                         api.roleDetail,
+		"GET /api/v1/tenants/{tenant_id}/roles/{role_id}/members":                 api.roleMembers,
 		"PATCH /api/v1/tenants/{tenant_id}/roles/{role_id}":                       api.updateRole,
 		"DELETE /api/v1/tenants/{tenant_id}/roles/{role_id}":                      api.deleteRole,
 		"POST /api/v1/tenants/{tenant_id}/roles/{role_id}/grants":                 api.changeGrant,

@@ -26,10 +26,12 @@ export function PageHeader({
 export function Modal({
   title,
   onClose,
+  wide = false,
   children,
 }: {
   title: string;
   onClose: () => void;
+  wide?: boolean;
   children: ReactNode;
 }) {
   const ref = useRef<HTMLElement>(null);
@@ -72,7 +74,7 @@ export function Modal({
     <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
       <section
         ref={ref}
-        className="modal"
+        className={wide ? "modal modal-wide" : "modal"}
         role="dialog"
         aria-modal="true"
         aria-labelledby={id}

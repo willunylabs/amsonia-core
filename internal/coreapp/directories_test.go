@@ -22,7 +22,7 @@ func TestDirectoryValidation(t *testing.T) {
 		t.Fatalf("valid cursor: %+v %+v %v", f, got, err)
 	}
 	for name, input := range map[string]DirectoryFilter{
-		"malformed": {After: "bad!"}, "oversized cursor": {After: strings.Repeat("a", 2049)},
+		"malformed": {After: "bad!"}, "oversized cursor": {After: strings.Repeat("a", maxDirectoryCursorSize+1)},
 		"negative limit": {Limit: -1}, "large limit": {Limit: 101},
 		"long query": {Query: strings.Repeat("字", 129)}, "invalid utf8": {Query: "\xff"}, "nul": {Query: "a\x00b"},
 		"unknown status": {Status: "disabled"}, "changed query": {Query: "other", Status: "pending", After: token},
@@ -47,5 +47,18 @@ func TestDirectoryValidation(t *testing.T) {
 		if _, ok := directoryQuery(w, httptest.NewRequest("GET", "/?limit="+raw, nil)); ok || w.Code != 400 {
 			t.Fatalf("accepted invalid HTTP limit %q", raw)
 		}
+	}
+}
+
+func TestRoleMemberCursorEscapedIDs(t *testing.T) {
+	tenant, role, account, query := strings.Repeat("<", 256), strings.Repeat("&", 256), strings.Repeat(">", 256), strings.Repeat("<", 128)
+	cursor := directoryCursor{Tenant: tenant, Kind: "role-members", Query: query, Role: role, Assignment: "assigned"}
+	filter := DirectoryFilter{Query: query, Limit: 1}
+	page := DirectoryPage[Member]{Items: []Member{{AccountID: account}, {AccountID: "next"}}}
+	finishDirectory(&page, filter, cursor, func(m Member) (string, time.Time) { return m.AccountID, time.Time{} })
+	filter.After = page.NextCursor
+	_, decoded, err := directoryInput(tenant, "role-members", filter)
+	if err != nil || decoded.Role != role || decoded.ID != account || decoded.Assignment != "assigned" {
+		t.Fatalf("valid escaped IDs cannot be paged: size %d, %v", len(page.NextCursor), err)
 	}
 }

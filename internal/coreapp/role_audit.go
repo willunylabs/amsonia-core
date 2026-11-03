@@ -34,11 +34,21 @@ type RoleDetail struct {
 	NextVersion int64              `json:"next_version,omitempty"`
 }
 
+type roleSummary struct {
+	RoleDetail
+	SubjectCount int64 `json:"subject_count"`
+}
+
 func (s *Service) RoleDetail(ctx context.Context, tenant, role string, before int64) (RoleDetail, error) {
+	value, err := s.roleDetails(ctx, tenant, role, before, true)
+	return value.RoleDetail, err
+}
+
+func (s *Service) roleDetails(ctx context.Context, tenant, role string, before int64, includeSubjects bool) (roleSummary, error) {
 	if amsonia.RoleID(role).Validate() != nil || before < 0 {
-		return RoleDetail{}, amsonia.ErrInvalidInput
+		return roleSummary{}, amsonia.ErrInvalidInput
 	}
-	item := RoleDetail{Grants: make([]ScopedPermission, 0), Subjects: make([]string, 0), Versions: make([]RoleHistory, 0)}
+	item := roleSummary{RoleDetail: RoleDetail{Grants: make([]ScopedPermission, 0), Subjects: make([]string, 0), Versions: make([]RoleHistory, 0)}}
 	err := s.store.RunTenant(ctx, amsonia.TenantID(tenant), true, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx, `SELECT tenant_id,role_id,name,description,version,deleted FROM amsonia.roles WHERE tenant_id=$1 AND role_id=$2 AND NOT deleted`, tenant, role).Scan(&item.Role.TenantID, &item.Role.RoleID, &item.Role.Name, &item.Role.Description, &item.Role.Version, &item.Role.Deleted); err != nil {
 			return accountNotFound(err)
@@ -56,15 +66,21 @@ func (s *Service) RoleDetail(ctx context.Context, tenant, role string, before in
 			return err
 		}
 		item.Grants = grants
-		rows, err = tx.Query(ctx, `SELECT subject_id FROM amsonia.subject_roles WHERE tenant_id=$1 AND role_id=$2 ORDER BY subject_id`, tenant, role)
-		if err != nil {
+		if includeSubjects {
+			rows, err = tx.Query(ctx, `SELECT subject_id FROM amsonia.subject_roles WHERE tenant_id=$1 AND role_id=$2 ORDER BY subject_id`, tenant, role)
+			if err != nil {
+				return err
+			}
+			subjects, err := pgx.CollectRows(rows, pgx.RowTo[string])
+			if err != nil {
+				return err
+			}
+			item.Subjects = subjects
+			item.SubjectCount = int64(len(item.Subjects))
+		} else if err := tx.QueryRow(ctx, `SELECT count(*) FROM amsonia.subject_roles WHERE tenant_id=$1 AND role_id=$2`, tenant, role).Scan(&item.SubjectCount); err != nil {
 			return err
 		}
-		subjects, err := pgx.CollectRows(rows, pgx.RowTo[string])
-		if err != nil {
-			return err
-		}
-		item.Subjects = subjects
+
 		rows, err = tx.Query(ctx, `SELECT version,name,description,grants,created_at,created_by_subject FROM amsonia.role_versions WHERE tenant_id=$1 AND role_id=$2 AND ($3::bigint=0 OR version<$3) ORDER BY version DESC LIMIT 21`, tenant, role, before)
 		if err != nil {
 			return err

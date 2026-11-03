@@ -218,7 +218,39 @@ func (api *API) roleDetail(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	if r.URL.Query().Has("summary") {
+		switch r.URL.Query().Get("summary") {
+		case "true":
+			value, err := api.service.roleDetails(r.Context(), r.PathValue("tenant_id"), r.PathValue("role_id"), before, false)
+			if err != nil {
+				writeDomainError(w, err)
+				return
+			}
+			writeJSON(w, 200, value)
+			return
+		case "false":
+		default:
+			writeDomainError(w, amsonia.ErrInvalidInput)
+			return
+		}
+	}
 	value, err := api.service.RoleDetail(r.Context(), r.PathValue("tenant_id"), r.PathValue("role_id"), before)
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	writeJSON(w, 200, value)
+}
+
+func (api *API) roleMembers(w http.ResponseWriter, r *http.Request) {
+	if !api.requirePermission(w, r, PermissionRoleRead) || !api.requirePermission(w, r, PermissionMemberRead) {
+		return
+	}
+	filter, ok := directoryQuery(w, r)
+	if !ok {
+		return
+	}
+	value, err := api.service.RoleMemberDirectory(r.Context(), r.PathValue("tenant_id"), r.PathValue("role_id"), r.URL.Query().Get("assignment"), filter)
 	if err != nil {
 		writeDomainError(w, err)
 		return

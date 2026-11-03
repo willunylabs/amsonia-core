@@ -274,7 +274,7 @@ paths:
                     description: Total matching rows before applying the cursor, in the same request snapshot.
                   next_cursor:
                     type: string
-                    maxLength: 2048
+                    maxLength: 8192
                     description: Pass unchanged as after with the same search and status. Absent at the end.
         "400":
           $ref: "#/components/responses/BadRequest"
@@ -322,7 +322,7 @@ paths:
                     description: Total matching rows before applying the cursor, in the same request snapshot.
                   next_cursor:
                     type: string
-                    maxLength: 2048
+                    maxLength: 8192
                     description: Pass unchanged as after with the same search and status. Absent at the end.
         "400":
           $ref: "#/components/responses/BadRequest"
@@ -852,7 +852,7 @@ paths:
                     description: Total matching rows before applying the cursor, in the same request snapshot.
                   next_cursor:
                     type: string
-                    maxLength: 2048
+                    maxLength: 8192
                     description: Pass unchanged as after with the same search and status. Absent at the end.
         "400":
           $ref: "#/components/responses/BadRequest"
@@ -1284,7 +1284,7 @@ paths:
         {
           "operationId": "getRoleDetail",
           "summary": "Read role grants, bindings, and version history",
-          "description": "Requires tenant-wide iam:role:read. Returns up to 20 newest versions strictly below before_version, with next_version when more exist.",
+          "description": "Requires tenant-wide iam:role:read. Returns up to 20 newest versions strictly below before_version, with next_version when more exist. With summary=true, subjects is empty and subject_count is the complete binding count. Omit summary or use false to retain the existing full subject-ID response. Member identities are paged separately through the role members endpoint.",
           "tags": ["Tenants"],
           "security": [{ "bearerAuth": [] }],
           "responses":
@@ -1328,6 +1328,11 @@ paths:
                 "name": "before_version",
                 "in": "query",
                 "schema": { "type": "integer", "minimum": 1 },
+              },
+              {
+                "name": "summary",
+                "in": "query",
+                "schema": { "type": "boolean", "default": false },
               },
             ],
         },
@@ -1622,6 +1627,77 @@ paths:
             ],
         },
     }
+  /api/v1/tenants/{tenant_id}/roles/{role_id}/members:
+    get:
+      summary: Search members assigned or available to a role
+      operationId: listRoleMembers
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      description: >-
+        Requires tenant-wide iam:role:read and iam:member:read. Assigned members include suspended
+        memberships; available members are tenant members without this binding. Suspended members
+        cannot receive new assignments through the existing versioned binding endpoint. Cursor,
+        totals, search and status semantics match the member directory, with cursors also bound to
+        role and assignment view.
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - name: role_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+        - $ref: "#/components/parameters/DirectoryQuery"
+        - $ref: "#/components/parameters/DirectoryLimit"
+        - $ref: "#/components/parameters/DirectoryAfter"
+        - name: assignment
+          in: query
+          schema:
+            type: string
+            enum:
+              - assigned
+              - available
+            default: assigned
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - active
+              - suspended
+      responses:
+        "200":
+          description: A bounded collection page.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - total
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Member"
+                  total:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                    description: Total matching rows before applying the cursor, in the same request snapshot.
+                  next_cursor:
+                    type: string
+                    maxLength: 8192
+                    description: Pass unchanged as after with the same search and status. Absent at the end.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   securitySchemes:
     bearerAuth:
@@ -1653,7 +1729,7 @@ components:
       in: query
       schema:
         type: string
-        maxLength: 2048
+        maxLength: 8192
     TenantId:
       name: tenant_id
       in: path
@@ -1946,6 +2022,13 @@ components:
                 "items": { "$ref": "#/components/schemas/ScopedPermission" },
               },
             "subjects": { "type": "array", "items": { "type": "string" } },
+            "subject_count":
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0,
+                "description": "Complete binding count when summary=true; subjects is empty in that mode.",
+              },
             "versions":
               {
                 "type": "array",

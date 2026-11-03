@@ -18,7 +18,9 @@ import type {
   Tenant,
 } from "./types";
 
-function directoryQuery(filter: DirectoryFilter): string {
+function directoryQuery(
+  filter: DirectoryFilter & { assignment?: string },
+): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filter))
     if (value !== undefined && value !== "") params.set(key, String(value));
@@ -305,6 +307,15 @@ export const api = {
         `/api/v1/tenants/${encodeURIComponent(tenant)}/members/${encodeURIComponent(id)}/roles`,
       )
     ).items,
+  roleMembers: (
+    tenant: string,
+    id: string,
+    assignment: "assigned" | "available",
+    filter: DirectoryFilter = {},
+  ) =>
+    request<DirectoryPage<Member>>(
+      `/api/v1/tenants/${encodeURIComponent(tenant)}/roles/${encodeURIComponent(id)}/members${directoryQuery({ ...filter, assignment })}`,
+    ),
   bindRole: (tenant: string, member: string, role: Role, assign: boolean) =>
     request<void>(
       `/api/v1/tenants/${encodeURIComponent(tenant)}/members/${encodeURIComponent(member)}/roles/${encodeURIComponent(role.role_id)}`,
@@ -315,7 +326,7 @@ export const api = {
     ),
   role: (tenant: string, id: string, before?: number) =>
     request<RoleDetail>(
-      `/api/v1/tenants/${encodeURIComponent(tenant)}/roles/${encodeURIComponent(id)}${before ? `?before_version=${before}` : ""}`,
+      `/api/v1/tenants/${encodeURIComponent(tenant)}/roles/${encodeURIComponent(id)}?summary=true${before ? `&before_version=${before}` : ""}`,
     ),
   updateRole: (tenant: string, role: Role, name: string, description: string) =>
     request<Role>(

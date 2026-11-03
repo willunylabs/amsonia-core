@@ -117,6 +117,44 @@ describe("API client", () => {
     });
   });
 
+  it("requests bounded role summaries while paging older history", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ subjects: [], subject_count: 65 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await api.role("tenant/a", "support/b", 9);
+    const url = new URL(fetchMock.mock.calls[0][0], "https://console.test");
+    expect(url.pathname).toBe("/api/v1/tenants/tenant%2Fa/roles/support%2Fb");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      summary: "true",
+      before_version: "9",
+    });
+  });
+
+  it("binds role member queries to the assignment view and encodes filters", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ items: [], total: 0 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await api.roleMembers("tenant/a", "support/b", "available", {
+      q: "100%_",
+      status: "active",
+      after: "opaque+cursor",
+      limit: 30,
+    });
+    const url = new URL(fetchMock.mock.calls[0][0], "https://console.test");
+    expect(url.pathname).toBe(
+      "/api/v1/tenants/tenant%2Fa/roles/support%2Fb/members",
+    );
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      q: "100%_",
+      status: "active",
+      after: "opaque+cursor",
+      limit: "30",
+      assignment: "available",
+    });
+  });
+
   it("keeps credentials for an explicit retry when logout fails", async () => {
     setToken("expired-token");
     vi.stubGlobal(
