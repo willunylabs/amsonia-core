@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0-preview.2
 
 - Standalone deployments default to one organization. Multi mode is opt-in;
   existing databases with multiple active organizations need explicit selection
@@ -13,6 +13,11 @@
 - Operators can recover an active system administrator without a mail service.
   Recovery invalidates the old password and all earlier sessions and writes an
   owner-only recovery record.
+- The opt-in invoice example demonstrates a form, an API permission check,
+  and PostgreSQL row-level isolation. It adds no routes to the default console.
+- PostgreSQL CI exercises backup, restore to an empty database, and upgrade
+  from the pinned schema 9 application baseline. It checks identity,
+  organization settings, audit continuity and read-only permission enforcement.
 
 Upgrade the API, CLI and console together. Apply all pending migrations,
 including migration 10, reapply the runtime grants, and follow the
