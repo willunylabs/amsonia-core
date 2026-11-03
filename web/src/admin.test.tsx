@@ -143,12 +143,15 @@ it("changes the account password and drops the local access credential after suc
   vi.mocked(api.changePassword).mockResolvedValue();
   setToken("old-session");
   const onLogout = vi.fn();
+  history.replaceState(null, "", "/#/account/password");
   render(<AccountPage onLogout={onLogout} />);
-  await screen.findByDisplayValue("Member");
   fireEvent.change(screen.getByLabelText("Current password"), {
     target: { value: "current-password" },
   });
   fireEvent.change(screen.getByLabelText("New password"), {
+    target: { value: "replacement-password" },
+  });
+  fireEvent.change(screen.getByLabelText("Confirm new password"), {
     target: { value: "replacement-password" },
   });
   fireEvent.click(

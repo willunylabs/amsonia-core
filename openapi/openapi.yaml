@@ -761,6 +761,34 @@ paths:
             },
         },
     }
+  /api/v1/auth/sessions/revoke-others:
+    post:
+      operationId: revokeOtherSessions
+      summary: Sign out your other device session families
+      description: >-
+        Atomically revokes access and refresh tokens for every other device family
+        on the authenticated account, across all tenants. The retained family is
+        derived from the live bearer token after locking the account. No account
+        or session ID is accepted. Repeating the action is safe; the current
+        family and refresh cookie remain unchanged. Future password sign-ins are
+        allowed. Concurrent refresh cannot restore a revoked family. Reuse of a
+        previously rotated refresh token retains the existing account-wide replay
+        response. Existing per-device revocation and list contracts are unchanged.
+      tags: [Authentication]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        "204": { description: Other device families revoked; current family retained. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /api/v1/auth/sessions/{session_id}:
     {
       "delete":
@@ -1050,102 +1078,136 @@ paths:
         },
     }
   /api/v1/tenants/{tenant_id}/members/{account_id}:
-    {
-      "patch":
-        {
-          "operationId": "updateMembership",
-          "summary": "Suspend or resume membership",
-          "description": "Requires tenant-wide iam:member:manage. Retains role bindings; protects the last active tenant administrator.",
-          "tags": ["Tenants"],
-          "security": [{ "bearerAuth": [] }],
-          "responses":
-            {
-              "204": { "description": "Completed." },
-              "400": { "$ref": "#/components/responses/BadRequest" },
-              "401": { "$ref": "#/components/responses/Unauthorized" },
-              "403": { "$ref": "#/components/responses/Forbidden" },
-              "404": { "$ref": "#/components/responses/NotFound" },
-              "409": { "$ref": "#/components/responses/Conflict" },
-              "429": { "$ref": "#/components/responses/TooManyRequests" },
-            },
-          "requestBody":
-            {
-              "required": true,
-              "content":
-                {
-                  "application/json":
-                    {
-                      "schema":
-                        {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": ["status"],
-                          "properties":
-                            {
-                              "status":
-                                {
-                                  "type": "string",
-                                  "enum": ["active", "suspended"],
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-          "parameters":
-            [
-              {
-                "name": "tenant_id",
-                "in": "path",
-                "required": true,
-                "schema":
-                  { "type": "string", "minLength": 1, "maxLength": 256 },
-              },
-              {
-                "name": "account_id",
-                "in": "path",
-                "required": true,
-                "schema":
-                  { "type": "string", "minLength": 1, "maxLength": 256 },
-              },
-            ],
-        },
-      "delete":
-        {
-          "operationId": "removeMember",
-          "summary": "Remove membership and role bindings",
-          "description": "Requires tenant-wide iam:member:manage. Does not delete the global account or other memberships. Protects the last active tenant administrator.",
-          "tags": ["Tenants"],
-          "security": [{ "bearerAuth": [] }],
-          "responses":
-            {
-              "204": { "description": "Completed." },
-              "400": { "$ref": "#/components/responses/BadRequest" },
-              "401": { "$ref": "#/components/responses/Unauthorized" },
-              "403": { "$ref": "#/components/responses/Forbidden" },
-              "404": { "$ref": "#/components/responses/NotFound" },
-              "409": { "$ref": "#/components/responses/Conflict" },
-              "429": { "$ref": "#/components/responses/TooManyRequests" },
-            },
-          "parameters":
-            [
-              {
-                "name": "tenant_id",
-                "in": "path",
-                "required": true,
-                "schema":
-                  { "type": "string", "minLength": 1, "maxLength": 256 },
-              },
-              {
-                "name": "account_id",
-                "in": "path",
-                "required": true,
-                "schema":
-                  { "type": "string", "minLength": 1, "maxLength": 256 },
-              },
-            ],
-        },
-    }
+    patch:
+      operationId: updateMembership
+      summary: Suspend or resume membership
+      description: >-
+        Requires tenant-wide iam:member:manage. Retains role bindings; protects the last active tenant
+        administrator.
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Completed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - active
+                    - suspended
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+    delete:
+      operationId: removeMember
+      summary: Remove membership and role bindings
+      description: >-
+        Requires tenant-wide iam:member:manage. Does not delete the global account or other
+        memberships. Protects the last active tenant administrator.
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Completed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+    get:
+      operationId: getMember
+      summary: Read exact tenant member details
+      description: >-
+        Requires tenant-wide iam:member:read and active caller membership. Returns active or suspended
+        target memberships. An account outside this tenant returns 404; no substring search is
+        performed.
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+      responses:
+        '200':
+          description: Member identity and tenant membership status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
   /api/v1/tenants/{tenant_id}/members/{account_id}/roles:
     {
       "get":

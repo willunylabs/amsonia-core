@@ -1,178 +1,247 @@
+import { useConsoleRoute, useAlive } from "./routing";
 import { friendlyError } from "./errors";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, setToken } from "./api";
 import { ErrorMessage, PageHeader } from "./components";
-import type {
-  Account,
-  AccountSession,
-  InvitationPreview,
-  Profile,
-} from "./types";
+import { DeviceSessions } from "./DeviceSessions";
+import { PageNavigation } from "./navigation";
+import type { Account, InvitationPreview, Profile } from "./types";
 
-export function AccountPage({ onLogout }: { onLogout: () => void }) {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [sessions, setSessions] = useState<AccountSession[]>([]);
+export function AccountPage({
+  onLogout,
+  email = "",
+}: {
+  onLogout: () => void;
+  email?: string;
+}) {
+  const { segments } = useConsoleRoute();
+  const page = segments[1] ?? "profile";
+  const titles: Record<string, string> = {
+    profile: "Account profile",
+    password: "Change password",
+    devices: "Signed-in devices",
+  };
+  return (
+    <>
+      <PageHeader
+        eyebrow="Your account"
+        title={titles[page] ?? "Account settings"}
+        detail={
+          page === "profile"
+            ? "Update your name and review your account identity."
+            : page === "password"
+              ? "Choose a new password for your account."
+              : "Review and sign out your account's devices."
+        }
+      />
+      <PageNavigation
+        label="Account navigation"
+        items={[
+          { path: "account/profile", label: "Profile" },
+          { path: "account/password", label: "Password" },
+          { path: "account/devices", label: "Devices" },
+        ]}
+      />
+      {page === "profile" ? (
+        <ProfileForm />
+      ) : page === "password" ? (
+        <PasswordForm email={email} onLogout={onLogout} />
+      ) : page === "devices" ? (
+        <DeviceSessions onLogout={onLogout} disabled={false} />
+      ) : (
+        <p className="quiet-state">This account page does not exist.</p>
+      )}
+    </>
+  );
+}
+function ProfileForm() {
+  const alive = useAlive();
+  const [profile, setProfile] = useState<Profile>();
+  const [attempt, setAttempt] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
-  const [current, setCurrent] = useState("");
-  const [next, setNext] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     let active = true;
-    Promise.all([api.profile(), api.sessions()])
-      .then(([p, s]) => {
+    setLoading(true);
+    setError("");
+    api
+      .profile()
+      .then((p) => {
         if (active) {
           setProfile(p);
           setName(p.display_name);
-          setSessions(s);
         }
       })
-      .catch((cause) => {
-        if (active) setError(friendlyError(cause));
+      .catch((e) => {
+        if (active) setError(friendlyError(e));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
   async function save(event: FormEvent) {
     event.preventDefault();
+    if (busy || !profile) return;
     setBusy(true);
     setError("");
     setMessage("");
     try {
-      setProfile(await api.updateProfile(name));
+      const updated = await api.updateProfile(name);
+      if (!alive.current) return;
+      setProfile(updated);
+      setName(updated.display_name);
       setMessage("Profile saved.");
-    } catch (cause) {
-      setError(friendlyError(cause));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function password(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      await api.changePassword(current, next);
-      setToken("");
-      onLogout();
-    } catch (cause) {
-      setError(friendlyError(cause));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function revoke(session: AccountSession) {
-    setBusy(true);
-    setError("");
-    try {
-      await api.revokeSession(session.id);
-      if (session.current) {
-        await api.logout();
-        onLogout();
-      } else {
-        setSessions(await api.sessions());
-        setMessage("Session revoked.");
-      }
-    } catch (cause) {
-      setError(friendlyError(cause));
+    } catch (e) {
+      setError(friendlyError(e));
     } finally {
       setBusy(false);
     }
   }
   return (
-    <>
-      <PageHeader
-        eyebrow="Your account"
-        title="Account settings"
-        detail="Manage your profile, password, and signed-in devices."
-      />
+    <form className="paper-card admin-form form-page" onSubmit={save}>
+      <h2>Profile details</h2>
       <ErrorMessage message={error} />
       {message ? (
         <p role="status" className="success-note">
           {message}
         </p>
       ) : null}
-      <div className="admin-grid">
-        <form className="paper-card admin-form" onSubmit={save}>
-          <h2>Profile</h2>
-          <label>
-            Email
-            <input value={profile?.email ?? ""} disabled />
-          </label>
-          <label>
-            Display name
-            <input
-              value={name}
-              maxLength={80}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </label>
-          <button className="primary-button" disabled={busy || !profile}>
-            Save profile
-          </button>
-        </form>
-        <form className="paper-card admin-form" onSubmit={password}>
-          <h2>Change password</h2>
-          <p>
-            All sessions will be revoked. Sign in again with your new password.
-          </p>
-          <label>
-            Current password
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            New password
-            <input
-              type="password"
-              autoComplete="new-password"
-              minLength={12}
-              maxLength={128}
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-              required
-            />
-          </label>
-          <button className="primary-button" disabled={busy}>
-            Change password and sign out
-          </button>
-        </form>
+      {loading ? <p role="status">Loading profile…</p> : null}
+      {!profile && error ? (
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => setAttempt((v) => v + 1)}
+        >
+          Retry profile
+        </button>
+      ) : null}
+      <label>
+        Email
+        <input value={profile?.email ?? ""} disabled autoComplete="username" />
+      </label>
+      <p>Your email identifies your account and cannot be changed here.</p>
+      <label>
+        Display name
+        <input
+          value={name}
+          maxLength={80}
+          disabled={busy || loading || !profile}
+          onChange={(e) => {
+            setName(e.target.value);
+            setMessage("");
+          }}
+        />
+      </label>
+      <div className="form-actions">
+        <a className="secondary-button" href="#/overview">
+          Cancel
+        </a>
+        <button
+          className="primary-button"
+          disabled={busy || loading || !profile}
+        >
+          {busy ? "Saving…" : "Save profile"}
+        </button>
       </div>
-      <section className="paper-card admin-form">
-        <h2>Signed-in devices</h2>
-        <p>Revoking a device invalidates its access and refresh tokens.</p>
-        {sessions.map((session) => (
-          <article className="admin-row" key={session.id}>
-            <div>
-              <strong>
-                {session.current ? "This device" : "Other device"}
-              </strong>
-              <p className="break-text">
-                {session.user_agent || "Unknown browser"}
-              </p>
-              <small>
-                {session.remote_address} · Last active{" "}
-                {new Date(session.last_seen_at).toLocaleString()}
-              </small>
-            </div>
-            <button
-              className="secondary-button"
-              disabled={busy}
-              onClick={() => void revoke(session)}
-            >
-              Revoke{session.current ? " this session" : " session"}
-            </button>
-          </article>
-        ))}
-      </section>
-    </>
+    </form>
+  );
+}
+function PasswordForm({
+  email,
+  onLogout,
+}: {
+  email: string;
+  onLogout: () => void;
+}) {
+  const alive = useAlive();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    setError("");
+    if (next !== confirm) {
+      setError("The new passwords do not match.");
+      return;
+    }
+    if (Array.from(next).length < 12 || Array.from(next).length > 128) {
+      setError("Use 12–128 characters for your new password.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.changePassword(current, next);
+      if (alive.current) {
+        setToken("");
+        onLogout();
+      }
+    } catch (e) {
+      setError(friendlyError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <form className="paper-card admin-form form-page" onSubmit={save}>
+      <h2>Password details</h2>
+      <p>
+        All devices, including this one, will be signed out. Use 12–128
+        characters.
+      </p>
+      <ErrorMessage message={error} />
+      <input type="hidden" autoComplete="username" value={email} />
+      <label>
+        Current password
+        <input
+          type="password"
+          autoComplete="current-password"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+          required
+          disabled={busy}
+        />
+      </label>
+      <label>
+        New password
+        <input
+          type="password"
+          autoComplete="new-password"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          required
+          disabled={busy}
+        />
+      </label>
+      <label>
+        Confirm new password
+        <input
+          type="password"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          required
+          disabled={busy}
+        />
+      </label>
+      <div className="form-actions">
+        <a className="secondary-button" href="#/account/profile">
+          Cancel
+        </a>
+        <button className="primary-button" disabled={busy}>
+          {busy ? "Changing password…" : "Change password and sign out"}
+        </button>
+      </div>
+    </form>
   );
 }
 

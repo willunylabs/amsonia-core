@@ -82,6 +82,17 @@ func (api *API) revokeSession(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(204)
 }
+func (api *API) revokeOtherSessions(w http.ResponseWriter, r *http.Request) {
+	var input struct{}
+	if !decodeJSON(w, r, &input) {
+		return
+	}
+	if err := api.service.revokeOtherSessions(r.Context(), accountFromContext(r.Context()).ID, bearerToken(r.Header.Get("Authorization"))); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
 func (api *API) previewInvitation(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Token string `json:"token"`

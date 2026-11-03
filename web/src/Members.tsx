@@ -1,359 +1,331 @@
+import { useConsoleRoute, useAlive } from "./routing";
 import { friendlyError } from "./errors";
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "./api";
-import { ErrorMessage, Modal, PageHeader } from "./components";
+import { ErrorMessage, PageHeader } from "./components";
 import type { Capabilities, Member, Role } from "./types";
-
 import { useDirectory } from "./useDirectory";
 import { DirectorySearch, DirectoryNavigation } from "./DirectoryControls";
-
+import { PageNavigation } from "./navigation";
 type Props = {
   tenant: string;
   revision: number;
   capabilities: Capabilities;
   onChanged: () => Promise<void>;
 };
-export function MembersPage({
+export function MembersPage(props: Props) {
+  const { segments } = useConsoleRoute();
+  if (!props.capabilities.permissions["iam:member:read"])
+    return (
+      <p className="quiet-state">
+        Your role does not include member read access.
+      </p>
+    );
+  return segments[1] ? (
+    <MemberWorkspace
+      key={`${props.tenant}:${segments[1]}:${segments[2] ?? "details"}`}
+      {...props}
+      id={segments[1]}
+    />
+  ) : (
+    <MemberDirectory {...props} />
+  );
+}
+function MemberDirectory({ tenant, revision, capabilities }: Props) {
+  const members = useDirectory(api.members, tenant, true, revision);
+  const canRoles = !!capabilities.permissions["iam:role:read"];
+  const { navigate } = useConsoleRoute();
+  return (
+    <>
+      <PageHeader
+        eyebrow="Identity"
+        title="Members"
+        detail="Search tenant members and open their membership or role settings."
+      />
+      <DirectorySearch
+        label="Find a member"
+        placeholder="Email or account ID"
+        statuses={["active", "suspended"]}
+        onSearch={members.search}
+      />
+      <DirectoryNavigation directory={members} label="Members" />
+      <div className="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Status</th>
+              <th>Joined</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {members.page?.items.map((member) => (
+              <tr key={member.account_id}>
+                <td>
+                  <strong>{member.email}</strong>
+                  <small className="block break-text">
+                    {member.account_id}
+                  </small>
+                </td>
+                <td>
+                  <span
+                    className={
+                      member.status === "active" ? "pill positive" : "pill"
+                    }
+                  >
+                    {member.status}
+                  </span>
+                </td>
+                <td>{new Date(member.joined_at).toLocaleDateString()}</td>
+                <td>
+                  <div className="button-row">
+                    <button
+                      className="secondary-button"
+                      onClick={() =>
+                        navigate(
+                          `members/${encodeURIComponent(member.account_id)}/details`,
+                        )
+                      }
+                    >
+                      Manage member
+                    </button>
+                    {canRoles ? (
+                      <button
+                        className="secondary-button"
+                        onClick={() =>
+                          navigate(
+                            `members/${encodeURIComponent(member.account_id)}/roles`,
+                          )
+                        }
+                      >
+                        Roles
+                      </button>
+                    ) : null}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {members.page && !members.page.items.length ? (
+          <p className="quiet-state">No members match these filters.</p>
+        ) : null}
+      </div>
+    </>
+  );
+}
+function MemberWorkspace({
   tenant,
-  revision,
+  id,
   capabilities,
   onChanged,
-}: Props) {
-  const [notice, setNotice] = useState("");
-  const [invite, setInvite] = useState(false);
-  const [selected, setSelected] = useState<Member | null>(null);
-  const [confirm, setConfirm] = useState<{
-    member: Member;
-    status: "suspended" | "remove";
-  } | null>(null);
-  const [error, setError] = useState("");
+}: Props & { id: string }) {
+  const { segments, navigate } = useConsoleRoute();
+  const tab = segments[2] ?? "details";
+  const base = `members/${encodeURIComponent(id)}`;
+  const alive = useAlive();
+  const [member, setMember] = useState<Member>();
+  const [attempt, setAttempt] = useState(0);
+  const [status, setStatus] = useState("active");
+  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
-  const canManage = !!capabilities.permissions["iam:member:manage"],
-    canRead = !!capabilities.permissions["iam:member:read"],
-    canRoles = !!capabilities.permissions["iam:role:read"];
-  const members = useDirectory(api.members, tenant, canRead, revision);
-  const invitations = useDirectory(
-    api.invitations,
-    tenant,
-    canManage,
-    revision,
-  );
-  async function refreshInvites() {
-    invitations.reload();
-  }
-  async function mutate(
-    member: Member,
-    status: "active" | "suspended" | "remove",
-  ) {
-    setBusy(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const manage = !!capabilities.permissions["iam:member:manage"];
+  useEffect(() => {
+    let active = true;
     setError("");
+    api
+      .member(tenant, id)
+      .then((value) => {
+        if (active) {
+          setMember(value);
+          setStatus(value.status);
+        }
+      })
+      .catch((e) => {
+        if (active) setError(friendlyError(e));
+      });
+    return () => {
+      active = false;
+    };
+  }, [tenant, id, attempt]);
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    if (!member || !manage || busy) return;
+    setError("");
+    setNotice("");
+    if (tab === "remove" && email !== member.email) {
+      setError("Enter the member's email to confirm removal.");
+      return;
+    }
+    setBusy(true);
     try {
-      await api.manageMember(tenant, member.account_id, status);
-      setConfirm(null);
-      setNotice(
-        `Member ${status === "remove" ? "removed" : status === "active" ? "resumed" : "suspended"}.`,
+      await api.manageMember(
+        tenant,
+        id,
+        tab === "remove" ? "remove" : (status as "active" | "suspended"),
       );
       await onChanged();
-    } catch (cause) {
-      setError(friendlyError(cause));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function revoke(id: string) {
-    setBusy(true);
-    setError("");
-    try {
-      await api.revokeInvitation(tenant, id);
-      await refreshInvites();
-      setNotice("Invitation revoked.");
-    } catch (cause) {
-      setError(friendlyError(cause));
+      if (!alive.current) return;
+      if (tab === "remove") {
+        navigate("members");
+        return;
+      }
+      setMember({ ...member, status });
+      setNotice("Membership saved.");
+    } catch (e) {
+      setError(friendlyError(e));
     } finally {
       setBusy(false);
     }
   }
   return (
     <>
+      <a className="back-link" href="#/members">
+        ← Back to members
+      </a>
       <PageHeader
-        eyebrow="Identity"
-        title="Members"
-        detail="Invite people, assign roles, and manage access to this tenant."
-        action={
-          canManage ? (
-            <button className="primary-button" onClick={() => setInvite(true)}>
-              Invite member
-            </button>
-          ) : undefined
+        eyebrow="Tenant member"
+        title={member?.email ?? "Member settings"}
+        detail={
+          tab === "roles"
+            ? "Review and assign this member's roles."
+            : tab === "remove"
+              ? "Remove membership from this tenant."
+              : "Review identity and update tenant access."
         }
+      />
+      <PageNavigation
+        label="Member navigation"
+        items={[
+          { path: `${base}/details`, label: "Membership" },
+          ...(capabilities.permissions["iam:role:read"]
+            ? [{ path: `${base}/roles`, label: "Roles" }]
+            : []),
+          ...(manage
+            ? [{ path: `${base}/remove`, label: "Remove membership" }]
+            : []),
+        ]}
       />
       <ErrorMessage message={error} />
       {notice ? <p role="status">{notice}</p> : null}
-      {canRead ? (
-        <>
-          <DirectorySearch
-            label="Find a member"
-            placeholder="Email or account ID"
-            statuses={["active", "suspended"]}
-            onSearch={members.search}
+      {!member ? (
+        error ? (
+          <button
+            className="secondary-button"
+            onClick={() => setAttempt((v) => v + 1)}
+          >
+            Retry member
+          </button>
+        ) : (
+          <p role="status">Loading member…</p>
+        )
+      ) : tab === "roles" ? (
+        capabilities.permissions["iam:role:read"] ? (
+          <MemberRoles
+            tenant={tenant}
+            member={member}
+            canAssign={!!capabilities.permissions["iam:role:assign"]}
+            onChanged={onChanged}
           />
-          <DirectoryNavigation directory={members} label="Members" />
-          <div className="table-card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Member</th>
-                  <th>Status</th>
-                  <th>Joined</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {members.page?.items.map((member) => (
-                  <tr key={member.account_id}>
-                    <td>
-                      <strong>{member.email}</strong>
-                      <small className="block break-text">
-                        {member.account_id}
-                      </small>
-                    </td>
-                    <td>
-                      <span
-                        className={
-                          member.status === "active" ? "pill positive" : "pill"
-                        }
-                      >
-                        {member.status}
-                      </span>
-                    </td>
-                    <td>{new Date(member.joined_at).toLocaleDateString()}</td>
-                    <td>
-                      <div className="button-row">
-                        {canRoles ? (
-                          <button
-                            className="secondary-button"
-                            onClick={() => setSelected(member)}
-                          >
-                            Roles
-                          </button>
-                        ) : null}
-                        {canManage ? (
-                          <>
-                            <button
-                              className="secondary-button"
-                              disabled={busy}
-                              onClick={() =>
-                                member.status === "active"
-                                  ? setConfirm({
-                                      member,
-                                      status: "suspended",
-                                    })
-                                  : void mutate(member, "active")
-                              }
-                            >
-                              {member.status === "active"
-                                ? "Suspend"
-                                : "Resume"}
-                            </button>
-                            <button
-                              className="danger-button"
-                              disabled={busy}
-                              onClick={() =>
-                                setConfirm({ member, status: "remove" })
-                              }
-                            >
-                              Remove
-                            </button>
-                          </>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {members.page && !members.page.items.length ? (
-              <p className="quiet-state">No members match these filters.</p>
+        ) : (
+          <p className="quiet-state">
+            Your role does not include role read access.
+          </p>
+        )
+      ) : tab === "details" ? (
+        <form className="paper-card admin-form form-page" onSubmit={save}>
+          <h2>Membership details</h2>
+          <label>
+            Email
+            <input value={member.email} disabled />
+          </label>
+          <label>
+            Account ID
+            <input value={member.account_id} disabled />
+          </label>
+          <label>
+            Joined
+            <input
+              value={new Date(member.joined_at).toLocaleString()}
+              disabled
+            />
+          </label>
+          <label>
+            Membership status
+            <select
+              aria-label="Membership status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              disabled={!manage || busy}
+            >
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </label>
+          <p>
+            Suspending blocks tenant access and retains role assignments.
+            Resuming restores access with those roles.
+          </p>
+          <div className="form-actions">
+            <a className="secondary-button" href="#/members">
+              Cancel
+            </a>
+            {manage ? (
+              <button
+                className="primary-button"
+                disabled={busy || status === member.status}
+              >
+                {busy ? "Saving…" : "Save membership"}
+              </button>
             ) : null}
           </div>
-        </>
-      ) : (
-        <p className="quiet-state">
-          Your role does not include member read access.
-        </p>
-      )}
-      {canManage ? (
-        <section className="paper-card admin-form">
-          <h2>Invitations</h2>
+        </form>
+      ) : tab === "remove" && manage ? (
+        <form className="paper-card admin-form form-page" onSubmit={save}>
+          <h2>Remove membership</h2>
           <p>
-            New links expire after seven days. Re-inviting an email revokes its
-            earlier pending link.
+            Removing {member.email} deletes this tenant membership and role
+            bindings. A new invitation is required to rejoin. The account and
+            other tenants are retained.
           </p>
-          <DirectorySearch
-            label="Find an invitation"
-            placeholder="Email or invitation ID"
-            statuses={["pending", "accepted", "revoked", "expired"]}
-            onSearch={invitations.search}
-          />
-          <DirectoryNavigation directory={invitations} label="Invitations" />
-          {invitations.page?.items.length ? (
-            invitations.page.items.map((item) => (
-              <article className="admin-row" key={item.id}>
-                <div>
-                  <strong>{item.email}</strong>
-                  <p>Expires {new Date(item.expires_at).toLocaleString()}</p>
-                  <span className="pill">{item.status}</span>
-                </div>
-                {item.status === "pending" ? (
-                  <button
-                    className="secondary-button"
-                    disabled={busy}
-                    onClick={() => void revoke(item.id)}
-                  >
-                    Revoke invitation
-                  </button>
-                ) : null}
-              </article>
-            ))
-          ) : invitations.page ? (
-            <p>No invitations match these filters.</p>
-          ) : null}
-        </section>
-      ) : null}
-      {invite ? (
-        <InviteModal
-          tenant={tenant}
-          onClose={() => setInvite(false)}
-          onCreated={refreshInvites}
-        />
-      ) : null}
-      {selected && canRoles && canRead ? (
-        <MemberRoles
-          tenant={tenant}
-          member={selected}
-          canAssign={!!capabilities.permissions["iam:role:assign"]}
-          onClose={() => setSelected(null)}
-          onChanged={onChanged}
-        />
-      ) : null}
-      {confirm ? (
-        <Modal
-          title={
-            confirm.status === "remove" ? "Remove member?" : "Suspend member?"
-          }
-          onClose={() => setConfirm(null)}
-        >
-          <div className="admin-form">
-            <p>
-              {confirm.member.email} will lose tenant access.
-              {confirm.status === "remove"
-                ? " Role bindings will be removed. A new invitation is required to rejoin."
-                : " Existing role bindings will be restored when membership is resumed."}
-            </p>
-            <ErrorMessage message={error} />
-            <button
-              className="danger-button"
+          <label>
+            Confirm member email
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
               disabled={busy}
-              onClick={() => void mutate(confirm.member, confirm.status)}
-            >
-              Confirm {confirm.status === "remove" ? "removal" : "suspension"}
+            />
+          </label>
+          <div className="form-actions">
+            <a className="secondary-button" href={`#/${base}/details`}>
+              Cancel
+            </a>
+            <button className="danger-button" disabled={busy}>
+              {busy ? "Removing…" : "Remove member"}
             </button>
           </div>
-        </Modal>
-      ) : null}
+        </form>
+      ) : (
+        <p className="quiet-state">This member page is unavailable.</p>
+      )}
     </>
   );
 }
-function InviteModal({
-  tenant,
-  onClose,
-  onCreated,
-}: {
-  tenant: string;
-  onClose: () => void;
-  onCreated: () => Promise<void>;
-}) {
-  const [email, setEmail] = useState("");
-  const [link, setLink] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      const item = await api.createInvitation(tenant, email);
-      setLink(
-        `${location.origin}${location.pathname}#invite=${encodeURIComponent(item.token)}`,
-      );
-      await onCreated();
-    } catch (cause) {
-      setError(friendlyError(cause));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-    } catch {
-      setError("Copy the invitation link from the field below.");
-    }
-  }
-  return (
-    <Modal title="Invite a member" onClose={onClose}>
-      <form className="admin-form" onSubmit={submit}>
-        <p>Share the link privately. It is shown once; no email is sent.</p>
-        {link ? (
-          <>
-            <label>
-              Invitation link
-              <input readOnly value={link} onFocus={(e) => e.target.select()} />
-            </label>
-            <button
-              type="button"
-              className="primary-button"
-              onClick={() => void copy()}
-            >
-              {copied ? "Copied" : "Copy invitation link"}
-            </button>
-            <p role="status">Invitation created for {email}.</p>
-          </>
-        ) : (
-          <>
-            <label>
-              Email
-              <input
-                type="email"
-                autoFocus
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </label>
-            <button className="primary-button" disabled={busy}>
-              {busy ? "Creating…" : "Create invitation"}
-            </button>
-          </>
-        )}
-        <ErrorMessage message={error} />
-      </form>
-    </Modal>
-  );
-}
+
 function MemberRoles({
   tenant,
   member,
   canAssign,
-  onClose,
   onChanged,
 }: {
   tenant: string;
   member: Member;
   canAssign: boolean;
-  onClose: () => void;
   onChanged: () => Promise<void>;
 }) {
   const directory = useDirectory(api.roles, tenant, true);
@@ -406,7 +378,7 @@ function MemberRoles({
     }
   }
   return (
-    <Modal title="Member roles" onClose={onClose}>
+    <section className="paper-card admin-form">
       <div className="admin-form">
         <p className="break-text">{member.email}</p>
         <ErrorMessage message={error} />
@@ -452,6 +424,6 @@ function MemberRoles({
           you already hold.
         </p>
       </div>
-    </Modal>
+    </section>
   );
 }

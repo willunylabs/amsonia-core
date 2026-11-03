@@ -294,5 +294,28 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 @media(max-width: 680px) { .role-members .directory-filters { grid-template-columns: 1fr; } }
 .audit-range-filters { grid-template-columns: repeat(3, minmax(0,1fr)); }
 .audit-range-note { margin: -8px 0 24px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.device-heading { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 16px; }
+.device-dates { color: var(--muted); font-size: 12px; margin-top: 6px; }
 @media(max-width: 900px) { .audit-range-filters { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @media(max-width: 680px) { .audit-range-filters { grid-template-columns: 1fr; } }
+
+.page-navigation { display: flex; flex-wrap: wrap; gap: 6px; margin: -12px 0 28px; padding-bottom: 12px; border-bottom: 1px solid #dce0e9; }
+.page-navigation a { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 14px; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 14px; }
+.page-navigation a[aria-current=page] { background: #eceaff; color: #493ad1; font-weight: 650; }
+.page-navigation a:hover { background: #f0f1f8; }
+.form-page { max-width: 800px; padding: 28px; }
+.form-page > form { padding: 0; }
+.form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 12px; padding-top: 20px; border-top: 1px solid #e7e9f0; }
+.form-actions a, .back-link { text-decoration: none; }
+.back-link { display: inline-block; color: var(--muted); margin-bottom: 20px; font-size: 14px; }
+.form-page .primary-button { width: auto; }
+@media(max-width: 680px) { .form-page { padding: 18px; } .page-navigation { gap: 2px; } .page-navigation a { padding: 8px 10px; } }
+
+@media(max-width: 680px) { .sidebar .nav-item { flex: 1; min-width: 0; padding: 3px 2px; font-size: 9px; flex-direction: column; justify-content: center; gap: 4px; } .sidebar .nav-item svg { width: 17px; height: 17px; } .sidebar .nav-text { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+
+.paper-card.admin-form > .pill { align-self: flex-start; }
+.page-header > div { min-width: 0; }
+.page-header h1 { overflow-wrap: anywhere; }
+
+.nav-short { display: none; }
+@media(max-width: 680px) { .sidebar nav { gap: 0; } .sidebar .nav-text { display: none; } .sidebar .nav-short { display: inline; } }
