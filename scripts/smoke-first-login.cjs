@@ -14,10 +14,10 @@ async function main() {
       ["mobile", { width: 390, height: 844 }],
     ]) {
       const context = await browser.newContext({ viewport });
+      const page = await context.newPage();
+      const failures = [];
       try {
-        const page = await context.newPage();
         page.setDefaultTimeout(15000);
-        const failures = [];
         page.on("pageerror", (error) => failures.push(error.message));
         page.on("console", (message) => {
           if (message.type() === "error") failures.push(message.text());
@@ -39,6 +39,11 @@ async function main() {
         assert.deepEqual(failures, []);
         await page.screenshot({ path: path.join(screenshots, `first-login-${name}.png`) });
         console.log(`First login passed: ${name} ${viewport.width}x${viewport.height}`);
+      } catch (error) {
+        console.error(`Browser failures (${name}):`, failures);
+        console.error(await page.locator("body").innerText({ timeout: 1000 }).catch(() => ""));
+        await page.screenshot({ path: path.join(screenshots, `failed-login-${name}.png`) }).catch(() => {});
+        throw error;
       } finally {
         await context.close();
       }

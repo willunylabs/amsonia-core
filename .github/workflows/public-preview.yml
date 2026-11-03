@@ -68,8 +68,9 @@ jobs:
             --browser-module "$RUNNER_TEMP/preview-browser/node_modules/playwright" \
             --screenshots "$RUNNER_TEMP/public-preview/screenshots"
       - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
         with:
           name: public-preview-first-login
           path: ${{ runner.temp }}/public-preview/screenshots/*.png
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 7
