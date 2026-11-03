@@ -20,6 +20,41 @@ metadata, never token hashes or secrets. Remote addresses come from the API's
 connection, so reverse-proxy addresses may appear. Activity updates are throttled
 to once per minute.
 
+The console restores a signed-in session from the HttpOnly refresh cookie when a
+new tab has no access token. The optional `POST /api/v1/auth/restore` endpoint
+returns 204 for an anonymous browser, without generating a normal sign-in error.
+Temporary network or service failures retain the
+credentials and offer retry; a definitive rejection returns to sign-in. Signing
+out waits for server confirmation and revokes the entire device session family,
+including older live access tokens from refresh rotations. Other device families
+remain active. Revoked current refresh tokens are rejected without affecting
+other devices; reuse of a token already consumed by rotation still invokes the
+account-wide replay response.
+
+Cookie-changing sign-in, refresh, and sign-out requests are ordered within each
+page and, when available, across tabs using the browser's
+[Web Locks API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Locks_API).
+Refresh responses arriving after a local sign-out cannot restore local
+credentials. If a shared cookie now belongs to a different account, the console
+switches account context and does not replay an earlier mutation as that account.
+Bearer tokens remain in sessionStorage; no bearer token is placed in localStorage.
+
+## Tenant selection and current access
+
+System administrators can create additional tenants using the plus button beside
+the tenant selector, including after their first tenant has been created.
+The console remembers a tenant ID separately for each account in localStorage,
+then validates it against the server's current membership list. This preference
+never grants access. Switching tenants discards obsolete responses before they
+can render another tenant's collections.
+
+Use **Refresh workspace**, return focus to the window, or return from a hidden tab
+to refresh memberships and capabilities. Member/role changes in this console also
+refresh the workspace. If the selected membership disappears, old tenant data is
+cleared and another accessible tenant is selected; if none remain, the console
+shows the no-tenant state while keeping account settings available. A collection
+permission denied during refresh triggers one bounded capability recheck.
+
 ## Members and invitations
 
 In **Members**, choose **Invite member**, enter an email, and privately share the
@@ -63,7 +98,8 @@ are handled by HTTP logs rather than a tenant audit stream.
 
 ## Upgrade
 
-Apply migration `000006_core_administration`, then rerun
+Apply all pending migrations, including `000006_core_administration` and
+`000007_context_transaction_errors`, then rerun
 `ops/configure_database_roles.sql` before starting the new API. It grants the
 narrow token-authorized invitation preview function. Startup readiness requires
 an exact clean migration state. The migration adds display names and session
@@ -71,8 +107,13 @@ family IDs without invalidating existing credentials. Legacy refresh rotations
 cannot always be reconstructed into one family: pre-upgrade live tokens may
 appear as separate devices until expiry. Revoke each legacy entry or change the
 password to invalidate all of them. New sessions and rotations share a family ID.
-The down migration removes these fields and the preview function; use matching
-older binaries only after restoring role grants as appropriate.
+Migration 000007 preserves serialization/deadlock SQLSTATEs from signed tenant
+and actor context verification so normal retryable conflicts are not masked as
+RLS denials. Invalid or malformed bindings still fail closed. It does not change
+signatures, role grants, or the tenant-boundary predicates. Its down migration
+restores the previous exception handling. Migration 000006's down migration removes
+the added fields and preview function; use matching older binaries only after
+restoring role grants as appropriate.
 
 ## Scaffold comparison
 

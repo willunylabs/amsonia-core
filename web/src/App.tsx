@@ -20,12 +20,13 @@ import {
   LayoutGrid,
   LogOut,
   Plus,
+  RefreshCw,
   ScrollText,
   ShieldCheck,
   UsersRound,
   X,
 } from "lucide-react";
-import { api, getToken } from "./api";
+import { api, APIError, subscribeSession } from "./api";
 import { COMMERCIAL_URL, SOURCE_URL } from "./config";
 import type {
   Account,
@@ -204,19 +205,59 @@ export function App() {
   const [inviteToken, setInviteToken] = useState(
     () => new URLSearchParams(location.hash.slice(1)).get("invite") ?? "",
   );
-  const [checking, setChecking] = useState(Boolean(getToken()));
+  const [checking, setChecking] = useState(true);
+  const [startupError, setStartupError] = useState("");
+  const [sessionNotice, setSessionNotice] = useState("");
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (!getToken() || inviteToken) {
+    const readInvitation = () =>
+      setInviteToken(
+        new URLSearchParams(location.hash.slice(1)).get("invite") ?? "",
+      );
+    window.addEventListener("hashchange", readInvitation);
+    return () => window.removeEventListener("hashchange", readInvitation);
+  }, []);
+
+  useEffect(
+    () =>
+      subscribeSession((next, expired) => {
+        setAccount(next);
+        setChecking(false);
+        setStartupError("");
+        setSessionNotice(
+          expired ? "Your session has ended. Sign in again to continue." : "",
+        );
+      }),
+    [],
+  );
+  useEffect(() => {
+    if (inviteToken) {
       setChecking(false);
       return;
     }
+    let active = true;
+    setChecking(true);
+    setStartupError("");
     api
-      .me()
-      .then(setAccount)
-      .catch(() => void api.logout())
-      .finally(() => setChecking(false));
-  }, [inviteToken]);
+      .restoreSession()
+      .then((value) => {
+        if (active) setAccount(value);
+      })
+      .catch((cause) => {
+        if (
+          active &&
+          !(cause instanceof APIError && cause.code === "session_changed")
+        )
+          setStartupError(friendlyError(cause));
+      })
+      .finally(() => {
+        if (active) setChecking(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [inviteToken, attempt]);
 
   if (inviteToken)
     return (
@@ -235,8 +276,64 @@ export function App() {
         <span>Opening Amsonia Core…</span>
       </div>
     );
-  if (!account) return <Login onLogin={setAccount} />;
-  return <Console account={account} onLogout={() => setAccount(null)} />;
+  if (startupError)
+    return (
+      <main className="invitation-shell">
+        <section className="login-card admin-form">
+          <h1>Unable to restore your session</h1>
+          <p role="alert">{startupError}</p>
+          <p>
+            Your session has been kept. Retry when the connection is available.
+          </p>
+          <button
+            className="primary-button"
+            onClick={() => setAttempt((value) => value + 1)}
+          >
+            Retry connection
+          </button>
+        </section>
+      </main>
+    );
+  if (!account)
+    return (
+      <>
+        {sessionNotice ? (
+          <p className="session-notice" role="status">
+            {sessionNotice}
+          </p>
+        ) : null}
+        <Login
+          onLogin={(value) => {
+            setSessionNotice("");
+            setAccount(value);
+          }}
+        />
+      </>
+    );
+  return (
+    <Console
+      key={account.id}
+      account={account}
+      onLogout={() => setAccount(null)}
+    />
+  );
+}
+
+const TENANT_PREFERENCE = "amsonia.core.tenant.v1:";
+function preferredTenant(accountID: string): string {
+  try {
+    return localStorage.getItem(TENANT_PREFERENCE + accountID) ?? "";
+  } catch {
+    return "";
+  }
+}
+function rememberTenant(accountID: string, tenant: string): void {
+  try {
+    if (tenant) localStorage.setItem(TENANT_PREFERENCE + accountID, tenant);
+    else localStorage.removeItem(TENANT_PREFERENCE + accountID);
+  } catch {
+    /* Optional preference, never an authorization source. */
+  }
 }
 
 function Console({
@@ -248,7 +345,7 @@ function Console({
 }) {
   const [section, setSection] = useState<Section>("overview");
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [tenantID, setTenantID] = useState("");
+  const [tenantID, setTenantID] = useState(() => preferredTenant(account.id));
   const [members, setMembers] = useState<Member[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -261,75 +358,165 @@ function Console({
   const [modal, setModal] = useState<"tenant" | "role" | null>(null);
 
   const tenantRequest = useRef(0);
+  const globalRequest = useRef(0);
+  const tenantRef = useRef(tenantID);
+  const refreshInFlight = useRef<Promise<void> | null>(null);
   const [loadedTenantID, setLoadedTenantID] = useState("");
   const [tenantLoading, setTenantLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const selectedTenant = useMemo(
     () => tenants.find((tenant) => tenant.id === tenantID) ?? null,
     [tenants, tenantID],
   );
 
-  const loadGlobal = useCallback(async () => {
-    setError("");
+  const selectTenant = useCallback(
+    (id: string) => {
+      if (id === tenantRef.current) return;
+      ++tenantRequest.current;
+      tenantRef.current = id;
+      setTenantID(id);
+      setModal(null);
+      setLoadedTenantID("");
+      rememberTenant(account.id, id);
+    },
+    [account.id],
+  );
+
+  const loadGlobal = useCallback(async (): Promise<string | null> => {
+    const serial = ++globalRequest.current;
     try {
       const [tenantItems, permissionItems] = await Promise.all([
         api.tenants(),
         api.permissions(),
       ]);
+      if (serial !== globalRequest.current) return null;
+      const current = tenantRef.current;
+      const preferred = preferredTenant(account.id);
+      const next =
+        tenantItems.find((tenant) => tenant.id === current)?.id ??
+        tenantItems.find((tenant) => tenant.id === preferred)?.id ??
+        tenantItems[0]?.id ??
+        "";
       setTenants(tenantItems);
       setPermissions(permissionItems);
-      setTenantID((current) => current || tenantItems[0]?.id || "");
+      if (next !== current) selectTenant(next);
+      else rememberTenant(account.id, next);
+      setError("");
+      return next;
     } catch (cause) {
-      setError(friendlyError(cause));
+      if (serial === globalRequest.current) setError(friendlyError(cause));
+      return null;
     } finally {
-      setLoading(false);
+      if (serial === globalRequest.current) setLoading(false);
     }
-  }, []);
+  }, [account.id, selectTenant]);
 
-  const loadTenant = useCallback(async (id: string, refresh = false) => {
-    const serial = ++tenantRequest.current;
-    if (!refresh) {
-      setMembers([]);
-      setRoles([]);
-      setAudit([]);
-      setCapabilities({ permissions: {} });
+  const loadTenant = useCallback(
+    async (id: string, refresh = false, retryAccess = true): Promise<void> => {
+      const serial = ++tenantRequest.current;
+      const clear = () => {
+        setMembers([]);
+        setRoles([]);
+        setAudit([]);
+        setCapabilities({ permissions: {} });
+        setLoadedTenantID("");
+      };
+      if (!refresh) clear();
+      if (!id) {
+        setTenantLoading(false);
+        return;
+      }
+      if (!refresh) setTenantLoading(true);
+      setError("");
+      try {
+        const capabilityItems = await api.capabilities(id);
+        if (serial !== tenantRequest.current || id !== tenantRef.current)
+          return;
+        const allowed = capabilityItems.permissions;
+        const [memberItems, roleItems, auditItems] = await Promise.all([
+          allowed["iam:member:read"] ? api.members(id) : Promise.resolve([]),
+          allowed["iam:role:read"] ? api.roles(id) : Promise.resolve([]),
+          allowed["iam:audit:read"] ? api.audit(id) : Promise.resolve([]),
+        ]);
+        if (serial !== tenantRequest.current || id !== tenantRef.current)
+          return;
+        setMembers(memberItems);
+        setRoles(roleItems);
+        setAudit(auditItems);
+        setCapabilities(capabilityItems);
+        setLoadedTenantID(id);
+        if (!allowed["iam:role:manage"])
+          setModal((current) => (current === "role" ? null : current));
+      } catch (cause) {
+        if (serial !== tenantRequest.current || id !== tenantRef.current)
+          return;
+        if (
+          cause instanceof APIError &&
+          (cause.status === 403 || cause.status === 404)
+        ) {
+          clear();
+          setModal(null);
+          if (retryAccess) {
+            const next = await loadGlobal();
+            if (next === id && tenantRef.current === id)
+              await loadTenant(id, false, false);
+            return;
+          }
+        }
+        setError(friendlyError(cause));
+      } finally {
+        if (serial === tenantRequest.current) setTenantLoading(false);
+      }
+    },
+    [loadGlobal],
+  );
+
+  const refreshWorkspace = useCallback((): Promise<void> => {
+    if (!refreshInFlight.current) {
+      setRefreshing(true);
+      const before = tenantRef.current;
+      refreshInFlight.current = (async () => {
+        const id = await loadGlobal();
+        if (id !== null && id === before && id === tenantRef.current)
+          await loadTenant(id, true);
+      })().finally(() => {
+        refreshInFlight.current = null;
+        setRefreshing(false);
+      });
     }
-    if (!id) {
-      setTenantLoading(false);
-      return;
-    }
-    if (!refresh) setTenantLoading(true);
-    setError("");
-    try {
-      const capabilityItems = await api.capabilities(id);
-      const allowed = capabilityItems.permissions;
-      const [memberItems, roleItems, auditItems] = await Promise.all([
-        allowed["iam:member:read"] ? api.members(id) : Promise.resolve([]),
-        allowed["iam:role:read"] ? api.roles(id) : Promise.resolve([]),
-        allowed["iam:audit:read"] ? api.audit(id) : Promise.resolve([]),
-      ]);
-      if (serial !== tenantRequest.current) return;
-      setMembers(memberItems);
-      setRoles(roleItems);
-      setAudit(auditItems);
-      setCapabilities(capabilityItems);
-      setLoadedTenantID(id);
-    } catch (cause) {
-      if (serial === tenantRequest.current) setError(friendlyError(cause));
-    } finally {
-      if (serial === tenantRequest.current) setTenantLoading(false);
-    }
-  }, []);
+    return refreshInFlight.current;
+  }, [loadGlobal, loadTenant]);
 
   useEffect(() => {
     void loadGlobal();
   }, [loadGlobal]);
   useEffect(() => {
-    void loadTenant(tenantID);
-  }, [loadTenant, tenantID]);
+    void loadTenant(selectedTenant?.id ?? "");
+  }, [loadTenant, selectedTenant?.id]);
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") void refreshWorkspace();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [refreshWorkspace]);
 
   async function logout() {
-    await api.logout();
-    onLogout();
+    setSigningOut(true);
+    setError("");
+    try {
+      await api.logout();
+      onLogout();
+    } catch (cause) {
+      setError(friendlyError(cause));
+    } finally {
+      setSigningOut(false);
+    }
   }
 
   return (
@@ -364,30 +551,49 @@ function Console({
       </aside>
       <div className="workspace">
         <header className="topbar">
-          <button className="tenant-picker" disabled={!tenants.length}>
-            <span className="tenant-symbol">
-              <Building2 size={16} />
-            </span>
-            <span>
-              <small>Current tenant</small>
-              {selectedTenant?.name ?? "No tenant yet"}
-            </span>
-            <ChevronDown size={15} />
-            {tenants.length > 1 ? (
-              <select
-                aria-label="Current tenant"
-                value={tenantID}
-                onChange={(event) => setTenantID(event.target.value)}
+          <div className="tenant-switcher">
+            <div className="tenant-picker">
+              <span className="tenant-symbol">
+                <Building2 size={16} />
+              </span>
+              <span>
+                <small>Current tenant</small>
+                {selectedTenant?.name ?? "No tenant yet"}
+              </span>
+              <ChevronDown size={15} />
+              {tenants.length > 1 ? (
+                <select
+                  aria-label="Current tenant"
+                  value={tenantID}
+                  onChange={(event) => selectTenant(event.target.value)}
+                >
+                  {tenants.map((tenant) => (
+                    <option key={tenant.id} value={tenant.id}>
+                      {tenant.name}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </div>
+            {account.system_admin && tenants.length > 0 ? (
+              <button
+                className="icon-button"
+                aria-label="Create tenant"
+                onClick={() => setModal("tenant")}
               >
-                {tenants.map((tenant) => (
-                  <option key={tenant.id} value={tenant.id}>
-                    {tenant.name}
-                  </option>
-                ))}
-              </select>
+                <Plus size={17} />
+              </button>
             ) : null}
-          </button>
+          </div>
           <div className="account-menu">
+            <button
+              className="icon-button"
+              aria-label="Refresh workspace"
+              disabled={refreshing}
+              onClick={() => void refreshWorkspace()}
+            >
+              <RefreshCw size={17} />
+            </button>
             <button
               className="icon-button"
               aria-label="Account settings"
@@ -408,7 +614,8 @@ function Console({
             </span>
             <button
               className="icon-button"
-              onClick={logout}
+              onClick={() => void logout()}
+              disabled={signingOut}
               aria-label="Sign out"
             >
               <LogOut size={17} />
@@ -421,8 +628,7 @@ function Console({
               {error}
               <button
                 onClick={() => {
-                  void loadGlobal();
-                  void loadTenant(tenantID);
+                  void refreshWorkspace();
                 }}
               >
                 Retry
@@ -461,7 +667,7 @@ function Console({
                   permissions={permissions}
                   audit={audit}
                   capabilities={capabilities}
-                  onChanged={() => loadTenant(selectedTenant.id, true)}
+                  onChanged={refreshWorkspace}
                   onCreateRole={() => setModal("role")}
                 />
               ) : null}
@@ -475,7 +681,7 @@ function Console({
           onCreated={async (tenant) => {
             setModal(null);
             await loadGlobal();
-            setTenantID(tenant.id);
+            selectTenant(tenant.id);
           }}
         />
       ) : null}
