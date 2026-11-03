@@ -1,10 +1,10 @@
 """Exercise the installed preview archive on an isolated Linux Docker runner."""
 
+import argparse
 import json
 import os
 from pathlib import Path
 import subprocess
-import sys
 import urllib.error
 import urllib.request
 
@@ -12,19 +12,31 @@ from smoke_support import enter
 
 
 def main():
-    os.chdir(Path(sys.argv[1]).resolve())
-    env = {**os.environ, "COMPOSE_PROJECT_NAME": "amsonia-preview-ci", "AMSONIA_WEB_PORT": "18080"}
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("bundle", type=Path)
+    parser.add_argument("--browser-module", type=Path, help="Run the first-login browser check")
+    parser.add_argument("--screenshots", type=Path)
+    args = parser.parse_args()
+    browser_script = Path(__file__).resolve().with_name("smoke-first-login.cjs")
+    browser_module = args.browser_module.resolve() if args.browser_module else None
+    screenshots = args.screenshots.resolve() if args.screenshots else None
+    if bool(browser_module) != bool(screenshots):
+        parser.error("--browser-module and --screenshots must be used together")
+    os.chdir(args.bundle.resolve())
+    port = "8080" if browser_module else "18080"
+    base_url = f"http://127.0.0.1:{port}"
+    env = {**os.environ, "COMPOSE_PROJECT_NAME": "amsonia-preview-ci", "AMSONIA_WEB_PORT": port}
     compose = ["./amsonia-compose"]
 
-    def run(args):
-        subprocess.run(args, env=env, check=True, timeout=240)
+    def run(args, extra_env=None):
+        subprocess.run(args, env={**env, **(extra_env or {})}, check=True, timeout=240)
 
     def call(path, body=None, token=None):
         headers = {"Content-Type": "application/json"}
         if token:
             headers["Authorization"] = "Bearer " + token
         request = urllib.request.Request(
-            "http://127.0.0.1:18080" + path,
+            base_url + path,
             data=json.dumps(body).encode() if body else None,
             headers=headers,
         )
@@ -52,6 +64,10 @@ def main():
             compose + ["exec", "api", "/usr/local/bin/amsonia", "bootstrap-admin"],
             [email, (b"Password: ", original)], env,
         )
+        if browser_module:
+            run(["node", browser_script, browser_module, base_url, screenshots], {
+                "SMOKE_LOGIN_EMAIL": email[1], "SMOKE_LOGIN_PASSWORD": original,
+            })
         token = login(original)["access_token"]
         tenants = json.loads(call("/api/v1/tenants", token=token))["items"]
         assert len(tenants) == 1
