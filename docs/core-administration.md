@@ -60,9 +60,10 @@ permission denied during refresh triggers one bounded capability recheck.
 In **Members**, choose **Invite member**, enter an email, and privately share the
 one-time link. Core displays the secret once and stores only its hash. No email
 is sent. A link expires after seven days; re-inviting an email revokes its earlier
-pending link. The latest 200 invitation states are visible and pending links can
-be revoked. The URL fragment carries the token so it does not enter HTTP paths
-or referrers. Do not post invitation links publicly.
+pending link. Search all invitations by email or ID and filter pending, accepted,
+revoked or expired links. Older pending invitations remain reachable through
+pagination and can be revoked. The URL fragment carries the token so it does not
+enter HTTP paths or referrers. Do not post invitation links publicly.
 
 A new account chooses a password when accepting. An existing account proves its
 current password; accepting never resets it. Suspended membership cannot be
@@ -76,6 +77,29 @@ edges; the account and other tenant memberships remain. Rejoining requires a new
 invitation. Another active administrator must exist before suspending/removing
 the last tenant administrator. Removing a member does not revoke grants they
 previously delegated to other members.
+
+Member, invitation and role directories search on the server and show 30 rows
+per page, matching totals, previous/next navigation, retry and empty results.
+Filters stay applied while paging. Member status changes and workspace refreshes
+update the current search; if its last page becomes empty, it returns to the first
+page of that search. The member role picker uses the same searchable role pages;
+assignments on other pages remain saved. Each checkbox saves immediately using
+the displayed role version. The overview counts active memberships and all live
+roles on the server; unreadable counts display a dash.
+
+The Core HTTP list responses now include `items`, `total` and optional
+`next_cursor`. Clients must follow `next_cursor` as `after` with unchanged `q`
+and `status` to read the entire collection. `limit` defaults to 30 and accepts
+1–100. Queries are trimmed literal, case-insensitive substrings up to 128 Unicode
+characters; `%` and `_` have no wildcard meaning. Members and roles sort by
+immutable ID ascending. Invitations sort by creation time and ID descending, so
+newer inserts and editable role names cannot shift existing cursor boundaries.
+A cursor from another tenant, collection or filter returns 400. Cursors contain
+no authority or secrets; normal permission and membership checks still apply.
+Totals and rows share a request snapshot; navigation is live, so edits, expiry,
+and membership changes can alter matches between pages. Use an export workflow
+when a fixed historical snapshot is required. Kernel APIs and existing Service
+list method contracts are unchanged.
 
 ## Roles and audit
 

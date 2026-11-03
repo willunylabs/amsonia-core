@@ -112,3 +112,15 @@ export type AuditFilter = {
   before?: number;
   limit?: number;
 };
+
+export type DirectoryFilter = {
+  q?: string;
+  status?: string;
+  after?: string;
+  limit?: number;
+};
+export type DirectoryPage<T> = {
+  items: T[];
+  total: number;
+  next_cursor?: string;
+};

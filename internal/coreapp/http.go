@@ -399,24 +399,32 @@ func (api *API) listMembers(response http.ResponseWriter, request *http.Request)
 	if !api.requirePermission(response, request, PermissionMemberRead) {
 		return
 	}
-	items, err := api.service.ListMembers(request.Context(), request.PathValue("tenant_id"))
+	filter, ok := directoryQuery(response, request)
+	if !ok {
+		return
+	}
+	items, err := api.service.MemberDirectory(request.Context(), request.PathValue("tenant_id"), filter)
 	if err != nil {
 		writeDomainError(response, err)
 		return
 	}
-	writeJSON(response, http.StatusOK, map[string]any{"items": items})
+	writeJSON(response, http.StatusOK, items)
 }
 
 func (api *API) listRoles(response http.ResponseWriter, request *http.Request) {
 	if !api.requirePermission(response, request, PermissionRoleRead) {
 		return
 	}
-	items, err := api.service.ListRoles(request.Context(), request.PathValue("tenant_id"))
+	filter, ok := directoryQuery(response, request)
+	if !ok {
+		return
+	}
+	items, err := api.service.RoleDirectory(request.Context(), request.PathValue("tenant_id"), filter)
 	if err != nil {
 		writeDomainError(response, err)
 		return
 	}
-	writeJSON(response, http.StatusOK, map[string]any{"items": items})
+	writeJSON(response, http.StatusOK, items)
 }
 
 func (api *API) capabilities(response http.ResponseWriter, request *http.Request) {

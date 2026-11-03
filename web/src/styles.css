@@ -278,3 +278,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 
 .tenant-switcher { display: flex; align-items: center; gap: 8px; min-width: 0; }
 @media(max-width: 680px) { .tenant-picker > span:nth-child(2) { max-width: 120px; } .account-menu > .avatar { display: none; } }
+
+.directory-filters { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto; }
+.directory-navigation .pagination > span { margin-right: auto; color: var(--muted); font-size: 13px; }
+@media(max-width: 900px) { .directory-filters { grid-template-columns: 1fr 1fr; } }
+@media(max-width: 680px) { .directory-filters { grid-template-columns: 1fr; } .directory-navigation .pagination { flex-wrap: wrap; } .directory-navigation .pagination > span { flex-basis: 100%; } }

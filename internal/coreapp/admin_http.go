@@ -116,12 +116,16 @@ func (api *API) invitations(w http.ResponseWriter, r *http.Request) {
 	if !api.requirePermission(w, r, PermissionMemberManage) {
 		return
 	}
-	value, err := api.service.ListInvitations(r.Context(), r.PathValue("tenant_id"))
+	filter, ok := directoryQuery(w, r)
+	if !ok {
+		return
+	}
+	value, err := api.service.InvitationDirectory(r.Context(), r.PathValue("tenant_id"), filter)
 	if err != nil {
 		writeDomainError(w, err)
 		return
 	}
-	writeJSON(w, 200, map[string]any{"items": value})
+	writeJSON(w, 200, value)
 }
 func (api *API) createInvitation(w http.ResponseWriter, r *http.Request) {
 	var input struct {

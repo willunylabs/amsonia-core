@@ -234,54 +234,115 @@ paths:
                     items: { $ref: "#/components/schemas/Permission" }
   /api/v1/tenants/{tenant_id}/members:
     get:
-      summary: List tenant members
-      tags: [Tenants]
+      summary: Search and page tenant members
+      tags:
+        - Tenants
       operationId: listTenantMembers
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DirectoryQuery"
+        - $ref: "#/components/parameters/DirectoryLimit"
+        - $ref: "#/components/parameters/DirectoryAfter"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - active
+              - suspended
       responses:
         "200":
-          description: Tenant memberships.
+          description: A bounded collection page.
           content:
             application/json:
               schema:
                 type: object
-                required: [items]
+                required:
+                  - items
+                  - total
                 properties:
                   items:
                     type: array
-                    items: { $ref: "#/components/schemas/Member" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+                    items:
+                      $ref: "#/components/schemas/Member"
+                  total:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                    description: Total matching rows before applying the cursor, in the same request snapshot.
+                  next_cursor:
+                    type: string
+                    maxLength: 2048
+                    description: Pass unchanged as after with the same search and status. Absent at the end.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+      description: >-
+        Requires tenant-wide iam:member:read. Returns 30 items by default (maximum 100), a filtered
+        total and an exclusive next_cursor. Search is a case-insensitive literal substring. Ordered by
+        immutable ID ascending. Cursors are bound to tenant, collection and filters; pages are live
+        snapshots, not a historical export.
   /api/v1/tenants/{tenant_id}/roles:
     get:
-      summary: List tenant roles
-      tags: [Authorization]
+      summary: Search and page tenant roles
+      tags:
+        - Authorization
       operationId: listRoles
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DirectoryQuery"
+        - $ref: "#/components/parameters/DirectoryLimit"
+        - $ref: "#/components/parameters/DirectoryAfter"
       responses:
         "200":
-          description: Active roles ordered by name.
+          description: A bounded collection page.
           content:
             application/json:
               schema:
                 type: object
-                required: [items]
+                required:
+                  - items
+                  - total
                 properties:
                   items:
                     type: array
-                    items: { $ref: "#/components/schemas/Role" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+                    items:
+                      $ref: "#/components/schemas/Role"
+                  total:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                    description: Total matching rows before applying the cursor, in the same request snapshot.
+                  next_cursor:
+                    type: string
+                    maxLength: 2048
+                    description: Pass unchanged as after with the same search and status. Absent at the end.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+      description: >-
+        Requires tenant-wide iam:role:read. Returns 30 items by default (maximum 100), a filtered
+        total and an exclusive next_cursor. Search is a case-insensitive literal substring. Ordered by
+        immutable ID ascending. Cursors are bound to tenant, collection and filters; pages are live
+        snapshots, not a historical export.
     post:
       summary: Create a role with initial permissions
-      tags: [Authorization]
+      tags:
+        - Authorization
       operationId: createRole
       description: Atomically creates a role and its tenant-wide initial grants.
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/TenantId"
       requestBody:
@@ -291,24 +352,41 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [id, name, description, permissions]
+              required:
+                - id
+                - name
+                - description
+                - permissions
               properties:
-                id: { type: string, minLength: 1, maxLength: 128 }
-                name: { type: string, minLength: 1, maxLength: 120 }
-                description: { type: string, maxLength: 500 }
+                id:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                description:
+                  type: string
+                  maxLength: 500
                 permissions:
                   type: array
                   uniqueItems: true
-                  items: { type: string }
+                  items:
+                    type: string
       responses:
         "201":
           description: Role at immutable version one.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Role" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "409": { $ref: "#/components/responses/Conflict" }
+              schema:
+                $ref: "#/components/schemas/Role"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /api/v1/tenants/{tenant_id}/capabilities:
     get:
       summary: Read effective console capabilities
@@ -739,128 +817,120 @@ paths:
         },
     }
   /api/v1/tenants/{tenant_id}/invitations:
-    {
-      "get":
-        {
-          "operationId": "listInvitations",
-          "summary": "List latest 200 tenant invitations",
-          "description": "Requires tenant-wide iam:member:manage.",
-          "tags": ["Tenants"],
-          "security": [{ "bearerAuth": [] }],
-          "responses":
-            {
-              "200":
-                {
-                  "description": "Completed.",
-                  "content":
-                    {
-                      "application/json":
-                        {
-                          "schema":
-                            {
-                              "type": "object",
-                              "additionalProperties": false,
-                              "required": ["items"],
-                              "properties":
-                                {
-                                  "items":
-                                    {
-                                      "type": "array",
-                                      "items":
-                                        {
-                                          "$ref": "#/components/schemas/Invitation",
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-              "400": { "$ref": "#/components/responses/BadRequest" },
-              "401": { "$ref": "#/components/responses/Unauthorized" },
-              "403": { "$ref": "#/components/responses/Forbidden" },
-              "404": { "$ref": "#/components/responses/NotFound" },
-              "409": { "$ref": "#/components/responses/Conflict" },
-              "429": { "$ref": "#/components/responses/TooManyRequests" },
-            },
-          "parameters":
-            [
-              {
-                "name": "tenant_id",
-                "in": "path",
-                "required": true,
-                "schema":
-                  { "type": "string", "minLength": 1, "maxLength": 256 },
-              },
-            ],
-        },
-      "post":
-        {
-          "operationId": "createInvitation",
-          "summary": "Create a seven-day invitation",
-          "description": "Requires tenant-wide iam:member:manage. Reissuing revokes earlier pending links. Returns the secret only once; no email is sent.",
-          "tags": ["Tenants"],
-          "security": [{ "bearerAuth": [] }],
-          "responses":
-            {
-              "201":
-                {
-                  "description": "Completed.",
-                  "content":
-                    {
-                      "application/json":
-                        {
-                          "schema":
-                            {
-                              "$ref": "#/components/schemas/CreatedInvitation",
-                            },
-                        },
-                    },
-                },
-              "400": { "$ref": "#/components/responses/BadRequest" },
-              "401": { "$ref": "#/components/responses/Unauthorized" },
-              "403": { "$ref": "#/components/responses/Forbidden" },
-              "404": { "$ref": "#/components/responses/NotFound" },
-              "409": { "$ref": "#/components/responses/Conflict" },
-              "429": { "$ref": "#/components/responses/TooManyRequests" },
-            },
-          "requestBody":
-            {
-              "required": true,
-              "content":
-                {
-                  "application/json":
-                    {
-                      "schema":
-                        {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": ["email"],
-                          "properties":
-                            {
-                              "email":
-                                {
-                                  "type": "string",
-                                  "format": "email",
-                                  "maxLength": 254,
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-          "parameters":
-            [
-              {
-                "name": "tenant_id",
-                "in": "path",
-                "required": true,
-                "schema":
-                  { "type": "string", "minLength": 1, "maxLength": 256 },
-              },
-            ],
-        },
-    }
+    get:
+      operationId: listInvitations
+      summary: Search and page tenant invitations
+      description: >-
+        Requires tenant-wide iam:member:manage. Returns 30 items by default (maximum 100), a filtered
+        total and an exclusive next_cursor. Search is a case-insensitive literal substring. Ordered by
+        created_at then invitation ID, both descending. Cursors are bound to tenant, collection and
+        filters; pages are live snapshots, not a historical export.
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: A bounded collection page.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - items
+                  - total
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Invitation"
+                  total:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                    description: Total matching rows before applying the cursor, in the same request snapshot.
+                  next_cursor:
+                    type: string
+                    maxLength: 2048
+                    description: Pass unchanged as after with the same search and status. Absent at the end.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DirectoryQuery"
+        - $ref: "#/components/parameters/DirectoryLimit"
+        - $ref: "#/components/parameters/DirectoryAfter"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - pending
+              - accepted
+              - revoked
+              - expired
+    post:
+      operationId: createInvitation
+      summary: Create a seven-day invitation
+      description: >-
+        Requires tenant-wide iam:member:manage. Reissuing revokes earlier pending links. Returns the
+        secret only once; no email is sent.
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Completed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedInvitation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
   /api/v1/tenants/{tenant_id}/invitations/{invitation_id}:
     {
       "delete":
@@ -1563,6 +1633,27 @@ components:
       in: cookie
       name: amsonia_refresh
   parameters:
+    DirectoryQuery:
+      name: q
+      in: query
+      description: Literal search text, trimmed; no SQL wildcard expansion.
+      schema:
+        type: string
+        maxLength: 128
+    DirectoryLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 30
+    DirectoryAfter:
+      name: after
+      in: query
+      schema:
+        type: string
+        maxLength: 2048
     TenantId:
       name: tenant_id
       in: path
