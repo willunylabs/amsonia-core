@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{if .Form}}New invoice{{else}}Invoices{{end}} · {{.Org}}</title>
+  <style>
+    :root { color-scheme: light; --ink: #202b27; --muted: #50625a; --line: #d5ddd4; --paper: #fffdf6; --green: #164f3c; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: #f5f3e9; font: 1rem/1.55 Georgia, serif; }
+    main { width: min(100% - 2rem, 62rem); margin: 0 auto; padding: clamp(2rem, 6vw, 5rem) 0; }
+    .masthead { border-top: .38rem solid var(--green); border-bottom: 1px solid var(--line); padding: .85rem 0; display: flex; flex-wrap: wrap; gap: .4rem 1rem; justify-content: space-between; }
+    .eyebrow, label, .button, .mono { font: 700 .8rem/1.5 ui-monospace, monospace; }
+    .eyebrow { text-transform: uppercase; letter-spacing: .08em; color: var(--green); }
+    h1 { font-size: clamp(3rem, 7vw, 5.5rem); font-weight: 500; line-height: 1; letter-spacing: -.06em; margin: .5rem 0; }
+    .heading { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin: 2rem 0 1.5rem; }
+    .heading p, .hint, .empty { color: var(--muted); margin: 0; }
+    .panel { background: var(--paper); border: 1px solid var(--line); padding: clamp(1rem, 3vw, 2rem); }
+    .button { display: inline-block; background: var(--green); color: white; padding: .7rem 1rem; border: 1px solid transparent; text-decoration: none; cursor: pointer; }
+    a { color: var(--green); text-underline-offset: .2em; }
+    :focus-visible { outline: 3px solid #a85e17; outline-offset: 3px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { text-align: left; vertical-align: top; padding: .7rem .25rem; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+    th:last-child, td:last-child { text-align: right; width: 7.75rem; font-variant-numeric: tabular-nums; }
+    td small { display: block; color: var(--muted); font: .72rem/1.5 ui-monospace, monospace; }
+    form { display: grid; gap: .85rem; max-width: 34rem; }
+    label { display: block; margin-bottom: .25rem; }
+    input { width: 100%; border: 1px solid #83958a; padding: .6rem; background: white; color: var(--ink); font: inherit; }
+    .actions { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-top: .5rem; }
+    .notice { border-left: .25rem solid var(--green); padding: .65rem .85rem; background: #e9f2e9; }
+    .error { border-color: #992f1d; background: #f9e9e1; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="masthead"><span class="eyebrow">Amsonia · Invoice example</span><span class="mono">Organization: {{.Org}}</span></div>
+  {{if .Form}}
+    <header class="heading"><div><h1>New invoice</h1><p>Add a single invoice to {{.Org}}.</p></div></header>
+    <section class="panel" aria-label="Invoice form">
+      {{if .Error}}<p role="alert" class="notice error">{{.Error}}</p>{{end}}
+      <form method="post" action="/invoices">
+        <div><label for="description">Description</label><input id="description" name="description" maxlength="120" required value="{{.Description}}"></div>
+        <div><label for="amount">Amount in cents</label><input id="amount" name="amount_cents" type="number" min="1" max="99999999" step="1" required value="{{.Amount}}" aria-describedby="amount-hint"><p id="amount-hint" class="hint">For example, 1250 represents $12.50.</p></div>
+        <div class="actions"><button type="submit" class="button">Save invoice</button><a href="/">Cancel</a></div>
+      </form>
+    </section>
+  {{else}}
+    <header class="heading"><div><h1>Invoices</h1><p>Recent invoices for {{.Org}}{{if not .CanCreate}} · Read only{{end}}.</p></div>
+      {{if .CanCreate}}<a href="/invoices/new" class="button">New invoice</a>{{end}}
+    </header>
+    {{if .Saved}}<p role="status" class="notice">Invoice saved.</p>{{end}}
+    <section class="panel" aria-label="Recent invoices">
+      {{if .Items}}
+      <table>
+        <thead><tr><th scope="col">Description</th><th scope="col">Amount (USD)</th></tr></thead>
+        <tbody>{{range .Items}}<tr><td>{{.Description}}<small>{{.ID}}</small></td><td>{{dollars .AmountCents}}</td></tr>{{end}}</tbody>
+      </table>
+      {{else}}<p class="empty">No invoices yet.</p>{{end}}
+    </section>
+  {{end}}
+</main>
+</body>
+</html>

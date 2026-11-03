@@ -84,21 +84,45 @@ table operations the runtime needs.
 - Do not expose the binding secret to browser code, logs, or source control.
 - Do not share the migration/owner DSN with the running API.
 
-## Extend the scaffold with one business route
+## Try the form in a browser
 
-For a first application route, use the invoice schema above as the template.
-Add a permission such as `billing:invoice:read` to the host catalog, following
-[`examples/saas`](../examples/saas/main.go). In the handler, authenticate the
-caller, resolve active membership on the server and use that trusted tenant
-and subject in the authorization check. Only on an allowed decision, call
-`RunTenant` with that same tenant and query the invoice table through the
-transaction. For detail or edit routes, check the required permission and
-scope against the actual resource; use a read-only transaction for reads
-and a write transaction for changes. Use normal request validation and
-return not found for invisible rows.
+After applying the same schema and loading the same runtime environment, run:
 
-To adapt this to projects or another resource, start with three checks:
-authorized reads work, an in-tenant caller without the permission is denied,
-and an otherwise authorized caller cannot read or insert another tenant's
-record. See [the authorization contract](authorization.md) and the existing
-[`postgres` host table integration test](../postgres/host_table_integration_test.go).
+```bash
+go run ./examples/business-data-rls -serve
+```
+
+Open the exact loopback URL printed in the terminal and use one of the
+generated Basic Auth credentials. Use a separate private window or browser
+profile for each identity, since browsers cache Basic Auth credentials.
+
+1. Sign in as `acme-editor`. Open **New invoice**, enter a description and
+   `1250` cents, then save. The new invoice appears as **$12.50** on the list.
+2. Sign in separately as `acme-viewer`. The invoice is visible, but the create
+   page and a direct form submission both return 403.
+3. Sign in as `globex-editor`. The Acme invoice is absent. A Globex invoice
+   created here is likewise invisible to Acme.
+
+The example serves a bounded list (`GET /`), a separate creation form
+(`GET /invoices/new`), and its write endpoint (`POST /invoices`). The form
+posts only a description and amount. The server resolves a demo identity and
+tenant from the authenticated credentials, checks the exact Amsonia
+permission, then calls `RunTenant` using that same tenant. The list query
+still has no tenant predicate: PostgreSQL enforces that boundary. Successful
+writes redirect to the list so reloading the page does not resubmit the form.
+
+See [web.go](../examples/business-data-rls/web.go) for the HTTP and storage
+path, [invoices.html](../examples/business-data-rls/invoices.html) for the form,
+and [web_test.go](../examples/business-data-rls/web_test.go) for the denial and
+validation cases. The example binds only to 127.0.0.1. Its generated
+access codes and in-memory grants are development fixtures; use your own
+authentication and membership/policy source in a real application. The
+browser example uses distinct fixture tenant IDs and leaves its invoices in
+the demo database. It does not add routes to the default console.
+
+To adapt it, replace the invoice schema with your own table, add permissions
+to the host catalog following [the SaaS example](../examples/saas/main.go),
+and keep the same three checks: the right permission works, a member without
+it is denied, and the other tenant's rows stay invisible. For object-specific
+reads or writes, authorize against the actual resource instead of a
+tenant-wide action.
