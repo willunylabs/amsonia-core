@@ -36,6 +36,9 @@ unchanged.
 
 ## Account and sessions
 
+If the system administrator cannot sign in, use the interactive
+[operator recovery command](self-hosting.md#recover-an-administrator).
+
 Open **Account settings** beside the account avatar, then choose **Profile**,
 **Password**, or **Devices**. Each is a separate page with its own form or
 workflow. Save a display name on Profile, change your password using the current
@@ -291,4 +294,5 @@ workflow references; no source implementation was copied.
 
 Core's selected scope is accounts, invitations, members, roles/permissions,
 sessions, and audit. Menus, code generation, dictionaries, files, scheduling,
-billing, password recovery, and outbound email remain outside this iteration.
+billing, self-service password reset, and outbound email are outside the default
+console. System administrator recovery is available through the operator CLI.

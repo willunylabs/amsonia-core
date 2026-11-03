@@ -27,13 +27,20 @@ func main() {
 	}
 }
 
+var errUsage = errors.New("usage: amsonia migrate | migration-status | admin-status | bootstrap-admin | recover-admin | setup-organization | provision-demo-viewer")
+
 func run(ctx context.Context, args []string) error {
-	if len(args) != 1 || (args[0] != "migrate" && args[0] != "migration-status" && args[0] != "admin-status" && args[0] != "bootstrap-admin" && args[0] != "provision-demo-viewer" && args[0] != "setup-organization") {
-		return errors.New("usage: amsonia migrate | migration-status | admin-status | bootstrap-admin | setup-organization | provision-demo-viewer")
+	if len(args) != 1 {
+		return errUsage
 	}
-	dsnName := "AMSONIA_MIGRATION_DSN"
-	if args[0] == "admin-status" || args[0] == "bootstrap-admin" || args[0] == "provision-demo-viewer" || args[0] == "setup-organization" {
+	var dsnName string
+	switch args[0] {
+	case "migrate", "migration-status", "recover-admin":
+		dsnName = "AMSONIA_MIGRATION_DSN"
+	case "admin-status", "bootstrap-admin", "setup-organization", "provision-demo-viewer":
 		dsnName = "AMSONIA_DATABASE_DSN"
+	default:
+		return errUsage
 	}
 	dsn := os.Getenv(dsnName)
 	if dsn == "" {
@@ -59,6 +66,8 @@ func run(ctx context.Context, args []string) error {
 		return adminStatus(ctx, pool)
 	case "bootstrap-admin":
 		return bootstrapAdmin(ctx, pool)
+	case "recover-admin":
+		return recoverAdmin(ctx, pool)
 	case "setup-organization":
 		service, err := newCLIService(pool)
 		if err != nil {

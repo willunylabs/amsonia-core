@@ -165,6 +165,11 @@ npm --prefix web run dev
 
 Then open `http://127.0.0.1:3000` and sign in with the bootstrap administrator.
 
+For production upgrades and administrator recovery, see the
+[self-hosting runbook](docs/self-hosting.md). The
+[scaffold comparison](docs/scaffold-comparison.md) explains what Core provides
+and which features are intentionally left to the host application.
+
 ## HTTP API
 
 The versioned contract is [openapi/openapi.yaml](openapi/openapi.yaml). Core
