@@ -1,18 +1,11 @@
 name: Public preview install
 
 on:
-  pull_request:
-    paths:
-      - .github/workflows/public-preview.yml
-      - scripts/smoke-preview.py
-      - scripts/smoke-first-login.cjs
-      - scripts/smoke_support.py
   workflow_dispatch:
     inputs:
       tag:
         description: Published preview release tag
         required: true
-        default: v0.2.0-preview.2
         type: string
 
 permissions:
@@ -23,7 +16,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      RELEASE_TAG: ${{ inputs.tag || 'v0.2.0-preview.2' }}
+      RELEASE_TAG: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@v7
         with:
