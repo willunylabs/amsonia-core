@@ -101,6 +101,7 @@ export type RoleDetail = {
   role: Role;
   grants: ScopedPermission[];
   subjects: string[];
+  subject_count?: number;
   versions: RoleHistory[];
   next_version?: number;
 };

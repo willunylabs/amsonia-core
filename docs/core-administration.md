@@ -108,6 +108,31 @@ member binding counts, and read version snapshots. The history loads 20 versions
 at a time. Each mutation uses the currently displayed role version; a conflict
 asks the operator to refresh. Only empty, unassigned roles can be retired.
 
+The role's **Role members** section lists assigned people and available tenant
+members with search, status filters and 30-row cursor pages. Member identities
+require both member-read and role-read access; users without member-read see only
+the binding count. Read-only users can inspect the directory. Role assignment
+controls require role-assign permission and use the currently displayed role
+version. Assignment coverage and last-administrator checks use the existing
+server mutation path. Suspended members remain visible; their bindings can be
+removed, while new assignment requires resuming membership first.
+
+Each binding change saves immediately and refreshes the count and current page.
+An empty final page returns to the first page of the same search. Switching
+assigned/available views starts a new search. A version conflict refreshes the
+role data and asks the operator to try again deliberately; it does not replay the
+write. To prepare a role for retirement, remove its bindings here, revoke its
+grants, then confirm retirement. Other roles on each member are retained.
+
+The console requests `GET /roles/{role_id}?summary=true`, which returns
+`subject_count` and an empty `subjects` array without downloading every bound ID.
+Default HTTP detail responses and the existing Service `RoleDetail` contract
+continue to return the full subject-ID array. Role member identities use the
+new `/roles/{role_id}/members` endpoint with `assignment=assigned|available` and
+the existing directory filters. Its cursors are also bound to role and view.
+Directory readers accept cursors up to 8192 bytes so valid escaped IDs and role
+scope can round-trip without truncation.
+
 Tenant administrative endpoints require tenant-wide grants. Own/workspace grants
 are intended for host resource checks, not tenant collection management. Role
 assignment requires actual coverage of the permissions delegated, and cycle and

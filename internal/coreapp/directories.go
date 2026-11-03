@@ -20,6 +20,10 @@ type DirectoryFilter struct {
 	Limit                int
 }
 
+// Allow the full encoded size of valid 256-byte IDs, role scope and query text,
+// including JSON escaping. The decoded data remains bounded to a few KiB.
+const maxDirectoryCursorSize = 8192
+
 type DirectoryPage[T any] struct {
 	Items      []T    `json:"items"`
 	Total      int64  `json:"total"`
@@ -31,6 +35,8 @@ type DirectoryPage[T any] struct {
 type directoryCursor struct {
 	Tenant, Kind, Query, Status, ID string
 	At                              time.Time
+	Role                            string `json:",omitempty"`
+	Assignment                      string `json:",omitempty"`
 }
 
 func directoryInput(tenant, kind string, filter DirectoryFilter) (DirectoryFilter, directoryCursor, error) {
@@ -40,7 +46,7 @@ func directoryInput(tenant, kind string, filter DirectoryFilter) (DirectoryFilte
 	}
 	validStatus := filter.Status == ""
 	switch kind {
-	case "members":
+	case "members", "role-members":
 		validStatus = validStatus || filter.Status == "active" || filter.Status == "suspended"
 	case "invitations":
 		validStatus = validStatus || filter.Status == "pending" || filter.Status == "accepted" || filter.Status == "revoked" || filter.Status == "expired"
@@ -53,7 +59,7 @@ func directoryInput(tenant, kind string, filter DirectoryFilter) (DirectoryFilte
 	}
 	cursor := directoryCursor{Tenant: tenant, Kind: kind, Query: filter.Query, Status: filter.Status}
 	if filter.After != "" {
-		if len(filter.After) > 2048 {
+		if len(filter.After) > maxDirectoryCursorSize {
 			return filter, cursor, amsonia.ErrInvalidInput
 		}
 		data, err := base64.RawURLEncoding.DecodeString(filter.After)
@@ -64,6 +70,54 @@ func directoryInput(tenant, kind string, filter DirectoryFilter) (DirectoryFilte
 		cursor = supplied
 	}
 	return filter, cursor, nil
+}
+
+// RoleMemberDirectory lists either current bindings or tenant members who could
+// be assigned. Suspended members remain visible, but writes still reject new
+// assignments to them through the existing Manager path.
+func (s *Service) RoleMemberDirectory(ctx context.Context, tenant, role, assignment string, input DirectoryFilter) (DirectoryPage[Member], error) {
+	page := DirectoryPage[Member]{Items: make([]Member, 0)}
+	if assignment == "" {
+		assignment = "assigned"
+	}
+	if amsonia.RoleID(role).Validate() != nil || (assignment != "assigned" && assignment != "available") {
+		return page, amsonia.ErrInvalidInput
+	}
+	f, cursor, err := directoryInput(tenant, "role-members", input)
+	if err != nil {
+		return page, err
+	}
+	if input.After != "" && (cursor.Role != role || cursor.Assignment != assignment) {
+		return page, amsonia.ErrInvalidInput
+	}
+	cursor.Role, cursor.Assignment = role, assignment
+	err = s.store.RunTenant(ctx, amsonia.TenantID(tenant), true, func(tx pgx.Tx) error {
+		var exists bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM amsonia.roles WHERE tenant_id=$1 AND role_id=$2 AND NOT deleted)`, tenant, role).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			return amsonia.ErrNotFound
+		}
+		const source = ` FROM amsonia.tenant_memberships m JOIN amsonia.accounts a ON a.account_id=m.account_id
+		 WHERE m.tenant_id=$1 AND ($2='' OR position(lower($2) in lower(a.email || ' ' || m.account_id))>0) AND ($3='' OR m.status=$3)
+		 AND EXISTS(SELECT 1 FROM amsonia.subject_roles s WHERE s.tenant_id=m.tenant_id AND s.subject_id=m.account_id AND s.role_id=$4)=$5`
+		if err := tx.QueryRow(ctx, `SELECT count(*)`+source, tenant, f.Query, f.Status, role, assignment == "assigned").Scan(&page.Total); err != nil {
+			return err
+		}
+		rows, err := tx.Query(ctx, `SELECT m.account_id,a.email,m.status,m.joined_at`+source+` AND ($6='' OR m.account_id>$6) ORDER BY m.account_id LIMIT $7`, tenant, f.Query, f.Status, role, assignment == "assigned", cursor.ID, f.Limit+1)
+		if err != nil {
+			return err
+		}
+		page.Items, err = pgx.CollectRows(rows, func(row pgx.CollectableRow) (Member, error) {
+			var m Member
+			err := row.Scan(&m.AccountID, &m.Email, &m.Status, &m.JoinedAt)
+			return m, err
+		})
+		return err
+	})
+	finishDirectory(&page, f, cursor, func(m Member) (string, time.Time) { return m.AccountID, time.Time{} })
+	return page, err
 }
 
 func finishDirectory[T any](page *DirectoryPage[T], filter DirectoryFilter, cursor directoryCursor, key func(T) (string, time.Time)) {

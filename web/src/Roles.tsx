@@ -2,6 +2,7 @@ import { friendlyError } from "./errors";
 import { useEffect, useState, type FormEvent } from "react";
 import { ShieldCheck } from "lucide-react";
 import { api } from "./api";
+import { RoleMembers } from "./RoleMembers";
 import { ErrorMessage, Modal, PageHeader } from "./components";
 import type {
   Capabilities,
@@ -90,6 +91,7 @@ export function RolesPage({
       {selected ? (
         <RoleModal
           tenant={tenant}
+          revision={revision}
           role={selected}
           permissions={permissions}
           capabilities={capabilities}
@@ -102,6 +104,7 @@ export function RolesPage({
 }
 function RoleModal({
   tenant,
+  revision,
   role,
   permissions,
   capabilities,
@@ -110,6 +113,7 @@ function RoleModal({
 }: {
   tenant: string;
   role: Role;
+  revision: number;
   permissions: Permission[];
   capabilities: Capabilities;
   onClose: () => void;
@@ -142,7 +146,10 @@ function RoleModal({
       active = false;
     };
   }, [tenant, role.role_id]);
-  async function change(action: () => Promise<unknown>) {
+  async function change(
+    action: () => Promise<unknown>,
+    reportError = true,
+  ): Promise<string> {
     setBusy(true);
     setError("");
     try {
@@ -152,14 +159,17 @@ function RoleModal({
       setName(updated.role.name);
       setDescription(updated.role.description);
       await onChanged();
+      return "";
     } catch (cause) {
-      setError(friendlyError(cause));
+      const message = friendlyError(cause);
+      if (reportError) setError(message);
       if (cause instanceof Error)
         try {
           setDetail(await api.role(tenant, role.role_id));
         } catch {
           /* Keep the original actionable error. */
         }
+      return message;
     } finally {
       setBusy(false);
     }
@@ -230,15 +240,15 @@ function RoleModal({
   const manage = !!capabilities.permissions["iam:role:manage"],
     grants = !!capabilities.permissions["iam:grant:manage"];
   return (
-    <Modal title={`Role · ${role.role_id}`} onClose={onClose}>
+    <Modal wide title={`Role · ${role.role_id}`} onClose={onClose}>
       <div className="admin-form">
         <ErrorMessage message={error} />
         {detail ? (
           <>
             <form className="admin-form unpadded" onSubmit={save}>
               <span className="pill">
-                Version {detail.role.version} · {detail.subjects.length} member
-                bindings
+                Version {detail.role.version} ·{" "}
+                {detail.subject_count ?? detail.subjects.length} member bindings
               </span>
               <label>
                 Name
@@ -265,6 +275,20 @@ function RoleModal({
                 </button>
               ) : null}
             </form>
+            <RoleMembers
+              tenant={tenant}
+              revision={revision}
+              role={detail.role}
+              canRead={!!capabilities.permissions["iam:member:read"]}
+              canAssign={!!capabilities.permissions["iam:role:assign"]}
+              busy={busy}
+              onChange={(member, assign) =>
+                change(
+                  () => api.bindRole(tenant, member, detail.role, assign),
+                  false,
+                )
+              }
+            />
             <h3>Permission grants</h3>
             {detail.grants.length ? (
               detail.grants.map((item) => (
@@ -399,7 +423,9 @@ function RoleModal({
                   <button
                     className="danger-button"
                     disabled={
-                      busy || !!detail.grants.length || !!detail.subjects.length
+                      busy ||
+                      !!detail.grants.length ||
+                      !!(detail.subject_count ?? detail.subjects.length)
                     }
                     onClick={() => setRetire(true)}
                   >
