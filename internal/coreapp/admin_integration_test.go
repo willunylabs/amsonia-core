@@ -231,10 +231,10 @@ func TestCoreAdministrationLifecycle(t *testing.T) {
 	call("GET", base+"/members", memberSession.AccessToken, nil, 200)
 	call("GET", base+"/audit-events", memberSession.AccessToken, nil, 403) // own scope never authorizes a tenant action
 	// Role composition requires grant-management authority in addition to actual coverage.
-	call("POST", base+"/roles", adminSession.AccessToken, map[string]any{"id": "builder", "name": "Builder", "permissions": []string{"iam:role:manage", "iam:member:read"}}, 201)
+	call("POST", base+"/roles", adminSession.AccessToken, map[string]any{"id": "builder", "name": "Builder", "description": "", "permissions": []string{"iam:role:manage", "iam:member:read"}}, 201)
 	call("PUT", base+"/members/"+member.ID+"/roles/builder", adminSession.AccessToken, map[string]any{"expected_version": 1}, 200)
-	call("POST", base+"/roles", memberSession.AccessToken, map[string]any{"id": "empty", "name": "Empty"}, 201)
-	call("POST", base+"/roles", memberSession.AccessToken, map[string]any{"id": "escalated", "name": "Escalated", "permissions": []string{"iam:member:read"}}, 403)
+	call("POST", base+"/roles", memberSession.AccessToken, map[string]any{"id": "empty", "name": "Empty", "description": "", "permissions": []string{}}, 201)
+	call("POST", base+"/roles", memberSession.AccessToken, map[string]any{"id": "escalated", "name": "Escalated", "description": "", "permissions": []string{"iam:member:read"}}, 403)
 	call("POST", base+"/roles/empty/grants", memberSession.AccessToken, map[string]any{"permission": "iam:member:read", "scope": "tenant", "expected_version": 1}, 403)
 
 	call("PATCH", base+"/members/"+admin.ID, adminSession.AccessToken, map[string]any{"status": "suspended"}, 409)
