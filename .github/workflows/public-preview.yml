@@ -26,16 +26,44 @@ jobs:
   public-preview-install:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    env:
-      # Keep known historical archives on their original Console contract.
-      # New candidate bundles run the complete current workflow in preview.yml.
-      SMOKE_CONSOLE_CONTRACT: ${{ (!inputs.tag || inputs.tag == 'v0.2.0-preview.2' || inputs.tag == 'v0.2.0-preview.3') && 'published-preview-2-3' || 'current' }}
-      RELEASE_TAG: ${{ inputs.tag || 'v0.2.0-preview.3' }}
-      FROM_TAG: ${{ github.event_name == 'pull_request' && 'v0.2.0-preview.2' || inputs.from_tag }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: Select and record published preview versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_FROM_TAG: ${{ inputs.from_tag }}
+        run: |
+          target="$INPUT_TAG"
+          source="$INPUT_FROM_TAG"
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            releases="$(gh api "repos/$GH_REPO/releases" --jq '
+              [.[] | select(.draft == false and .prerelease == true and
+                (.tag_name | test("^v[0-9]+[.][0-9]+[.][0-9]+-preview[.][0-9]+$")))] |
+              sort_by(.published_at) | reverse | .[:2] | .[].tag_name')"
+            mapfile -t tags <<< "$releases"
+            test "${#tags[@]}" = 2
+            target="${tags[0]}"
+            source="${tags[1]}"
+          fi
+          preview_tag='^v[0-9]+[.][0-9]+[.][0-9]+-preview[.][0-9]+$'
+          [[ "$target" =~ $preview_tag ]]
+          if [[ -n "$source" ]]; then
+            [[ "$source" =~ $preview_tag && "$source" != "$target" ]]
+          fi
+          # Immutable historical archives keep the checks their UI supports.
+          # Current candidate bundles always run all checks in preview.yml.
+          case "$target" in
+            v0.2.0-preview.2|v0.2.0-preview.3) contract=published-preview-2-3 ;;
+            v0.2.0-preview.4) contract=published-preview-4 ;;
+            *) contract=current ;;
+          esac
+          printf 'RELEASE_TAG=%s\nFROM_TAG=%s\nSMOKE_CONSOLE_CONTRACT=%s\n' \
+            "$target" "$source" "$contract" >> "$GITHUB_ENV"
+          echo "Public archive: $target; upgrade source: ${source:-none}; Console contract: $contract"
       - name: Download and verify the public archive
         run: |
           df -h "$RUNNER_TEMP"

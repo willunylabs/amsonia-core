@@ -4,6 +4,7 @@ import { api } from "./api";
 import { ErrorMessage } from "./components";
 import { friendlyError } from "./errors";
 import { useAlive } from "./routing";
+import { PASSWORD_LENGTH_MESSAGE, validNewPassword } from "./password";
 import type { PasswordRecovery, PasswordRecoveryPreview } from "./types";
 export function MemberPasswordRecovery({ tenant, id, email }: {
     tenant: string;
@@ -64,7 +65,7 @@ export function MemberPasswordRecovery({ tenant, id, email }: {
             }}><Copy size={15}/> {copied ? "Copied" : "Copy private link"}</button>
       <button className="text-button" type="button" onClick={() => { setResult(undefined); setCopied(false); setError(""); }}>Create a replacement link</button>
     </div> : <form className="admin-form unpadded" onSubmit={submit}>
-      <label>Your administrator password<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} maxLength={128} required disabled={busy}/></label>
+      <label>Your administrator password<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={busy}/></label>
       <small>Creating a new link invalidates any earlier unused recovery link for this account.</small>
       <div className="form-actions"><button className="primary-button" disabled={busy}>{busy ? "Creating link…" : "Create recovery link"}</button></div>
     </form>}
@@ -98,6 +99,10 @@ export function PasswordRecoveryLanding({ token }: {
             setError("The passwords do not match.");
             return;
         }
+        if (!validNewPassword(password)) {
+            setError(PASSWORD_LENGTH_MESSAGE);
+            return;
+        }
         setBusy(true);
         setError("");
         try {
@@ -126,9 +131,9 @@ export function PasswordRecoveryLanding({ token }: {
     <ErrorMessage message={error}/>
     {done ? <a className="primary-button" href={location.pathname + location.search}>Back to sign in</a> : preview ? <form className="admin-form unpadded" onSubmit={submit}>
       <input type="text" autoComplete="username" value={preview.email} readOnly hidden/>
-      <label>New password<input type="password" autoComplete="new-password" minLength={12} maxLength={128} value={password} onChange={(e) => setPassword(e.target.value)} required disabled={busy}/></label>
+      <label>New password<input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={busy}/></label>
       <small>Use 12–128 characters. A password manager can create and save a strong password.</small>
-      <label>Confirm new password<input type="password" autoComplete="new-password" minLength={12} maxLength={128} value={confirm} onChange={(e) => setConfirm(e.target.value)} required disabled={busy}/></label>
+      <label>Confirm new password<input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required disabled={busy}/></label>
       <div className="info-note">This link works once, until {new Date(preview.expires_at).toLocaleString()}. Updating your password signs out all your devices.</div>
       <button className="primary-button" disabled={busy}>{busy ? "Updating password…" : "Set new password"}</button>
     </form> : error ? <><p className="fine-print">Expired or used link? Ask your administrator for a new one.</p><button className="secondary-button" onClick={() => setAttempt((value) => value + 1)}>Retry link</button><a className="back-link" href={location.pathname + location.search}>Back to sign in</a></> : <p role="status">Checking link…</p>}

@@ -6,11 +6,12 @@ const path = require("node:path");
 async function main() {
   const [modulePath, url, screenshots] = process.argv.slice(2);
   const { chromium } = require(modulePath);
-  // Published preview 2/3 archives retain their historical UI. The candidate
-  // bundle always exercises the current Console and its recovery workflow.
+  // Published archives keep their original UI contract. Candidates always
+  // exercise the current Console, including Unicode and pending dialog checks.
   const contract = process.env.SMOKE_CONSOLE_CONTRACT ?? "current";
-  assert.ok(["current", "published-preview-2-3"].includes(contract), "Unknown Console contract");
+  assert.ok(["current", "published-preview-2-3", "published-preview-4"].includes(contract), "Unknown Console contract");
   const historical = contract === "published-preview-2-3";
+  const current = contract === "current";
   await fs.mkdir(screenshots, { recursive: true });
   const browser = await chromium.launch();
   try {
@@ -48,8 +49,8 @@ async function main() {
           await page.getByRole("button", {name: "Invitations", exact: true}).click();
           await page.getByRole("link", {name: "Invite member", exact: true}).click();
           const memberEmail = `recovery-${name}@example.test`;
-          const oldPassword = "preview-member-original-password";
-          const newPassword = "preview-member-recovered-password";
+          const oldPassword = current ? "🌿".repeat(128) : "preview-member-original-password";
+          const newPassword = current ? "🔑".repeat(128) : "preview-member-recovered-password";
           await page.getByLabel("Email", {exact: true}).fill(memberEmail);
           await page.getByRole("button", {name: "Create invitation", exact: true}).click();
           const invitation = await page.getByLabel("Invitation link", {exact: true}).inputValue();
@@ -63,7 +64,13 @@ async function main() {
             }
             observeMemberPage(memberPage);
             await memberPage.goto(invitation);
+            if (current) {
+              await memberPage.getByLabel("Choose a password", {exact: true}).fill("🌿".repeat(11));
+              await memberPage.getByRole("button", {name: "Accept invitation", exact: true}).click();
+              await memberPage.getByRole("alert").filter({hasText: "Use 12–128 characters"}).waitFor();
+            }
             await memberPage.getByLabel("Choose a password", {exact: true}).fill(oldPassword);
+            assert.equal(await memberPage.getByLabel("Choose a password", {exact: true}).inputValue(), oldPassword);
             await memberPage.getByRole("button", {name: "Accept invitation", exact: true}).click();
             await memberPage.getByRole("heading", {name: "Organization overview", exact: true}).waitFor();
             const oldAccess = await memberPage.evaluate(() => sessionStorage.getItem("amsonia.core.access.v1"));
@@ -85,6 +92,14 @@ async function main() {
             observeMemberPage(memberPage);
             await memberPage.goto(recovery);
             await memberPage.getByRole("heading", {name: "Choose a new password", exact: true}).waitFor();
+            if (current) {
+              for (const invalid of ["🔑".repeat(11), "🔑".repeat(129)]) {
+                await memberPage.getByLabel("New password", {exact: true}).fill(invalid);
+                await memberPage.getByLabel("Confirm new password", {exact: true}).fill(invalid);
+                await memberPage.getByRole("button", {name: "Set new password", exact: true}).click();
+                await memberPage.getByRole("alert").filter({hasText: "Use 12–128 characters"}).waitFor();
+              }
+            }
             await memberPage.getByLabel("New password", {exact: true}).fill(newPassword);
             await memberPage.getByLabel("Confirm new password", {exact: true}).fill(newPassword);
             assert.equal(await memberPage.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -106,6 +121,48 @@ async function main() {
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
           assert.deepEqual(failures, []);
           await page.screenshot({path: path.join(screenshots, `account-devices-${name}.png`)});
+          if (current) {
+            // Use a real second login so the confirmation affects an actual
+            // session. Pause only the request dispatch while testing busy focus.
+            const other = await browser.newContext();
+            let release;
+            const gate = new Promise(resolve => { release = resolve; });
+            const endpoint = "**/api/v1/auth/sessions/revoke-others";
+            try {
+              const login = await other.request.post(url + "/api/v1/auth/login", {
+                data: {email: process.env.SMOKE_LOGIN_EMAIL, password: process.env.SMOKE_LOGIN_PASSWORD},
+              });
+              assert.equal(login.status(), 200);
+              const otherToken = (await login.json()).access_token;
+              await page.getByRole("button", {name: "Refresh devices", exact: true}).click();
+              await page.getByRole("button", {name: "Sign out other devices", exact: true}).click();
+              const dialog = page.getByRole("dialog", {name: "Sign out other devices?"});
+              await dialog.getByRole("button", {name: "Cancel", exact: true}).click();
+              await page.getByRole("button", {name: "Sign out other devices", exact: true}).click();
+              await page.route(endpoint, async route => { await gate; await route.continue(); });
+              await Promise.all([
+                page.waitForRequest(url + "/api/v1/auth/sessions/revoke-others"),
+                dialog.getByRole("button", {name: "Confirm sign out", exact: true}).click(),
+              ]);
+              for (const key of ["Tab", "Shift+Tab"]) {
+                await page.keyboard.press(key);
+                assert.equal(await dialog.evaluate(element => element.contains(document.activeElement)), true);
+              }
+              await page.keyboard.press("Escape");
+              assert.equal(await dialog.isVisible(), true);
+              await page.screenshot({path: path.join(screenshots, `pending-confirmation-${name}.png`)});
+              release();
+              await dialog.waitFor({state: "hidden"});
+              await page.getByText("Other devices signed out. This device remains signed in.", {exact: true}).waitFor();
+              const revoked = await other.request.get(url + "/api/v1/auth/me", {headers: {Authorization: `Bearer ${otherToken}`}});
+              assert.equal(revoked.status(), 401);
+              assert.deepEqual(failures, []);
+            } finally {
+              release();
+              await page.unroute(endpoint);
+              await other.close();
+            }
+          }
         }
         console.log(`First login passed: ${name} ${viewport.width}x${viewport.height}`);
       } catch (error) {

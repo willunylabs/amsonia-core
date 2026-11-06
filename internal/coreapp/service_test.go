@@ -15,9 +15,13 @@ func TestValidBootstrapPassword(t *testing.T) {
 	}{
 		{name: "minimum", password: strings.Repeat("a", 12), want: true},
 		{name: "unicode minimum", password: strings.Repeat("界", 12), want: true},
+		{name: "supplementary Unicode minimum", password: strings.Repeat("🔐", 12), want: true},
 		{name: "maximum", password: strings.Repeat("a", 128), want: true},
+		{name: "supplementary Unicode maximum", password: strings.Repeat("🔐", 128), want: true},
 		{name: "too short", password: strings.Repeat("a", 11)},
 		{name: "too long", password: strings.Repeat("a", 129)},
+		{name: "supplementary Unicode too short", password: strings.Repeat("🔐", 11)},
+		{name: "supplementary Unicode too long", password: strings.Repeat("🔐", 129)},
 		{name: "invalid UTF-8", password: string([]byte{0xff})},
 	} {
 		t.Run(test.name, func(t *testing.T) {

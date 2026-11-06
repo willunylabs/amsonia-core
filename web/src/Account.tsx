@@ -5,6 +5,7 @@ import { api, setToken } from "./api";
 import { ErrorMessage, PageHeader } from "./components";
 import { DeviceSessions } from "./DeviceSessions";
 import { PageNavigation } from "./navigation";
+import { PASSWORD_LENGTH_MESSAGE, validNewPassword } from "./password";
 import type { Account, InvitationPreview, Profile } from "./types";
 
 export function AccountPage({
@@ -174,8 +175,8 @@ function PasswordForm({
       setError("The new passwords do not match.");
       return;
     }
-    if (Array.from(next).length < 12 || Array.from(next).length > 128) {
-      setError("Use 12–128 characters for your new password.");
+    if (!validNewPassword(next)) {
+      setError(PASSWORD_LENGTH_MESSAGE);
       return;
     }
     setBusy(true);
@@ -274,7 +275,11 @@ export function InvitationLanding({
   }, [token]);
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!preview) return;
+    if (!preview || busy) return;
+    if (!preview.account_exists && !accepted && !validNewPassword(password)) {
+      setError(PASSWORD_LENGTH_MESSAGE);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -308,7 +313,7 @@ export function InvitationLanding({
             <p>
               {preview.account_exists
                 ? "Use your existing account password. Joining will preserve your password and other memberships."
-                : "Choose an account password with at least 12 characters."}
+                : "Choose an account password with 12–128 characters."}
             </p>
             <label>
               {preview.account_exists
@@ -320,8 +325,6 @@ export function InvitationLanding({
                 autoComplete={
                   preview.account_exists ? "current-password" : "new-password"
                 }
-                minLength={preview.account_exists ? undefined : 12}
-                maxLength={128}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
