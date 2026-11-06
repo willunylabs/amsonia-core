@@ -49,10 +49,13 @@ async function main() {
         const invitation = await page.getByLabel("Invitation link", {exact: true}).inputValue();
         const memberContext = await browser.newContext({viewport});
         try {
-          const memberPage = await memberContext.newPage();
-          memberPage.on("pageerror", (error) => failures.push(error.message));
-          memberPage.on("console", (message) => { if (message.type() === "error") failures.push(message.text()); });
-          memberPage.on("response", (response) => { if (response.status() >= 400 && response.url().startsWith(url + "/")) failures.push(`${response.status()} ${new URL(response.url()).pathname}`); });
+          let memberPage = await memberContext.newPage();
+          function observeMemberPage(target) {
+            target.on("pageerror", (error) => failures.push(error.message));
+            target.on("console", (message) => { if (message.type() === "error") failures.push(message.text()); });
+            target.on("response", (response) => { if (response.status() >= 400 && response.url().startsWith(url + "/")) failures.push(`${response.status()} ${new URL(response.url()).pathname}`); });
+          }
+          observeMemberPage(memberPage);
           await memberPage.goto(invitation);
           await memberPage.getByLabel("Choose a password", {exact: true}).fill(oldPassword);
           await memberPage.getByRole("button", {name: "Accept invitation", exact: true}).click();
@@ -69,6 +72,11 @@ async function main() {
           await page.screenshot({path: path.join(screenshots, `member-recovery-${name}.png`)});
           await page.getByRole("button", {name: "Create recovery link", exact: true}).click();
           const recovery = await page.getByLabel("Private recovery link", {exact: true}).inputValue();
+          // Recovery is opened in a fresh tab. The original tab's access token
+          // remains available below only for the explicit revocation probe.
+          await memberPage.close();
+          memberPage = await memberContext.newPage();
+          observeMemberPage(memberPage);
           await memberPage.goto(recovery);
           await memberPage.getByRole("heading", {name: "Choose a new password", exact: true}).waitFor();
           await memberPage.getByLabel("New password", {exact: true}).fill(newPassword);
