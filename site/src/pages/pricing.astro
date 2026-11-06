@@ -1,18 +1,11 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import PageIntro from '../components/PageIntro.astro';
-import { breadcrumbSchema, COMMERCIAL_URL, COMPANY_CONTACT_URL } from '../lib/site';
-const description = 'Understand Amsonia pricing: Amsonia Next is privately maintained, while Amsonia Platform is sold through commercial source-code packages by Willuny Labs.';
+import TopicPage from '../components/TopicPage.astro';
+import { breadcrumbSchema, COMPANY_CONTACT_URL, COMMERCIAL_URL } from '../lib/site';
+const description = 'Review Amsonia Next source access, current purchase options, and the contact path for questions about licensing, delivery, and support.';
 ---
-<BaseLayout title="Amsonia Pricing" description={description} canonicalPath="/pricing" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Pricing', href: '/pricing' }])]}>
-  <main id="main-content">
-    <PageIntro eyebrow="Source access and pricing" index="PRICE / 01" title="Explore access and pricing." summary="Contact Willuny Labs about Amsonia Next source availability and pricing. Amsonia Platform has a separate commercial package catalog." />
-    <div class="content-shell">
-      <section class="section"><div class="product-grid">
-        <article class="product-card product-card-featured"><span class="specimen-number">AMSONIA NEXT / PRIVATE SOURCE</span><h2>Ask about Next</h2><p class="product-lede">Authentication, Stripe billing, PostgreSQL, and admin in one privately maintained Next.js application. Contact Willuny Labs to confirm source availability, pricing, license rights, and support.</p><div class="hero-actions"><a class="button primary" href="/next/">Explore Next →</a><a class="button secondary" href={COMPANY_CONTACT_URL}>Contact Willuny Labs ↗</a></div></article>
-        <article class="product-card"><span class="specimen-number">AMSONIA PLATFORM / COMMERCIAL</span><h2>Source packages</h2><p class="product-lede">Platform is purchased under a commercial source license. Package price, repository access, permitted users, updates, support, and fulfillment are defined in the current catalog.</p><div class="hero-actions"><a class="button primary" href={COMMERCIAL_URL} data-cta-target="commercial">View current packages ↗</a><a class="button secondary" href="/platform/docs/">Evaluate first →</a></div></article>
-      </div></section>
-      <section class="publication-note"><span class="eyebrow">Before purchase</span><h2>Know what is included.</h2><p>Confirm the source code included, permitted use, updates, and support for your selected product. Check whether hosting or implementation help is included in the offer.</p></section>
-    </div>
-  </main>
-</BaseLayout>
+<TopicPage eyebrow="Amsonia Next" index="ACCESS / 01" title="Source access and pricing." summary="Review current purchase options for Amsonia Next or contact Willuny Labs about your requirements." description={description} canonicalPath="/pricing" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'Pricing', href: '/pricing' }])]}
+  sections={[
+    { id: 'source', title: 'Amsonia Next source access', paragraphs: ['Review the current purchase page for pricing and source access.', 'Contact Willuny Labs to confirm included source, license rights, delivery, updates, and support.'] }
+  ]}
+  relatedLinks={[{ href: '/next/', label: 'Amsonia Next', description: 'Explore the Next.js SaaS starter.' }, { href: '/license/', label: 'Source access and licensing', description: 'Review licensing information.' }, { href: COMMERCIAL_URL, label: 'Buy Amsonia Next', description: 'Review current purchase options.' }, { href: COMPANY_CONTACT_URL, label: 'Contact Willuny Labs', description: 'Discuss source access and your requirements.' }]}
+/>

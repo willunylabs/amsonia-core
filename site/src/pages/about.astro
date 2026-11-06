@@ -3,23 +3,23 @@ import PageIntro from '../components/PageIntro.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { breadcrumbSchema, COMPANY_CONTACT_URL, COMPANY_ORIGIN } from '../lib/site';
 
-const description = 'Amsonia is a family of SaaS starter kits by Willuny Labs. Learn about Amsonia Next, Amsonia Platform, and the company behind them.';
+const description = 'Learn about Amsonia Next, the private Next.js SaaS starter with authentication, billing, PostgreSQL, and admin, built by Willuny Labs.';
 ---
 
 <BaseLayout title="About Amsonia" description={description} canonicalPath="/about" schemas={[breadcrumbSchema([{ name: 'Amsonia', href: '/' }, { name: 'About', href: '/about' }])]}>
   <main id="main-content">
-    <PageIntro eyebrow="By Willuny Labs" index="ABOUT / 00" title="About Amsonia" summary="SaaS starter kits built by Willuny Labs. Start with Amsonia Next for a full-stack TypeScript application, or explore Platform for a Go API and multi-tenant B2B features." />
+    <PageIntro eyebrow="By Willuny Labs" index="ABOUT / 00" title="About Amsonia" summary="Amsonia Next is the full-stack TypeScript SaaS starter built by Willuny Labs." />
     <div class="content-shell">
       <div class="content-grid">
         <aside class="content-aside"><nav aria-label="About sections"><a href="#brand">Brand</a><a href="#principles">Principles</a><a href="#publisher">Publisher</a></nav></aside>
         <article class="prose">
-          <h2 id="brand">One family. Distinct products.</h2>
-          <p>Amsonia Next brings authentication, Stripe billing, PostgreSQL, and admin into one privately maintained Next.js application. Amsonia Platform is a separate commercial Go + Next.js starter for multi-tenant B2B products.</p>
+          <h2 id="brand">Amsonia Next.</h2>
+          <p>Amsonia Next brings authentication, Stripe billing, PostgreSQL, and admin into one privately maintained Next.js application.</p>
           <h2 id="principles">What to expect.</h2>
           <ul><li>Product pages explain the included features and intended use.</li><li>Source availability and licensing are described for each product.</li><li>You choose where to deploy and how to adapt the application.</li><li>Contact Willuny Labs to discuss availability, pricing, and support.</li></ul>
           <h2 id="publisher">Published by Willuny Labs.</h2>
           <p>Willuny Labs builds and maintains Amsonia. For company information, product availability, or support inquiries, visit the <a href={COMPANY_ORIGIN}>Willuny Labs website</a> or contact us.</p>
-          <div class="hero-actions"><a class="button primary" href={COMPANY_CONTACT_URL} data-cta-target="contact">Ask about Amsonia Next ↗</a><a class="button secondary" href="/products/">Compare Amsonia products →</a></div>
+          <div class="hero-actions"><a class="button primary" href={COMPANY_CONTACT_URL} data-cta-target="contact">Ask about Amsonia Next ↗</a><a class="button secondary" href="/products/">Explore Amsonia Next →</a></div>
         </article>
       </div>
     </div>

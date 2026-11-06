@@ -28,8 +28,6 @@ export const COMPANY_CONTACT_URL = `${COMPANY_ORIGIN}/shop/contact`;
 
 export const primaryNav = [
   { href: '/next/', label: 'Next' },
-  { href: '/platform/', label: 'Platform' },
-  { href: '/compare/platform-vs-next/', label: 'Compare' },
   { href: '/docs/', label: 'Docs' },
   { href: '/open-source/', label: 'Open source' }
 ];
