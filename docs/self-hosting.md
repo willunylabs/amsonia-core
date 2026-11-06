@@ -22,7 +22,9 @@ replaces the password and revokes every pre-recovery device session in one
 transaction. It does not create, promote or reactivate accounts. Verify that
 sign-in works with the new password and an earlier browser session no longer
 works. No mail server is needed. This is operator recovery for system
-administrators; invited members do not have a self-service reset flow.
+administrators. For ordinary members, a system administrator can issue a
+private, one-time recovery link through the Console. See
+[member recovery and credential retention](member-recovery-and-session-retention.md).
 
 The database owner can inspect successful recoveries:
 

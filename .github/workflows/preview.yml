@@ -30,11 +30,23 @@ jobs:
           python3 -B "$GITHUB_WORKSPACE/scripts/smoke-preview.py" amsonia-core-*-linux-amd64 \
             --browser-module "$RUNNER_TEMP/preview-browser/node_modules/playwright" \
             --screenshots "$RUNNER_TEMP/preview/screenshots"
+      - name: Verify backup and upgrade from preview.3
+        run: |
+          bash scripts/download-public-preview.sh v0.2.0-preview.3 "$RUNNER_TEMP/old-preview"
+          mkdir -p "$RUNNER_TEMP/preview-upgrade"
+          tar -xzf "$RUNNER_TEMP"/preview/amsonia-core-*-linux-amd64.tar.gz -C "$RUNNER_TEMP/preview-upgrade"
+          python3 -B scripts/smoke-preview-upgrade.py \
+            "$RUNNER_TEMP/old-preview/amsonia-core-0.2.0-preview.3-linux-amd64" \
+            "$RUNNER_TEMP"/preview-upgrade/amsonia-core-*-linux-amd64 \
+            "$RUNNER_TEMP/preview-browser/node_modules/playwright" \
+            "$RUNNER_TEMP/preview/screenshots-upgrade"
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: preview-first-login
-          path: ${{ runner.temp }}/preview/screenshots/*.png
+          path: |
+            ${{ runner.temp }}/preview/screenshots/*.png
+            ${{ runner.temp }}/preview/screenshots-upgrade/*.png
           if-no-files-found: ignore
           retention-days: 7
       - uses: actions/upload-artifact@v7

@@ -34,6 +34,22 @@ ORDER BY schemaname, tablename
 """
 
 
+def verify_upgrade(before, after, old_migrations, new_migrations):
+    changed = sorted(name for name in before
+                     if name != "amsonia.schema_migrations" and before[name] != after.get(name))
+    assert not changed, f"Unexpected data changes in: {', '.join(changed)}"
+    for name in after.keys() - before.keys():
+        assert name == "amsonia.member_password_recoveries", f"Unexpected new table: {name}"
+        assert after[name] == "0|d41d8cd98f00b204e9800998ecf8427e", f"New table is not empty: {name}"
+
+    assert old_migrations, "Source migration history is missing"
+    assert new_migrations[:len(old_migrations)] == old_migrations, "Existing migration history changed"
+    assert [row["version"] for row in new_migrations] == list(range(1, len(new_migrations) + 1)), \
+        "Migration history is not contiguous"
+    assert all(row["dirty"] is False for row in new_migrations), "Migration history contains dirty rows"
+    # API startup also verifies names and checksums against the new binary.
+
+
 def request(path, *, method="GET", token=None, body=None):
     headers = {"Content-Type": "application/json"}
     if token:
@@ -72,6 +88,12 @@ def main():
                     input=SNAPSHOT, text=True, capture_output=True)
         return dict(line.split("|", 1) for line in result.stdout.splitlines())
 
+    def migration_history(bundle):
+        result = pg(bundle, "psql", "-XAt", "-v", "ON_ERROR_STOP=1", "-d", "amsonia_core",
+                    input="SELECT json_agg(t ORDER BY version) FROM amsonia.schema_migrations t;",
+                    text=True, capture_output=True)
+        return json.loads(result.stdout)
+
     run(args.old, ["docker", "load", "--input", "images.tar"])
     run(args.old, ["./init-env"])
     active = args.old
@@ -97,6 +119,7 @@ def main():
 
         compose(args.old, "stop", "web", "api")
         before = snapshot(args.old)
+        old_migrations = migration_history(args.old)
         assert "amsonia.audit_events" in before
         with tempfile.TemporaryFile() as backup:
             pg(args.old, "pg_dump", "-Fc", "-d", "amsonia_core", stdout=backup)
@@ -118,9 +141,18 @@ def main():
         compose(args.new, *UP)
         assert request("/readyz")["status"] == "ready"
         after = snapshot(args.new)
-        changed = sorted(name for name in before.keys() | after.keys() if before.get(name) != after.get(name))
-        assert not changed, f"Unexpected data changes in: {', '.join(changed)}"
-        print(f"In-place upgrade preserved {len(before)} database tables.", flush=True)
+        new_migrations = migration_history(args.new)
+        verify_upgrade(before, after, old_migrations, new_migrations)
+        print(f"In-place upgrade preserved {len(before) - 1} data tables and prior migration history; "
+              f"schema {len(old_migrations)} → {len(new_migrations)}.", flush=True)
+        if "amsonia.member_password_recoveries" in after:
+            result = compose(args.new, "run", "--rm", "-T", "--entrypoint", "/usr/local/bin/amsonia",
+                             "migrate", "prune-sessions", capture_output=True, text=True)
+            preview = json.loads(result.stdout)
+            assert preview["applied"] is False and preview["batch_size"] == 1000
+            assert all(preview[key] == 0 for key in ("access_sessions", "refresh_sessions", "password_recoveries"))
+            assert snapshot(args.new) == after, "Default session cleanup changed data"
+            print("Packaged session cleanup defaults to a non-mutating dry run.", flush=True)
 
         upgraded = login()
         for field in ("id", "email", "system_admin", "created_at"):
