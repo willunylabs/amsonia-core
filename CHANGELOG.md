@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.0-preview.4
+
+- Let system administrators issue private, one-time password recovery links for
+  active ordinary members. Links expire after 30 minutes; completing recovery
+  revokes old sessions and pending recovery links without changing member roles.
+- Add operator-only `prune-sessions`, with a dry run by default, bounded batches
+  and a default retention period of 30 days after expiry. Runtime credentials
+  cannot delete global session or recovery records.
+- Refresh the Console overview, navigation, forms and account device views for
+  desktop and mobile use. Browser checks exercise invitations, member recovery,
+  old-session rejection and sign-in with the replacement password.
+- Validate real PostgreSQL-backed HTTP requests and responses against every
+  documented OpenAPI operation, including probes that detect contract drift.
+- Fix credential-session revocation, invitation form state and policy audit
+  reliability, and preserve existing role and permission boundaries.
+
+Upgrade the API, CLI and Console together. Back up the database, apply migration
+11 and rerun `ops/configure_database_roles.sql`. The preview bundle performs the
+migration and role provisioning before starting the API. See the
+[self-hosting runbook](docs/self-hosting.md) and
+[member recovery and retention guide](docs/member-recovery-and-session-retention.md).
+The supported archive path is Linux amd64 with Docker Compose 2.24.4 or newer;
+this release does not add email delivery or an automatic cleanup schedule.
+
 ## 0.2.0-preview.3
 
 - Fix the packaged console failing to render its sign-in page because the

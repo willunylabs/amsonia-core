@@ -34,6 +34,8 @@ new bundle separately, and copy the original `.env` with mode 0600. Keep the
 same Compose project name so the new stack reuses the named database volume.
 Load the new images and run the new bundle's `up` command above. Migration
 and role provisioning run before the API starts. Do not bootstrap again.
+Upgrading from preview.3 to preview.4 applies migration 11 and grants the API
+access to member recovery records. Existing accounts, roles and data are retained.
 This procedure assumes the new bundle uses a compatible PostgreSQL major
 version; a major upgrade requires a separate database migration.
 
@@ -43,3 +45,17 @@ credentials to the API container:
 ```sh
 ./amsonia-compose run --rm --entrypoint /usr/local/bin/amsonia migrate recover-admin
 ```
+
+Ordinary members ask the system administrator for a private recovery link in
+**Members → Manage member → Password recovery**. Links expire after 30 minutes
+and can be used once. See [the recovery and retention guide](docs/member-recovery-and-session-retention.md).
+
+Preview old session and recovery records before choosing to remove them:
+
+```sh
+./amsonia-compose run --rm --entrypoint /usr/local/bin/amsonia migrate prune-sessions
+./amsonia-compose run --rm --entrypoint /usr/local/bin/amsonia migrate prune-sessions --apply
+```
+
+The default is a dry run. Applying cleanup removes at most 1,000 records per
+table that expired more than 30 days ago. Live sessions and audit history remain.
