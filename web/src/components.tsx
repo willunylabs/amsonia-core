@@ -55,7 +55,12 @@ export function Modal({
         );
         const first = items[0],
           last = items.at(-1);
-        if (event.shiftKey && document.activeElement === first) {
+        // A pending action can disable the focused button. Keep Tab inside
+        // the dialog even when the browser has moved focus to the document.
+        if (!items.includes(document.activeElement as HTMLElement)) {
+          event.preventDefault();
+          (event.shiftKey ? last : first)?.focus();
+        } else if (event.shiftKey && document.activeElement === first) {
           event.preventDefault();
           last?.focus();
         } else if (!event.shiftKey && document.activeElement === last) {

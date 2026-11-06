@@ -34,9 +34,10 @@ not claim that they cannot.
 
 - Base: single organization, invitation-only accounts, membership, roles,
   sessions and audit. Multi mode stays opt-in.
-- Complete the distribution path: release notes, matching CLI/API/console
-  revisions and tested upgrade/restore instructions. Prebuilt versioned
-  images are still a packaging gap.
+- Keep the distribution path verified: checksummed Linux amd64 preview bundles
+  already contain prebuilt API/CLI, Console and PostgreSQL images. Preserve
+  matching revisions and tested upgrade/restore instructions; see the
+  [archive install guide](../deploy/preview/README.md).
 - Use the existing RLS example as the extension reference. Its opt-in list
   and creation form include a real permission check, read-only denial, and
   a negative isolation test. The default console has no invoice routes.

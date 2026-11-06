@@ -58,7 +58,8 @@ def main():
         assert json.loads(call("/readyz"))["status"] == "ready"
         assert b"Amsonia Core" in call("/")
         email = (b"Administrator email: ", "owner@example.test")
-        original = "preview-original-test-password"
+        current_console = env.get("SMOKE_CONSOLE_CONTRACT", "current") == "current"
+        original = "🔐" * 128 if current_console else "preview-original-test-password"
         replacement = "preview-replacement-test-password"
         enter(
             compose + ["exec", "api", "/usr/local/bin/amsonia", "bootstrap-admin"],

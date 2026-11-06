@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0-preview.5
+
+- Count new passwords by Unicode code points throughout invitation, account
+  and recovery forms, matching the API's 12–128 character contract. Existing
+  account passwords are submitted unchanged, including administrator verification.
+- Keep keyboard focus inside confirmation dialogs when a pending request
+  disables the focused action button.
+- Verify Unicode password boundaries, member recovery and pending confirmation
+  dialogs on desktop and mobile browsers. Public archive checks automatically
+  select the latest two published previews for upgrade verification.
+
+This release uses schema 11. Upgrade the API, CLI and Console together using
+the [archive install guide](deploy/preview/README.md). Installations already on
+preview.4 need no new database migration.
+
 ## 0.2.0-preview.4
 
 - Let system administrators issue private, one-time password recovery links for
