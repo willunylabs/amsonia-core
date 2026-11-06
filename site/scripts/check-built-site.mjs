@@ -14,13 +14,7 @@ const companyOrigin = String(process.env.PUBLIC_COMPANY_ORIGIN || '').trim();
 assert.ok(companyOrigin, 'PUBLIC_COMPANY_ORIGIN is required for the site audit');
 const commercialUrl = new URL(process.env.PUBLIC_COMMERCIAL_URL);
 assert.notEqual(commercialUrl.href.replace(/\/$/, ''), `${companyOrigin}/amsonia`, 'commercial CTA must not loop through the retired company product page');
-const requiredRoutes = [
-  '/', '/products', '/platform', '/platform/docs', '/platform/docs/quickstart', '/platform/docs/deployment',
-  '/platform/docs/billing', '/platform/changelog', '/platform/roadmap', '/next', '/compare/platform-vs-next', '/compare/shipfast-vs-amsonia-next',
-  '/go-saas-boilerplate', '/best-go-saas-boilerplates',
-  '/features/multi-tenancy', '/features/rbac', '/features/stripe-billing', '/architecture', '/security', '/pricing', '/license',
-  '/docs', '/open-source', '/about'
-];
+const requiredRoutes = ['/', '/products', '/next', '/pricing', '/license', '/docs', '/open-source', '/about', '/compare/shipfast-vs-amsonia-next'];
 
 function pageFile(route) {
   if (route === '/') return join(distRoot, 'index.html');
@@ -71,6 +65,7 @@ assert.doesNotMatch(errorHtml, /<link rel="canonical"/, 'missing pages must not 
 
 for (const file of htmlFiles) {
   const html = readFileSync(file, 'utf8');
+  assert.doesNotMatch(html, /Amsonia Platform|href="\/(?:platform|compare\/platform-vs-next)(?:\/|")/i, `${file} must not introduce or link to the retired product`);
   const demoLinks = [...html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*data-cta-target="demo"/g)];
   if (file === pageFile('/next')) {
     assert.equal(demoLinks.length, 1, 'only one verified demo CTA belongs on the Next product page');
@@ -135,18 +130,18 @@ const homepageGraph = [...homepage.matchAll(/<script type="application\/ld\+json
 assert.ok(!homepageGraph.some((entry) => entry['@type'] === 'ProductGroup'), 'distinct software products must not be marked as merchant variants');
 const catalog = homepageGraph.find((entry) => entry['@type'] === 'CollectionPage');
 assert.equal(catalog?.mainEntity?.['@type'], 'ItemList', 'the homepage must describe its product catalog as a list');
-assert.deepEqual(catalog.mainEntity.itemListElement.map((entry) => entry.url), [canonicalFor('/next'), canonicalFor('/platform')], 'catalog entries must point to the actual product pages');
+assert.deepEqual(catalog.mainEntity.itemListElement.map((entry) => entry.url), [canonicalFor('/next')], 'catalog entries must point to the actual product pages');
 assert.ok(homepage.includes(`${companyOrigin}/logo`), 'publisher logo must use the company logo');
 assert.match(homepage, /github\.com\/willunylabs/, 'publisher must identify the GitHub organization');
 assert.ok(homepage.includes(`${companyOrigin}/#organization`), 'homepage publisher must use the configured Willuny organization ID');
 assert.ok(homepage.includes(`${origin}/#product-family`), 'homepage must declare the configured Amsonia product family');
-assert.ok(homepage.includes(`${origin}/platform/#software`), 'homepage must reference Amsonia Platform');
+assert.ok(!homepage.includes(`${origin}/platform/#software`), 'homepage must not expose a retired product entity');
 assert.ok(homepage.includes(`${origin}/next/#software`), 'homepage must reference Amsonia Next');
 assert.match(homepage, /FAMILY \/ 00/, 'homepage must present Amsonia as the product family');
-assert.match(homepage, /Amsonia Platform/, 'homepage must name the commercial product consistently');
+assert.doesNotMatch(homepage, /Amsonia Platform/, 'homepage must not introduce the retired product');
 assert.match(homepage, /Amsonia Next/, 'homepage must name the Next.js product consistently');
 
-for (const route of ['/', '/next', '/products', '/pricing', '/compare/platform-vs-next']) {
+for (const route of ['/', '/next', '/products', '/pricing']) {
   const html = readFileSync(pageFile(route), 'utf8');
   assert.doesNotMatch(html, /Lemon Squeezy|Polar/i, `${route} must not advertise unsupported Next payment providers`);
 }
@@ -173,7 +168,7 @@ for (const route of requiredRoutes) {
 }
 assert.ok(!sitemap.includes(new URL(nextDemoUrl).origin), 'the demo is external and must not enter the product sitemap');
 assert.doesNotMatch(sitemap, /demo\.amsonia\.dev|\/404|<loc>[^<]*\?/, 'sitemap must contain only clean indexable URLs');
-assert.doesNotMatch(sitemap, /\/core(?:\/|<)|\/releases(?:\/|<)/, 'sitemap must exclude retired Core and release routes');
+assert.doesNotMatch(sitemap, /\/(?:core|releases|platform|compare\/platform-vs-next)(?:\/|<)/, 'sitemap must exclude retired routes');
 
 const redirectsFile = join(distRoot, '_redirects');
 assert.ok(existsSync(redirectsFile), 'Cloudflare Pages redirects must be generated');
@@ -186,3 +181,8 @@ assert.match(robots, /User-agent: \*\s+Allow: \//, 'robots.txt must allow crawli
 assert.ok(robots.includes(`Sitemap: ${origin}/sitemap.xml`), 'robots.txt must advertise the configured canonical sitemap');
 
 console.log(`Amsonia site checks passed for ${requiredRoutes.length} routes and ${htmlFiles.length} HTML files.`);
+
+for (const route of ['/platform', '/platform/docs', '/platform/docs/quickstart', '/platform/docs/deployment', '/platform/docs/billing', '/platform/changelog', '/platform/roadmap', '/compare/platform-vs-next', '/go-saas-boilerplate', '/best-go-saas-boilerplates', '/features/multi-tenancy', '/features/rbac', '/features/stripe-billing', '/architecture', '/security']) {
+  assert.ok(!existsSync(pageFile(route)), `retired route must not emit an introduction page: ${route}`);
+  assert.ok(redirects.includes(`${route} /next/ 301`), `retired route must redirect to Next: ${route}`);
+}
