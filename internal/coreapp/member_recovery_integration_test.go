@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/willunylabs/amsonia-core"
 )
 
@@ -114,6 +115,9 @@ func TestMemberPasswordRecovery(t *testing.T) {
 			t.Fatal("old access survived", err)
 		}
 	}
+	if _, err := s.Login(ctx, LoginInput{Email: member.Email, Password: password}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatal("old password accepted", err)
+	}
 	recovered := login(member.Email, next)
 	if _, err := s.Refresh(ctx, RefreshInput{RefreshToken: old.RefreshToken}); !errors.Is(err, ErrSessionInvalid) {
 		t.Fatal("old refresh survived", err)
@@ -166,7 +170,10 @@ func TestMemberPasswordRecovery(t *testing.T) {
 		if err == nil {
 			success++
 		} else if !errors.Is(err, amsonia.ErrNotFound) {
-			t.Fatal("parallel completion", err)
+			var databaseError *pgconn.PgError
+			if !errors.As(err, &databaseError) || databaseError.Code != "40001" {
+				t.Fatal("parallel completion", err)
+			}
 		}
 	}
 	if success != 1 {

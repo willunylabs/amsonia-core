@@ -197,6 +197,8 @@ function MemberWorkspace({
         detail={
           tab === "roles"
             ? "Review and assign this member's roles."
+            : tab === "recovery"
+              ? "Help this member recover access to their account."
             : tab === "remove"
               ? "Remove membership from this tenant."
               : "Review identity and update tenant access."

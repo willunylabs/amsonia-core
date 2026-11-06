@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { KeyRound, CheckCircle2, Copy } from "lucide-react";
 import { api } from "./api";
 import { ErrorMessage } from "./components";
@@ -11,6 +11,7 @@ export function MemberPasswordRecovery({ tenant, id, email }: {
     email: string;
 }) {
     const alive = useAlive();
+    const linkID = useId();
     const [password, setPassword] = useState("");
     const [result, setResult] = useState<PasswordRecovery>();
     const [busy, setBusy] = useState(false);
@@ -48,7 +49,7 @@ export function MemberPasswordRecovery({ tenant, id, email }: {
     <ErrorMessage message={error}/>
     {result ? <div className="recovery-result">
       <p role="status" className="success-note"><CheckCircle2 size={18}/> Recovery link ready</p>
-      <label>Private recovery link<textarea readOnly rows={3} value={link} onFocus={(event) => event.currentTarget.select()}/></label>
+      <label htmlFor={linkID}>Private recovery link</label><textarea id={linkID} readOnly rows={3} value={link} onFocus={(event) => event.currentTarget.select()}/>
       <p>Expires {new Date(result.expires_at).toLocaleString()}. Save it now; it is only shown here once.</p>
       <button className="secondary-button" type="button" onClick={async () => {
                 try {

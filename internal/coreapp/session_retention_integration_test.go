@@ -4,6 +4,7 @@ package coreapp
 
 import (
 	"context"
+	"fmt"
 	"testing"
 )
 
@@ -11,6 +12,10 @@ func TestSessionRetention(t *testing.T) {
 	s, _, _, owner := coreFixture(t)
 	ctx := context.Background()
 	account, err := s.BootstrapAdmin(ctx, BootstrapInput{Email: "prune@example.test", Password: "prune-test-password"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tenant, err := s.CreateTenant(ctx, account, CreateTenantInput{Name: "Retention organization"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,10 +40,16 @@ func TestSessionRetention(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
+		if _, err := owner.Exec(ctx, `INSERT INTO amsonia.member_password_recoveries
+   (recovery_id,account_id,issued_tenant_id,created_by,token_hash,created_at,expires_at)
+   VALUES($1,$2,$3,$2,$4,now()-interval '90 days',now()-make_interval(days=>$5))`,
+			fmt.Sprintf("retention_%d", i), account.ID, tenant.ID, tokenHash(v.AccessToken), age); err != nil {
+			t.Fatal(err)
+		}
 	}
 	opts := SessionPruneOptions{RetentionDays: 30, BatchSize: 2}
 	dry, err := PruneSessions(ctx, owner, opts)
-	if err != nil || dry.AccessSessions != 2 || dry.RefreshSessions != 2 || dry.Applied {
+	if err != nil || dry.AccessSessions != 2 || dry.RefreshSessions != 2 || dry.PasswordRecoveries != 2 || dry.Applied {
 		t.Fatalf("preview %#v %v", dry, err)
 	}
 	count := func(table string) int {
@@ -49,7 +60,7 @@ func TestSessionRetention(t *testing.T) {
 		}
 		return n
 	}
-	if count("access_sessions") != 5 || count("refresh_sessions") != 5 {
+	if count("access_sessions") != 5 || count("refresh_sessions") != 5 || count("member_password_recoveries") != 5 {
 		t.Fatal("preview mutated data")
 	}
 	opts.Apply = true
@@ -65,20 +76,20 @@ func TestSessionRetention(t *testing.T) {
 		t.Fatal(err)
 	}
 	applied, err := PruneSessions(ctx, owner, opts)
-	if err != nil || applied.AccessSessions != 2 || applied.RefreshSessions != 2 {
+	if err != nil || applied.AccessSessions != 2 || applied.RefreshSessions != 2 || applied.PasswordRecoveries != 2 {
 		t.Fatalf("apply %#v %v", applied, err)
 	}
 	if err := tx.Rollback(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if count("access_sessions") != 3 || count("refresh_sessions") != 3 {
+	if count("access_sessions") != 3 || count("refresh_sessions") != 3 || count("member_password_recoveries") != 3 {
 		t.Fatal("unbounded delete")
 	}
 	applied, err = PruneSessions(ctx, owner, opts)
-	if err != nil || applied.AccessSessions != 1 || applied.RefreshSessions != 1 {
+	if err != nil || applied.AccessSessions != 1 || applied.RefreshSessions != 1 || applied.PasswordRecoveries != 1 {
 		t.Fatalf("remaining %#v %v", applied, err)
 	}
-	if count("access_sessions") != 2 || count("refresh_sessions") != 2 {
+	if count("access_sessions") != 2 || count("refresh_sessions") != 2 || count("member_password_recoveries") != 2 {
 		t.Fatal("grace or live session deleted")
 	}
 	if _, err := s.Authenticate(ctx, sessions[4].AccessToken); err != nil {

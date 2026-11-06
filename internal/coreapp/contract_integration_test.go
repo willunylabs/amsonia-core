@@ -33,7 +33,8 @@ func recordContract(t *testing.T, request *http.Request, body []byte, response *
 	}
 	err = json.NewEncoder(file).Encode(map[string]any{
 		"method": request.Method, "url": request.URL.RequestURI(), "request_body": input, "request_valid": valid,
-		"status": response.Code, "content_type": response.Header().Get("Content-Type"), "body": response.Body.String(),
+		"headers": response.Header(),
+		"status":  response.Code, "content_type": response.Header().Get("Content-Type"), "body": response.Body.String(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -99,8 +100,38 @@ func TestAuthenticationAPIContract(t *testing.T) {
 	for _, path := range []string{"/api/v1/auth/me", "/api/v1/auth/profile", "/api/v1/auth/sessions", "/api/v1/application", "/api/v1/tenants", "/api/v1/permissions", base + "/settings", base + "/members", base + "/roles", base + "/invitations", base + "/audit-events", base + "/capabilities", base + "/members/" + account.ID, base + "/members/" + account.ID + "/roles"} {
 		call("GET", path, nil, 200, true)
 	}
+	call("GET", base+"/members?q=contract&status=active&limit=1", nil, 200, true)
+	call("GET", base+"/members?limit=0", nil, 400, false)
+	call("PATCH", base+"/settings", map[string]any{"name": "Renamed contract organization", "expected_version": 1}, 200, true)
+	call("POST", "/api/v1/tenants", map[string]string{"name": "Additional contract organization"}, 201, true)
+	invitationResponse := call("POST", base+"/invitations", map[string]string{"email": "revoke@example.test"}, 201, true)
+	var invitation CreatedInvitation
+	if err := json.Unmarshal(invitationResponse.Body.Bytes(), &invitation); err != nil {
+		t.Fatal(err)
+	}
+	call("DELETE", base+"/invitations/"+invitation.ID, nil, 204, true)
+	roles, err := s.ListRoles(ctx, tenant.ID)
+	if err != nil || len(roles) == 0 {
+		t.Fatal("missing bootstrap role", err)
+	}
+	call("GET", base+"/roles/"+string(roles[0].RoleID)+"/members?assignment=assigned&limit=1", nil, 200, true)
+	call("GET", base+"/audit-events/export", nil, 200, true)
+	if _, err := s.Login(ctx, LoginInput{Email: account.Email, Password: password}); err != nil {
+		t.Fatal(err)
+	}
+	devices, err := s.ListSessions(ctx, account.ID, token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, device := range devices {
+		if !device.Current {
+			call("DELETE", "/api/v1/auth/sessions/"+device.ID, nil, 204, true)
+		}
+	}
 	call("POST", "/api/v1/authorization/check", map[string]any{"tenant_id": tenant.ID, "permission": "iam:member:read", "mode": "tenant_action", "resource": map[string]string{"tenant_id": tenant.ID}}, 200, true)
 	call("POST", "/api/v1/auth/sessions/revoke-others", map[string]any{}, 204, true)
 	call("POST", "/api/v1/auth/refresh", nil, 200, true)
+	call("POST", "/api/v1/auth/password", map[string]string{"current_password": password, "new_password": "contract-replacement-password"}, 204, true)
+	call("GET", "/api/v1/auth/me", nil, 401, true)
 	call("POST", "/api/v1/auth/logout", nil, 204, true)
 }

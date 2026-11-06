@@ -4,13 +4,15 @@ The input is produced only by synthetic Go integration fixtures, never live
 traffic. Local refs are resolved in memory; no schema or URL is fetched.
 """
 import copy
+import csv
+import io
 import json
 from pathlib import Path
 import re
 import sys
 from urllib.parse import parse_qs, urlsplit
 
-from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 import yaml
@@ -88,13 +90,24 @@ class Contract:
         status = str(record["status"])
         assert status in operation["responses"], f"Undocumented status {status}"
         response = self.resolve(operation["responses"][status])
+        for name, header in response.get("headers", {}).items():
+            value = next((values[0] for key, values in record["headers"].items() if key.lower() == name.lower()), None)
+            assert value is not None, f"Missing documented response header {name}"
+            self.validate(self.resolve(header)["schema"], value)
         if "content" not in response:
             assert not record["body"], "Body on a bodyless response"
         else:
             media = record["content_type"].split(";")[0]
             assert media in response["content"], f"Undocumented content type {media}"
-            assert media == "application/json", "Add explicit validation for non-JSON traffic"
-            self.validate(response["content"][media]["schema"], json.loads(record["body"]))
+            if media == "application/json":
+                body = json.loads(record["body"])
+            elif media == "text/csv":
+                body = record["body"]
+                rows = list(csv.reader(io.StringIO(body.lstrip("\ufeff")), strict=True))
+                assert rows and all(len(row) == len(rows[0]) for row in rows), "Malformed CSV"
+            else:
+                raise AssertionError("Unsupported contract media type " + media)
+            self.validate(response["content"][media]["schema"], body)
         return operation["operationId"]
 
 
@@ -108,9 +121,11 @@ def main():
             covered.add(contract.check(record))
         except Exception as error:
             # Do not print synthetic credentials or secret token bodies.
-            raise AssertionError(f"Record {index}: {record['method']} {urlsplit(record['url']).path}: {type(error).__name__}: contract mismatch") from None
-    required = {"login", "refreshSession", "restoreSession", "logout", "listTenantMembers", "listRoles", "createInvitation", "acceptInvitation", "createPasswordRecovery", "previewPasswordRecovery", "completePasswordRecovery"}
-    assert required <= covered, f"Missing critical operations: {sorted(required - covered)}"
+            detail = f"{error.validator} at /{'/'.join(map(str, error.absolute_path))}" if isinstance(error, ValidationError) else str(error)
+            raise AssertionError(f"Record {index}: {record['method']} {urlsplit(record['url']).path}: {type(error).__name__}: {detail}") from None
+    methods = {"get", "post", "put", "patch", "delete", "options", "head", "trace"}
+    required = {operation["operationId"] for path in contract.document["paths"].values() for method, operation in path.items() if method in methods}
+    assert required <= covered, f"Missing operations: {sorted(required - covered)}"
     # Prove the validator rejects drift using the same real login response.
     login = next(r for r in records if r["url"] == "/api/v1/auth/login" and r["status"] == 200)
     for mutation in ("missing-field", "wrong-type", "undocumented-status"):
