@@ -5,7 +5,11 @@ COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY web/ .
 ARG VITE_API_URL=
-ENV VITE_API_URL=$VITE_API_URL
+ARG VITE_GITHUB_URL=https://github.com/willunylabs/amsonia-core
+ARG VITE_COMMERCIAL_URL=https://amsonia.dev/platform/
+ENV VITE_API_URL=$VITE_API_URL \
+    VITE_GITHUB_URL=$VITE_GITHUB_URL \
+    VITE_COMMERCIAL_URL=$VITE_COMMERCIAL_URL
 RUN npm run build
 
 FROM nginx:1.28-alpine

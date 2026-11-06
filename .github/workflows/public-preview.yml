@@ -1,0 +1,71 @@
+name: Public preview install
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/public-preview.yml
+      - deploy/preview/README.md
+      - scripts/download-public-preview.sh
+      - scripts/smoke-preview-upgrade.py
+      - scripts/smoke-first-login.cjs
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published preview release tag
+        required: true
+        type: string
+
+      from_tag:
+        description: Optional source preview tag for an in-place upgrade
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  public-preview-install:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      RELEASE_TAG: ${{ inputs.tag || 'v0.2.0-preview.3' }}
+      FROM_TAG: ${{ github.event_name == 'pull_request' && 'v0.2.0-preview.2' || inputs.from_tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Download and verify the public archive
+        run: |
+          df -h "$RUNNER_TEMP"
+          bash scripts/download-public-preview.sh "$RELEASE_TAG" "$RUNNER_TEMP/public-preview"
+          if [[ -n "$FROM_TAG" ]]; then
+            test "$FROM_TAG" != "$RELEASE_TAG"
+            bash scripts/download-public-preview.sh "$FROM_TAG" "$RUNNER_TEMP/old-preview"
+          fi
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - name: Prepare Chromium for browser verification
+        run: |
+          npm install --prefix "$RUNNER_TEMP/preview-browser" --no-save --no-package-lock playwright@1.58.2
+          "$RUNNER_TEMP/preview-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Install and sign in from a clean browser
+        if: ${{ !env.FROM_TAG }}
+        run: |
+          python3 -B scripts/smoke-preview.py "$RUNNER_TEMP/public-preview/amsonia-core-${RELEASE_TAG#v}-linux-amd64" \
+            --browser-module "$RUNNER_TEMP/preview-browser/node_modules/playwright" \
+            --screenshots "$RUNNER_TEMP/public-preview/screenshots"
+      - name: Back up and upgrade an existing installation
+        if: ${{ env.FROM_TAG != '' }}
+        run: |
+          python3 -B scripts/smoke-preview-upgrade.py \
+            "$RUNNER_TEMP/old-preview/amsonia-core-${FROM_TAG#v}-linux-amd64" \
+            "$RUNNER_TEMP/public-preview/amsonia-core-${RELEASE_TAG#v}-linux-amd64" \
+            "$RUNNER_TEMP/preview-browser/node_modules/playwright" \
+            "$RUNNER_TEMP/public-preview/screenshots"
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: public-preview-first-login
+          path: ${{ runner.temp }}/public-preview/screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 7

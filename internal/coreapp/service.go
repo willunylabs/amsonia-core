@@ -96,14 +96,15 @@ type ProvisionMemberInput struct {
 }
 
 type Service struct {
-	pool      *pgxpool.Pool
-	store     *postgres.Store
-	passwords *security.PasswordHasher
-	dummyHash string
-	bootstrap *amsonia.Bootstrapper
-	sessions  time.Duration
-	refresh   time.Duration
-	now       func() time.Time
+	pool        *pgxpool.Pool
+	store       *postgres.Store
+	passwords   *security.PasswordHasher
+	dummyHash   string
+	bootstrap   *amsonia.Bootstrapper
+	sessions    time.Duration
+	refresh     time.Duration
+	now         func() time.Time
+	application ApplicationOptions
 }
 
 func NewService(pool *pgxpool.Pool, store *postgres.Store, bootstrap *amsonia.Bootstrapper) (*Service, error) {
@@ -120,20 +121,25 @@ func NewService(pool *pgxpool.Pool, store *postgres.Store, bootstrap *amsonia.Bo
 		return nil, fmt.Errorf("hash dummy password: %w", err)
 	}
 	return &Service{
-		pool:      pool,
-		store:     store,
-		passwords: passwords,
-		dummyHash: dummyHash,
-		bootstrap: bootstrap,
-		sessions:  15 * time.Minute,
-		refresh:   30 * 24 * time.Hour,
-		now:       func() time.Time { return time.Now().UTC() },
+		application: ApplicationOptions{TenancyMode: "multi"},
+		pool:        pool,
+		store:       store,
+		passwords:   passwords,
+		dummyHash:   dummyHash,
+		bootstrap:   bootstrap,
+		sessions:    15 * time.Minute,
+		refresh:     30 * 24 * time.Hour,
+		now:         func() time.Time { return time.Now().UTC() },
 	}, nil
 }
 
 // Ready verifies that the database schema exactly matches this binary.
 func (s *Service) Ready(ctx context.Context) error {
-	return postgres.VerifyMigrationState(ctx, s.pool)
+	if err := postgres.VerifyMigrationState(ctx, s.pool); err != nil {
+		return err
+	}
+	_, err := s.organizationID(ctx)
+	return err
 }
 
 func normalizeEmail(raw string) (string, error) {
@@ -204,7 +210,11 @@ func (s *Service) BootstrapAdmin(ctx context.Context, input BootstrapInput) (Acc
 	if err := tx.Commit(ctx); err != nil {
 		return Account{}, err
 	}
-	return Account{ID: accountID, Email: strings.TrimSpace(input.Email), SystemAdmin: true, CreatedAt: createdAt}, nil
+	account := Account{ID: accountID, Email: strings.TrimSpace(input.Email), SystemAdmin: true, CreatedAt: createdAt}
+	if _, err := s.SetupOrganization(ctx, account); err != nil {
+		return Account{}, fmt.Errorf("administrator created; run amsonia setup-organization to resume: %w", err)
+	}
+	return account, nil
 }
 
 func (s *Service) Login(ctx context.Context, input LoginInput) (Session, error) {
@@ -262,15 +272,19 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (Session, error) 
 		}
 		return Session{}, ErrInvalidCredentials
 	}
-	return s.issueSession(ctx, account, input.RemoteAddress, input.UserAgent)
+	return s.issueSession(ctx, account, input.RemoteAddress, input.UserAgent, passwordHash)
 }
 
-func (s *Service) issueSession(ctx context.Context, account Account, remoteAddress, userAgent string) (Session, error) {
+func (s *Service) issueSession(ctx context.Context, account Account, remoteAddress, userAgent, verifiedHash string) (Session, error) {
 	access, err := randomID("as_", 32)
 	if err != nil {
 		return Session{}, err
 	}
 	refresh, err := randomID("rs_", 40)
+	if err != nil {
+		return Session{}, err
+	}
+	family, err := randomID("ses_", 18)
 	if err != nil {
 		return Session{}, err
 	}
@@ -281,6 +295,13 @@ func (s *Service) issueSession(ctx context.Context, account Account, remoteAddre
 		return Session{}, err
 	}
 	defer tx.Rollback(context.Background())
+	var currentHash, status string
+	if err := tx.QueryRow(ctx, `SELECT password_hash, status FROM amsonia.accounts WHERE account_id = $1 FOR UPDATE`, account.ID).Scan(&currentHash, &status); err != nil {
+		return Session{}, err
+	}
+	if currentHash != verifiedHash || status != "active" {
+		return Session{}, ErrInvalidCredentials
+	}
 	if _, err := tx.Exec(ctx, `
 		UPDATE amsonia.accounts SET failed_login_count = 0, locked_until = NULL, last_login_at = $1, updated_at = $1
 		WHERE account_id = $2
@@ -288,15 +309,15 @@ func (s *Service) issueSession(ctx context.Context, account Account, remoteAddre
 		return Session{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO amsonia.access_sessions (token_hash, account_id, expires_at, remote_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5)
-	`, tokenHash(access), account.ID, expiresAt, bounded(remoteAddress, 128), bounded(userAgent, 512)); err != nil {
+		INSERT INTO amsonia.access_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, tokenHash(access), account.ID, expiresAt, bounded(remoteAddress, 128), bounded(userAgent, 512), family); err != nil {
 		return Session{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO amsonia.refresh_sessions (token_hash, account_id, expires_at, remote_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5)
-	`, tokenHash(refresh), account.ID, now.Add(s.refresh), bounded(remoteAddress, 128), bounded(userAgent, 512)); err != nil {
+		INSERT INTO amsonia.refresh_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, tokenHash(refresh), account.ID, now.Add(s.refresh), bounded(remoteAddress, 128), bounded(userAgent, 512), family); err != nil {
 		return Session{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -328,24 +349,36 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 	}
 	defer tx.Rollback(context.Background())
 
+	// Always lock the account before session rows, matching logout and password
+	// changes. A competing serializable rotation may still request a retry.
+	var lockedAccount string
+	if err := tx.QueryRow(ctx, `SELECT account_id FROM amsonia.accounts
+ WHERE account_id=(SELECT account_id FROM amsonia.refresh_sessions WHERE token_hash=$1)
+ FOR UPDATE`, tokenHash(input.RefreshToken)).Scan(&lockedAccount); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Session{}, ErrSessionInvalid
+		}
+		return Session{}, err
+	}
 	var account Account
 	var accountStatus string
 	var refreshExpires time.Time
 	var revokedAt *time.Time
 	var rotatedTo []byte
 	var lastLoginAt *time.Time
+	var family string
 	err = tx.QueryRow(ctx, `
 		SELECT a.account_id, a.email, a.status, a.created_at,
 		       a.last_login_at,
 		       EXISTS (SELECT 1 FROM amsonia.system_administrators sa WHERE sa.account_id = a.account_id),
-		       r.expires_at, r.revoked_at, r.rotated_to_hash
+		       r.expires_at, r.revoked_at, r.rotated_to_hash, r.session_id
 		FROM amsonia.refresh_sessions r
 		JOIN amsonia.accounts a ON a.account_id = r.account_id
 		WHERE r.token_hash = $1
 		FOR UPDATE OF r
 	`, tokenHash(input.RefreshToken)).Scan(
 		&account.ID, &account.Email, &accountStatus, &account.CreatedAt, &lastLoginAt,
-		&account.SystemAdmin, &refreshExpires, &revokedAt, &rotatedTo,
+		&account.SystemAdmin, &refreshExpires, &revokedAt, &rotatedTo, &family,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Session{}, ErrSessionInvalid
@@ -359,7 +392,7 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 	if lastLoginAt != nil {
 		account.LastLoginAt = *lastLoginAt
 	}
-	if revokedAt != nil || len(rotatedTo) > 0 {
+	if len(rotatedTo) > 0 {
 		if _, err := tx.Exec(ctx, `UPDATE amsonia.refresh_sessions SET revoked_at = COALESCE(revoked_at, $1) WHERE account_id = $2`, now, account.ID); err != nil {
 			return Session{}, err
 		}
@@ -369,6 +402,9 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 		if err := tx.Commit(ctx); err != nil {
 			return Session{}, err
 		}
+		return Session{}, ErrSessionInvalid
+	}
+	if revokedAt != nil {
 		return Session{}, ErrSessionInvalid
 	}
 	if !refreshExpires.After(now) {
@@ -390,15 +426,15 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 	}
 	expiresAt := now.Add(s.sessions)
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO amsonia.access_sessions (token_hash, account_id, expires_at, remote_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5)
-	`, tokenHash(access), account.ID, expiresAt, bounded(input.RemoteAddress, 128), bounded(input.UserAgent, 512)); err != nil {
+		INSERT INTO amsonia.access_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, tokenHash(access), account.ID, expiresAt, bounded(input.RemoteAddress, 128), bounded(input.UserAgent, 512), family); err != nil {
 		return Session{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO amsonia.refresh_sessions (token_hash, account_id, expires_at, remote_address, user_agent)
-		VALUES ($1, $2, $3, $4, $5)
-	`, tokenHash(nextRefresh), account.ID, now.Add(s.refresh), bounded(input.RemoteAddress, 128), bounded(input.UserAgent, 512)); err != nil {
+		INSERT INTO amsonia.refresh_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, tokenHash(nextRefresh), account.ID, now.Add(s.refresh), bounded(input.RemoteAddress, 128), bounded(input.UserAgent, 512), family); err != nil {
 		return Session{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -453,28 +489,70 @@ func (s *Service) Authenticate(ctx context.Context, accessToken string) (Account
 	if lastLoginAt != nil {
 		account.LastLoginAt = *lastLoginAt
 	}
+	if _, err := s.pool.Exec(ctx, `UPDATE amsonia.access_sessions SET last_seen_at=$2 WHERE token_hash=$1 AND last_seen_at<$2::timestamptz-interval '1 minute' AND revoked_at IS NULL`, tokenHash(accessToken), s.now()); err != nil {
+		return Account{}, err
+	}
 	return account, nil
 }
 
+// Logout revokes the device family identified by an access token.
 func (s *Service) Logout(ctx context.Context, accessToken string) error {
-	if !strings.HasPrefix(accessToken, "as_") || len(accessToken) > 128 {
-		return nil
-	}
-	_, err := s.pool.Exec(ctx, `UPDATE amsonia.access_sessions SET revoked_at = now() WHERE token_hash = $1`, tokenHash(accessToken))
-	return err
+	return s.logoutSessions(ctx, accessToken, "")
 }
 
+// RevokeRefresh revokes the device family identified by a refresh token.
 func (s *Service) RevokeRefresh(ctx context.Context, refreshToken string) error {
-	if !strings.HasPrefix(refreshToken, "rs_") || len(refreshToken) > 160 {
+	return s.logoutSessions(ctx, "", refreshToken)
+}
+
+// logoutSessions locks accounts in a consistent order with refresh/password
+// changes, then revokes both supplied token families in one transaction.
+func (s *Service) logoutSessions(ctx context.Context, accessToken, refreshToken string) error {
+	var accessHash, refreshHash []byte
+	if strings.HasPrefix(accessToken, "as_") && len(accessToken) <= 128 {
+		accessHash = tokenHash(accessToken)
+	}
+	if strings.HasPrefix(refreshToken, "rs_") && len(refreshToken) <= 160 {
+		refreshHash = tokenHash(refreshToken)
+	}
+	if accessHash == nil && refreshHash == nil {
 		return nil
 	}
-	_, err := s.pool.Exec(ctx, `UPDATE amsonia.refresh_sessions SET revoked_at = COALESCE(revoked_at, now()) WHERE token_hash = $1`, tokenHash(refreshToken))
-	return err
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+	rows, err := tx.Query(ctx, `SELECT account_id FROM amsonia.accounts WHERE account_id IN (
+ SELECT account_id FROM amsonia.access_sessions WHERE token_hash=$1
+ UNION SELECT account_id FROM amsonia.refresh_sessions WHERE token_hash=$2
+ ) ORDER BY account_id FOR UPDATE`, accessHash, refreshHash)
+	if err != nil {
+		return err
+	}
+	if _, err := pgx.CollectRows(rows, pgx.RowTo[string]); err != nil {
+		return err
+	}
+	for _, table := range []string{"access_sessions", "refresh_sessions"} {
+		_, err = tx.Exec(ctx, `UPDATE amsonia.`+table+` SET revoked_at=COALESCE(revoked_at,$3)
+   WHERE (account_id,session_id) IN (
+    SELECT account_id,session_id FROM amsonia.access_sessions WHERE token_hash=$1
+    UNION SELECT account_id,session_id FROM amsonia.refresh_sessions WHERE token_hash=$2
+   )`, accessHash, refreshHash, s.now())
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 func (s *Service) ListTenants(ctx context.Context, accountID string) ([]Tenant, error) {
+	organizationID, err := s.organizationID(ctx)
+	if err != nil {
+		return nil, err
+	}
 	tenants := make([]Tenant, 0)
-	err := s.store.RunActor(ctx, accountID, func(tx pgx.Tx) error {
+	err = s.store.RunActor(ctx, accountID, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `SELECT tenant_id, name, state, created_at FROM amsonia.list_account_tenants()`)
 		if err != nil {
 			return err
@@ -485,7 +563,9 @@ func (s *Service) ListTenants(ctx context.Context, accountID string) ([]Tenant, 
 			if err := rows.Scan(&tenant.ID, &tenant.Name, &tenant.State, &tenant.CreatedAt); err != nil {
 				return err
 			}
-			tenants = append(tenants, tenant)
+			if s.application.TenancyMode == "multi" || tenant.ID == organizationID {
+				tenants = append(tenants, tenant)
+			}
 		}
 		return rows.Err()
 	})
@@ -493,11 +573,18 @@ func (s *Service) ListTenants(ctx context.Context, accountID string) ([]Tenant, 
 }
 
 func (s *Service) CreateTenant(ctx context.Context, actor Account, input CreateTenantInput) (Tenant, error) {
+	if s.application.TenancyMode != "multi" {
+		return Tenant{}, amsonia.ErrForbidden
+	}
+	return s.createTenant(ctx, actor, input)
+}
+
+func (s *Service) createTenant(ctx context.Context, actor Account, input CreateTenantInput) (Tenant, error) {
 	if !actor.SystemAdmin {
 		return Tenant{}, amsonia.ErrForbidden
 	}
-	name := strings.TrimSpace(input.Name)
-	if name == "" || len(name) > 80 {
+	name, err := normalizeOrganizationName(input.Name)
+	if err != nil {
 		return Tenant{}, amsonia.ErrInvalidInput
 	}
 	tenantID, err := randomID("ten_", 16)
@@ -512,13 +599,17 @@ func (s *Service) CreateTenant(ctx context.Context, actor Account, input CreateT
 		return Tenant{}, err
 	}
 	ownerRoleID := amsonia.RoleID("role_owner")
+	ownerRoleName := "Tenant owner"
+	if s.application.TenancyMode == "single" {
+		ownerRoleName = "Organization owner"
+	}
 	_, err = s.bootstrap.BootstrapTenant(ctx, amsonia.BootstrapInput{
 		TenantID:       amsonia.TenantID(tenant.ID),
 		OwnerSubjectID: amsonia.SubjectID(actor.ID),
 		OwnerRoleID:    ownerRoleID,
-		OwnerRoleName:  "Tenant owner",
+		OwnerRoleName:  ownerRoleName,
 		Grants:         ownerGrants(ownerRoleID),
-		Metadata:       amsonia.MutationMetadata{ReasonCode: "tenant_creation"},
+		Metadata:       amsonia.MutationMetadata{ReasonCode: "tenant_creation", RequestID: mutationMetadata(ctx).RequestID},
 	})
 	if err != nil {
 		_ = s.failCreatedTenant(ctx, actor.ID, tenant.ID)
@@ -646,6 +737,9 @@ func (s *Service) failCreatedTenant(ctx context.Context, accountID, tenantID str
 }
 
 func (s *Service) RequireMembership(ctx context.Context, tenantID, accountID string) error {
+	if err := s.allowOrganization(ctx, tenantID); err != nil {
+		return err
+	}
 	return s.store.RunTenant(ctx, amsonia.TenantID(tenantID), true, func(tx pgx.Tx) error {
 		var found bool
 		if err := tx.QueryRow(ctx, `

@@ -7,13 +7,20 @@ interface Props {
 }
 
 const { eyebrow, title, summary, index = 'A / 01' } = Astro.props;
+const hasArtwork = Astro.slots.has('artwork');
 ---
 
-<section class="page-intro">
+<section class:list={['page-intro', { 'page-intro-with-artwork': hasArtwork }]}>
   <div class="page-intro-meta">
     <span>{index}</span>
     <span>{eyebrow}</span>
   </div>
-  <h1>{title}</h1>
-  <p>{summary}</p>
+  <div class="page-intro-content">
+    <div class="page-intro-copy">
+      <h1>{title}</h1>
+      <p>{summary}</p>
+      <slot name="actions" />
+    </div>
+    {hasArtwork && <div class="page-intro-artwork"><slot name="artwork" /></div>}
+  </div>
 </section>

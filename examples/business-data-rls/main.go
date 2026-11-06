@@ -6,12 +6,14 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/willunylabs/amsonia-core"
@@ -25,13 +27,19 @@ type invoice struct {
 }
 
 func main() {
-	if err := run(); err != nil {
+	serve := flag.Bool("serve", false, "serve the local invoice form instead of running the SQL proof")
+	flag.Parse()
+	if flag.NArg() != 0 {
+		flag.Usage()
+		os.Exit(2)
+	}
+	if err := run(*serve); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(serve bool) error {
 	dsn := strings.TrimSpace(os.Getenv("AMSONIA_DATABASE_DSN"))
 	if dsn == "" {
 		return errors.New("AMSONIA_DATABASE_DSN is required")
@@ -50,6 +58,10 @@ func run() error {
 	store, err := postgres.NewStore(pool, secret)
 	if err != nil {
 		return err
+	}
+
+	if serve {
+		return serveInvoices(store)
 	}
 
 	fixtures := map[amsonia.TenantID]invoice{
@@ -79,8 +91,9 @@ func run() error {
 		`)
 		return err
 	})
-	if err == nil {
-		return errors.New("cross-tenant insert unexpectedly succeeded")
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != "42501" {
+		return fmt.Errorf("expected a PostgreSQL RLS denial, got %v", err)
 	}
 	fmt.Println("cross-tenant insert rejected by PostgreSQL RLS")
 	return nil
@@ -101,7 +114,7 @@ func upsertInvoice(ctx context.Context, store *postgres.Store, tenantID amsonia.
 func listInvoices(ctx context.Context, store *postgres.Store, tenantID amsonia.TenantID) ([]invoice, error) {
 	var result []invoice
 	err := store.RunTenant(ctx, tenantID, true, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT invoice_id, description, amount_cents FROM app.invoices ORDER BY invoice_id`)
+		rows, err := tx.Query(ctx, `SELECT invoice_id, description, amount_cents FROM app.invoices ORDER BY created_at DESC, invoice_id LIMIT 50`)
 		if err != nil {
 			return err
 		}

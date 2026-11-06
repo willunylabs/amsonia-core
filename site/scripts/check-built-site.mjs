@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url';
 
 const siteRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const distRoot = join(siteRoot, 'dist');
+const publicLinks = JSON.parse(readFileSync(join(siteRoot, 'config/public-links.json'), 'utf8'));
+const nextDemoUrl = new URL(publicLinks.nextDemo).href.replace(/\/$/, '');
+assert.equal(new URL(nextDemoUrl).protocol, 'https:', 'the public demo must use HTTPS');
 const origin = String(process.env.PUBLIC_SITE_ORIGIN || '').trim();
 assert.ok(origin, 'PUBLIC_SITE_ORIGIN is required for the site audit');
 const companyOrigin = String(process.env.PUBLIC_COMPANY_ORIGIN || '').trim();
@@ -56,12 +59,26 @@ for (const route of requiredRoutes) {
 }
 
 const htmlFiles = collectHtml(distRoot);
+const errorHtml = readFileSync(pageFile('/404'), 'utf8');
+assert.match(errorHtml, /<meta name="robots" content="noindex,follow"/, 'the error document must remain excluded even when requested directly');
+assert.doesNotMatch(errorHtml, /<link rel="canonical"/, 'missing pages must not share a canonical error-document URL');
+
 for (const file of htmlFiles) {
   const html = readFileSync(file, 'utf8');
-  assert.doesNotMatch(html, /willuny\.xyz|willunylabs\.com/i, `${file} must not publish a legacy Willuny domain`);
+  const demoLinks = [...html.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*data-cta-target="demo"/g)];
+  if (file === pageFile('/next')) {
+    assert.equal(demoLinks.length, 1, 'only one verified demo CTA belongs on the Next product page');
+    assert.equal(demoLinks[0]?.[1], nextDemoUrl, 'the demo CTA must use its reviewed build configuration');
+    assert.ok(html.includes('Public preview. Registration, email and payments are disabled.'), 'the demo limits must be visible beside its entry');
+    assert.ok(html.includes('Better Auth'), 'Next must name its current authentication library');
+  } else {
+    assert.equal(demoLinks.length, 0, `${file} must not advertise a demo for another product`);
+  }
+  const domainAuditHtml = file === pageFile('/next') ? html.replace(`href="${nextDemoUrl}"`, 'href="[verified-next-demo]"') : html;
+  assert.doesNotMatch(domainAuditHtml, /willuny\.xyz|willunylabs\.com/i, `${file} must not publish an unapproved legacy Willuny domain`);
   assert.doesNotMatch(html, /github\.com\/willunylabs\/amsonia-next|opensource\.org\/license\/mit|MIT-licensed/i, `${file} must not promote private Next source as an open-source release`);
   assert.doesNotMatch(html, /Complete Amsonia|Commercial Amsonia|Amsonia Full/, `${file} must use the accepted product names`);
-  assert.doesNotMatch(html, /demo\.amsonia\.dev|data-cta-target="demo"|Live demo/i, `${file} must not present an unverified hosted demo as product evidence`);
+  assert.doesNotMatch(html, /demo\.amsonia\.dev|Live demo/i, `${file} must not present an unverified hosted demo as product evidence`);
   if (file !== pageFile('/open-source')) {
     assert.doesNotMatch(html, /Amsonia Core/i, `${file} must keep Core out of the commercial product narrative`);
   }
@@ -79,6 +96,26 @@ for (const file of htmlFiles) {
     assert.ok(existsSync(target) || existsSync(publicTarget), `${file} links to missing internal target: ${href}`);
   }
 }
+
+// A sitemap can expose pages that readers cannot reach. Verify the actual
+// anchor graph, ignoring fragment/self links, rather than only target existence.
+const routesByPath = new Map(requiredRoutes.map((route) => [new URL(canonicalFor(route)).pathname, route]));
+const pending = ['/'];
+const reachable = new Set(pending);
+while (pending.length > 0) {
+  const route = pending.shift();
+  const html = readFileSync(pageFile(route), 'utf8');
+  for (const match of html.matchAll(/<a\b[^>]*\bhref="([^"]+)"/g)) {
+    const target = new URL(match[1], canonicalFor(route));
+    if (target.origin !== new URL(origin).origin) continue;
+    const next = routesByPath.get(target.pathname);
+    if (next !== undefined && !reachable.has(next)) {
+      reachable.add(next);
+      pending.push(next);
+    }
+  }
+}
+assert.deepEqual(requiredRoutes.filter((route) => !reachable.has(route)), [], 'every sitemap page needs a crawlable path from the homepage');
 
 const homepage = readFileSync(pageFile('/'), 'utf8');
 const homepageGraph = [...homepage.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
@@ -122,6 +159,7 @@ const sitemap = readFileSync(sitemapFile, 'utf8');
 for (const route of requiredRoutes) {
   assert.ok(sitemap.includes(`<loc>${canonicalFor(route)}</loc>`), `sitemap missing ${route}`);
 }
+assert.ok(!sitemap.includes(new URL(nextDemoUrl).origin), 'the demo is external and must not enter the product sitemap');
 assert.doesNotMatch(sitemap, /demo\.amsonia\.dev|\/404|<loc>[^<]*\?/, 'sitemap must contain only clean indexable URLs');
 assert.doesNotMatch(sitemap, /\/core(?:\/|<)|\/releases(?:\/|<)/, 'sitemap must exclude retired Core and release routes');
 

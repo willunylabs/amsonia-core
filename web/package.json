@@ -1,6 +1,6 @@
 {
   "name": "amsonia-core-web",
-  "version": "0.2.0-preview.1",
+  "version": "0.2.0-preview.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -30,7 +30,10 @@
     "jsdom": "^25.0.1",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.2",
-    "vite": "^7.3.6",
-    "vitest": "^4.1.11"
+    "vite": "^7.3.7",
+    "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "minimatch": "11.0.3"
   }
 }

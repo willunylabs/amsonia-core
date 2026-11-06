@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/willunylabs/amsonia-core"
+	"github.com/willunylabs/amsonia-core/internal/tenantexport"
 )
 
 type tenantReader struct {
@@ -201,6 +202,13 @@ type tenantTx struct {
 	tenantID amsonia.TenantID
 }
 
+// Query lets the internal Core host enforce its membership invariants within
+// this existing tenant transaction. It is deliberately absent from TenantTx's
+// portable kernel contract.
+func (tx *tenantTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return tx.tx.Query(ctx, sql, args...)
+}
+
 func (tx *tenantTx) reader() *tenantReader {
 	return &tenantReader{tx: tx.tx, tenantID: tx.tenantID}
 }
@@ -299,10 +307,14 @@ func (tx *tenantTx) InsertRolePermissionGrant(ctx context.Context, grant amsonia
 }
 
 func (tx *tenantTx) DeleteRolePermissionGrant(ctx context.Context, grant amsonia.RolePermissionGrant) (bool, error) {
+	roles := grant.WorkspaceRoles
+	if roles == nil {
+		roles = []string{}
+	}
 	tag, err := tx.tx.Exec(ctx, `
 		DELETE FROM amsonia.role_permission_grants
 		WHERE tenant_id = $1 AND role_id = $2 AND permission_key = $3 AND scope = $4 AND workspace_roles = $5
-	`, string(tx.tenantID), string(grant.RoleID), string(grant.Permission), string(grant.Scope), grant.WorkspaceRoles)
+	`, string(tx.tenantID), string(grant.RoleID), string(grant.Permission), string(grant.Scope), roles)
 	if err != nil {
 		return false, wrapPgxErr(err)
 	}
@@ -411,16 +423,7 @@ func (mt *maintenanceTx) ExportTenant(ctx context.Context) ([]byte, error) {
 	if purged {
 		return nil, amsonia.ErrNotFound
 	}
-	type export struct {
-		Format   string                        `json:"format"`
-		TenantID amsonia.TenantID              `json:"tenant_id"`
-		Roles    []amsonia.Role                `json:"roles"`
-		Grants   []amsonia.RolePermissionGrant `json:"grants"`
-		Versions []amsonia.RoleVersion         `json:"versions"`
-		Edges    []amsonia.GrantEdge           `json:"edges"`
-		Audit    []amsonia.MutationAuditEvent  `json:"audit"`
-	}
-	e := export{Format: "amsonia.tenant.v1", TenantID: mt.tenantID}
+	e := tenantexport.Snapshot{Format: "amsonia.tenant.v1", TenantID: mt.tenantID}
 
 	roleRows, err := mt.tx.Query(ctx, `
 		SELECT tenant_id, role_id, name, description, version, deleted
@@ -528,7 +531,7 @@ func (mt *maintenanceTx) ExportTenant(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	return json.MarshalIndent(e, "", "  ")
+	return tenantexport.Marshal(e)
 }
 
 func (mt *maintenanceTx) PurgeTenant(ctx context.Context, event amsonia.MutationAuditEvent) (amsonia.PurgeResult, error) {

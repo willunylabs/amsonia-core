@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "$0")"
+AMSONIA_RELEASE_VERSION="$(cat VERSION)"
+export AMSONIA_RELEASE_VERSION
+exec docker compose --env-file .env -f compose.yaml -f compose.preview.yaml "$@"

@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Updated: 2026-10-26
+Updated: 2026-11-06
 
 This decision records the user's confirmed growth model: Next is the primary
 commercial product; the Go/Core repository is the open-source acquisition track.
@@ -16,11 +16,10 @@ coverage. It does not turn Core into a third commercial product.
 - **Amsonia** is the product family.
 - **Amsonia Next** is the primary commercial focus: a private, single-tenant
   Next.js SaaS foundation with accounts, Stripe, PostgreSQL/Drizzle, and admin.
-- **Amsonia Platform** is the separate commercial Go + Next.js multi-tenant
-  SaaS foundation.
 - **Amsonia Core** is the independently useful Apache-2.0 Go/PostgreSQL
-  authorization repository. Its scope is tenant authorization, delegated RBAC,
-  RLS, sessions, audit, API, CLI, and Console. Billing and complete commercial
+  administration scaffold. It defaults to one organization, with accounts,
+  invitations, RBAC, sessions, audit, API, CLI, and Console. Multi-tenancy and
+  PostgreSQL row-level isolation are supported. Billing and complete commercial
   product workflows are outside this repository.
 
 ## Canonical homes
@@ -30,14 +29,13 @@ coverage. It does not turn Core into a third commercial product.
 | Company | `https://willuny.com` | Company, portfolio, engineering blog, legal, account, and support |
 | Product family | `https://amsonia.dev` | Product evaluation, capabilities, documentation, and comparisons |
 | Next | `https://amsonia.dev/next/` | Primary product evaluation and source-access inquiry |
-| Platform | `https://amsonia.dev/platform/` | Separate Go + Next.js commercial product |
 | Open-source entry | `https://amsonia.dev/open-source/` | Go authorization search entry, runnable-example links, GitHub visits, and stars |
 | Repository | `https://github.com/willunylabs/amsonia-core` | Core source, implementation docs, tests, issues, releases, and contribution |
 | Company inquiry | `https://willuny.com/shop/contact` | Confirm Next availability, source scope, delivery, licensing, and support |
 
 The retired `/core` routes continue redirecting to GitHub. Do not create a
 competing Core route, product card, product-catalog entry, or software-product
-schema. The catalog continues to contain Next and Platform only.
+schema. The commercial catalog contains Next only.
 
 ## Search and publishing
 

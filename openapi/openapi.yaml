@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Amsonia Core API
-  version: 0.2.0-preview.1
-  description: Tenant administration and delegated authorization API for Amsonia Core.
+  version: 0.2.0-preview.3
+  description: Organization administration and delegated authorization API. Standalone deployments default to one organization; multi-tenancy is opt in. In single mode, other tenant IDs and their invitation links return 404; membership and permission checks still apply.
   license:
     name: Apache-2.0
     identifier: Apache-2.0
@@ -54,7 +54,28 @@ paths:
                   status: { type: string, const: ready }
         "503":
           description: Database or migration state is not ready.
-          content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/Error" } },
+            }
+  /api/v1/application:
+    get:
+      summary: Read the deployment organization model
+      tags: [Tenants]
+      operationId: getApplication
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Authenticated deployment configuration used by the Console.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tenancy_mode]
+                properties:
+                  tenancy_mode: { type: string, enum: [single, multi] }
+        "401": { $ref: "#/components/responses/Unauthorized" }
   /api/v1/auth/login:
     post:
       summary: Sign in an account
@@ -88,7 +109,7 @@ paths:
       summary: Rotate a session
       tags: [Authentication]
       operationId: refreshSession
-      description: Rotates the HttpOnly refresh cookie and returns a new access token.
+      description: Rotates the HttpOnly refresh cookie and returns a new access token. Invalid credentials clear the cookie; service failures preserve it for retry. Reuse of a rotated token revokes all account sessions; an explicitly revoked current token is rejected without revoking other devices.
       security:
         - refreshCookie: []
       responses:
@@ -101,17 +122,59 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Session" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "500":
+          description: Service failure; refresh cookie is preserved for retry.
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/Error" } },
+            }
+  /api/v1/auth/restore:
+    post:
+      summary: Restore the browser session or return anonymous
+      tags: [Authentication]
+      operationId: restoreSession
+      description: Optional cookie-based startup. A valid HttpOnly refresh cookie is rotated and returns a session. Missing, expired, revoked, or replayed credentials clear the cookie and return 204. Replay detection is identical to refresh. Service failures preserve the cookie for retry.
+      security: []
+      responses:
+        "200":
+          description: Session restored and refresh cookie rotated.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "204":
+          description: Anonymous browser; no session body. Refresh cookie cleared.
+        "500":
+          description: Service failure; cookie preserved for retry.
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/Error" } },
+            }
   /api/v1/auth/logout:
     post:
       summary: Revoke a session
       tags: [Authentication]
       operationId: logout
-      description: Revokes supplied access and refresh credentials. It is safe to call after access expiry.
+      description: Atomically revokes the device session families identified by supplied access and refresh credentials, including older live access tokens from rotation. Other device families remain active. It is safe to call after access expiry. Failed requests retain the refresh cookie for an explicit retry.
       security:
         - bearerAuth: []
         - refreshCookie: []
       responses:
-        "204": { description: Credentials revoked and refresh cookie cleared. }
+        "204":
+          {
+            description: Device session families revoked and refresh cookie cleared.,
+          }
+        "500":
+          description: Logout failed; credentials and cookie are retained for retry.
+          content:
+            {
+              application/json:
+                { schema: { $ref: "#/components/schemas/Error" } },
+            }
   /api/v1/auth/me:
     get:
       summary: Read the current account
@@ -125,6 +188,57 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Account" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/v1/tenants/{tenant_id}/settings:
+    get:
+      summary: Read organization identity and settings
+      operationId: getOrganizationSettings
+      tags: [Tenants]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      description: Requires active membership. Single mode also enforces the configured organization. can_manage indicates current system administrator status.
+      responses:
+        "200":
+          description: Current organization settings and edit capability.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationSettings" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Update the organization name
+      operationId: updateOrganizationSettings
+      tags: [Tenants]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      description: Requires an active system administrator with active membership in the selected organization. Compares settings version and commits name and audit atomically. Unchanged names emit noop without advancing version. A conflict requires fetching current settings and deliberate resubmission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, expected_version]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 80
+                  description: Trimmed, nonempty UTF-8 name of at most 80 bytes, without control characters.
+                expected_version: { type: integer, format: int64, minimum: 1 }
+      responses:
+        "200":
+          description: Saved organization settings, including current version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationSettings" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /api/v1/tenants:
     get:
       summary: List visible tenants
@@ -133,7 +247,7 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         "200":
-          description: Active tenants visible to the current account.
+          description: Active tenants visible to the current account. Single mode returns only the configured organization, and still requires membership.
           content:
             application/json:
               schema:
@@ -148,7 +262,7 @@ paths:
       summary: Provision a tenant
       tags: [Tenants]
       operationId: createTenant
-      description: System-administrator-only tenant provisioning.
+      description: System-administrator-only tenant provisioning, available only in multi mode. Single mode returns 403.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true
@@ -188,54 +302,115 @@ paths:
                     items: { $ref: "#/components/schemas/Permission" }
   /api/v1/tenants/{tenant_id}/members:
     get:
-      summary: List tenant members
-      tags: [Tenants]
+      summary: Search and page tenant members
+      tags:
+        - Tenants
       operationId: listTenantMembers
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DirectoryQuery"
+        - $ref: "#/components/parameters/DirectoryLimit"
+        - $ref: "#/components/parameters/DirectoryAfter"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - active
+              - suspended
       responses:
         "200":
-          description: Tenant memberships.
+          description: A bounded collection page.
           content:
             application/json:
               schema:
                 type: object
-                required: [items]
+                required:
+                  - items
+                  - total
                 properties:
                   items:
                     type: array
-                    items: { $ref: "#/components/schemas/Member" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+                    items:
+                      $ref: "#/components/schemas/Member"
+                  total:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                    description: Total matching rows before applying the cursor, in the same request snapshot.
+                  next_cursor:
+                    type: string
+                    maxLength: 8192
+                    description: Pass unchanged as after with the same search and status. Absent at the end.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+      description: >-
+        Requires tenant-wide iam:member:read. Returns 30 items by default (maximum 100), a filtered
+        total and an exclusive next_cursor. Search is a case-insensitive literal substring. Ordered by
+        immutable ID ascending. Cursors are bound to tenant, collection and filters; pages are live
+        snapshots, not a historical export.
   /api/v1/tenants/{tenant_id}/roles:
     get:
-      summary: List tenant roles
-      tags: [Authorization]
+      summary: Search and page tenant roles
+      tags:
+        - Authorization
       operationId: listRoles
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DirectoryQuery"
+        - $ref: "#/components/parameters/DirectoryLimit"
+        - $ref: "#/components/parameters/DirectoryAfter"
       responses:
         "200":
-          description: Active roles ordered by name.
+          description: A bounded collection page.
           content:
             application/json:
               schema:
                 type: object
-                required: [items]
+                required:
+                  - items
+                  - total
                 properties:
                   items:
                     type: array
-                    items: { $ref: "#/components/schemas/Role" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+                    items:
+                      $ref: "#/components/schemas/Role"
+                  total:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                    description: Total matching rows before applying the cursor, in the same request snapshot.
+                  next_cursor:
+                    type: string
+                    maxLength: 8192
+                    description: Pass unchanged as after with the same search and status. Absent at the end.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+      description: >-
+        Requires tenant-wide iam:role:read. Returns 30 items by default (maximum 100), a filtered
+        total and an exclusive next_cursor. Search is a case-insensitive literal substring. Ordered by
+        immutable ID ascending. Cursors are bound to tenant, collection and filters; pages are live
+        snapshots, not a historical export.
     post:
       summary: Create a role with initial permissions
-      tags: [Authorization]
+      tags:
+        - Authorization
       operationId: createRole
       description: Atomically creates a role and its tenant-wide initial grants.
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/TenantId"
       requestBody:
@@ -245,24 +420,41 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [id, name, description, permissions]
+              required:
+                - id
+                - name
+                - description
+                - permissions
               properties:
-                id: { type: string, minLength: 1, maxLength: 128 }
-                name: { type: string, minLength: 1, maxLength: 120 }
-                description: { type: string, maxLength: 500 }
+                id:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                description:
+                  type: string
+                  maxLength: 500
                 permissions:
                   type: array
                   uniqueItems: true
-                  items: { type: string }
+                  items:
+                    type: string
       responses:
         "201":
           description: Role at immutable version one.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Role" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "409": { $ref: "#/components/responses/Conflict" }
+              schema:
+                $ref: "#/components/schemas/Role"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /api/v1/tenants/{tenant_id}/capabilities:
     get:
       summary: Read effective console capabilities
@@ -281,29 +473,161 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
   /api/v1/tenants/{tenant_id}/audit-events:
     get:
-      summary: List tenant policy audit events
-      tags: [Authorization]
       operationId: listAuditEvents
-      security: [{ bearerAuth: [] }]
-      parameters:
-        - $ref: "#/components/parameters/TenantId"
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      summary: Search tenant administration audit events
+      description: >-
+        Requires tenant-wide iam:audit:read. Uses descending stable event IDs; next_cursor is
+        exclusive. Text search matches operation, actor, target, reason, or request ID. Optional
+        RFC3339 from (inclusive) and until (exclusive) timestamps require an explicit UTC offset or Z;
+        from must precede until. Each page uses its own read-only snapshot.
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
       responses:
-        "200":
-          description: Newest-first bounded mutation events.
+        '200':
+          description: Completed.
           content:
             application/json:
               schema:
-                type: object
-                required: [items]
-                properties:
-                  items:
-                    type: array
-                    items: { $ref: "#/components/schemas/AuditEvent" }
-        "403": { $ref: "#/components/responses/Forbidden" }
-        "404": { $ref: "#/components/responses/NotFound" }
+                $ref: '#/components/schemas/AuditPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: before
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 128
+        - name: operation
+          in: query
+          schema:
+            type: string
+            maxLength: 64
+        - name: outcome
+          in: query
+          schema:
+            type: string
+            enum:
+              - success
+              - noop
+              - denied
+              - conflict
+              - failed
+        - $ref: '#/components/parameters/AuditFrom'
+        - $ref: '#/components/parameters/AuditUntil'
+  /api/v1/tenants/{tenant_id}/audit-events/export:
+    get:
+      operationId: exportAuditEvents
+      summary: Download all matching tenant audit events as CSV
+      description: >-
+        Requires tenant-wide iam:audit:read. Uses the same filters as listAuditEvents in one read-only
+        tenant snapshot, ordered by descending event ID. Rejects before and limit parameters. UTF-8
+        with BOM, fixed header and RFC3339 UTC timestamps; formula/control-leading text cells receive
+        a leading tab. Empty results contain the header. The complete response is buffered before
+        sending headers: more than 10,000 events or 10 MiB returns JSON 422 with code
+        audit_export_too_large, never partial CSV. Cache-Control is no-store.
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 128
+        - name: operation
+          in: query
+          schema:
+            type: string
+            maxLength: 64
+        - name: outcome
+          in: query
+          schema:
+            type: string
+            enum:
+              - success
+              - noop
+              - denied
+              - conflict
+              - failed
+        - $ref: '#/components/parameters/AuditFrom'
+        - $ref: '#/components/parameters/AuditUntil'
+      responses:
+        '200':
+          description: Complete matching event snapshot.
+          headers:
+            Content-Disposition:
+              description: Attachment with a server-generated ASCII .csv filename.
+              schema:
+                type: string
+            Cache-Control:
+              schema:
+                type: string
+                enum:
+                  - no-store
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: >-
+            Export exceeds 10,000 matching events or 10 MiB. Narrow the date range or filters. Error
+            code: audit_export_too_large.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
   /api/v1/authorization/check:
     post:
       summary: Evaluate an authorization decision
@@ -325,6 +649,1265 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /api/v1/auth/profile:
+    {
+      "get":
+        {
+          "operationId": "getProfile",
+          "summary": "Read your profile",
+          "description": "Read your profile.",
+          "tags": ["Authentication"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Completed.",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema": { "$ref": "#/components/schemas/Profile" },
+                        },
+                    },
+                },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+        },
+      "patch":
+        {
+          "operationId": "updateProfile",
+          "summary": "Update your display name",
+          "description": "Update your display name.",
+          "tags": ["Authentication"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Completed.",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema": { "$ref": "#/components/schemas/Profile" },
+                        },
+                    },
+                },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "requestBody":
+            {
+              "required": true,
+              "content":
+                {
+                  "application/json":
+                    {
+                      "schema":
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["display_name"],
+                          "properties":
+                            {
+                              "display_name":
+                                { "type": "string", "maxLength": 80 },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/v1/auth/password:
+    {
+      "post":
+        {
+          "operationId": "changePassword",
+          "summary": "Change password and revoke every session",
+          "description": "Verifies the current password with account lockout. Revokes all access and refresh sessions and clears the refresh cookie. Sign in again after success.",
+          "tags": ["Authentication"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "204": { "description": "Completed." },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "requestBody":
+            {
+              "required": true,
+              "content":
+                {
+                  "application/json":
+                    {
+                      "schema":
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["current_password", "new_password"],
+                          "properties":
+                            {
+                              "current_password":
+                                {
+                                  "type": "string",
+                                  "format": "password",
+                                  "maxLength": 128,
+                                },
+                              "new_password":
+                                {
+                                  "type": "string",
+                                  "format": "password",
+                                  "minLength": 12,
+                                  "maxLength": 128,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/v1/auth/sessions:
+    {
+      "get":
+        {
+          "operationId": "listSessions",
+          "summary": "List your active device session families",
+          "description": "List your active device session families.",
+          "tags": ["Authentication"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Completed.",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["items"],
+                              "properties":
+                                {
+                                  "items":
+                                    {
+                                      "type": "array",
+                                      "items":
+                                        {
+                                          "$ref": "#/components/schemas/AccountSession",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+        },
+    }
+  /api/v1/auth/sessions/revoke-others:
+    post:
+      operationId: revokeOtherSessions
+      summary: Sign out your other device session families
+      description: >-
+        Atomically revokes access and refresh tokens for every other device family
+        on the authenticated account, across all tenants. The retained family is
+        derived from the live bearer token after locking the account. No account
+        or session ID is accepted. Repeating the action is safe; the current
+        family and refresh cookie remain unchanged. Future password sign-ins are
+        allowed. Concurrent refresh cannot restore a revoked family. Reuse of a
+        previously rotated refresh token retains the existing account-wide replay
+        response. Existing per-device revocation and list contracts are unchanged.
+      tags: [Authentication]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        "204": { description: Other device families revoked; current family retained. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/auth/sessions/{session_id}:
+    {
+      "delete":
+        {
+          "operationId": "revokeSession",
+          "summary": "Revoke your device session family",
+          "description": "Revoke your device session family.",
+          "tags": ["Authentication"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "204": { "description": "Completed." },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "parameters":
+            [
+              {
+                "name": "session_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+            ],
+        },
+    }
+  /api/v1/invitations/preview:
+    {
+      "post":
+        {
+          "operationId": "previewInvitation",
+          "summary": "Inspect an invitation using its secret token",
+          "description": "Inspect an invitation using its secret token.",
+          "tags": ["Authentication"],
+          "security": [],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Completed.",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            {
+                              "$ref": "#/components/schemas/InvitationPreview",
+                            },
+                        },
+                    },
+                },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "requestBody":
+            {
+              "required": true,
+              "content":
+                {
+                  "application/json":
+                    {
+                      "schema":
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["token"],
+                          "properties": { "token": { "type": "string" } },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/v1/invitations/accept:
+    {
+      "post":
+        {
+          "operationId": "acceptInvitation",
+          "summary": "Accept an invitation",
+          "description": "New accounts choose a 12–128 character password. Existing accounts must prove their current password; it is never reset. Acceptance creates membership without roles and consumes the token. Sign in using the normal login endpoint afterwards.",
+          "tags": ["Authentication"],
+          "security": [],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Completed.",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema": { "$ref": "#/components/schemas/Account" },
+                        },
+                    },
+                },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "requestBody":
+            {
+              "required": true,
+              "content":
+                {
+                  "application/json":
+                    {
+                      "schema":
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["token", "password"],
+                          "properties":
+                            {
+                              "token": { "type": "string" },
+                              "password":
+                                {
+                                  "type": "string",
+                                  "format": "password",
+                                  "maxLength": 128,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    }
+  /api/v1/tenants/{tenant_id}/invitations:
+    get:
+      operationId: listInvitations
+      summary: Search and page tenant invitations
+      description: >-
+        Requires tenant-wide iam:member:manage. Returns 30 items by default (maximum 100), a filtered
+        total and an exclusive next_cursor. Search is a case-insensitive literal substring. Ordered by
+        created_at then invitation ID, both descending. Cursors are bound to tenant, collection and
+        filters; pages are live snapshots, not a historical export.
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: A bounded collection page.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - items
+                  - total
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Invitation"
+                  total:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                    description: Total matching rows before applying the cursor, in the same request snapshot.
+                  next_cursor:
+                    type: string
+                    maxLength: 8192
+                    description: Pass unchanged as after with the same search and status. Absent at the end.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - $ref: "#/components/parameters/DirectoryQuery"
+        - $ref: "#/components/parameters/DirectoryLimit"
+        - $ref: "#/components/parameters/DirectoryAfter"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - pending
+              - accepted
+              - revoked
+              - expired
+    post:
+      operationId: createInvitation
+      summary: Create a seven-day invitation
+      description: >-
+        Requires tenant-wide iam:member:manage. Reissuing revokes earlier pending links. Returns the
+        secret only once; no email is sent.
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Completed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedInvitation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+  /api/v1/tenants/{tenant_id}/invitations/{invitation_id}:
+    {
+      "delete":
+        {
+          "operationId": "revokeInvitation",
+          "summary": "Revoke a pending invitation",
+          "description": "Revoke a pending invitation.",
+          "tags": ["Tenants"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "204": { "description": "Completed." },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "parameters":
+            [
+              {
+                "name": "tenant_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+              {
+                "name": "invitation_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+            ],
+        },
+    }
+  /api/v1/tenants/{tenant_id}/members/{account_id}:
+    patch:
+      operationId: updateMembership
+      summary: Suspend or resume membership
+      description: >-
+        Requires tenant-wide iam:member:manage. Retains role bindings; protects the last active tenant
+        administrator.
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Completed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - active
+                    - suspended
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+    delete:
+      operationId: removeMember
+      summary: Remove membership and role bindings
+      description: >-
+        Requires tenant-wide iam:member:manage. Does not delete the global account or other
+        memberships. Protects the last active tenant administrator.
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Completed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+      parameters:
+        - name: tenant_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+    get:
+      operationId: getMember
+      summary: Read exact tenant member details
+      description: >-
+        Requires tenant-wide iam:member:read and active caller membership. Returns active or suspended
+        target memberships. An account outside this tenant returns 404; no substring search is
+        performed.
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: account_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+      responses:
+        '200':
+          description: Member identity and tenant membership status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/tenants/{tenant_id}/members/{account_id}/roles:
+    {
+      "get":
+        {
+          "operationId": "listMemberRoles",
+          "summary": "Read member role IDs",
+          "description": "Requires iam:member:read and iam:role:read at tenant scope.",
+          "tags": ["Tenants"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Completed.",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": ["items"],
+                              "properties":
+                                {
+                                  "items":
+                                    {
+                                      "type": "array",
+                                      "items": { "type": "string" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "parameters":
+            [
+              {
+                "name": "tenant_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+              {
+                "name": "account_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+            ],
+        },
+    }
+  /api/v1/tenants/{tenant_id}/members/{account_id}/roles/{role_id}:
+    {
+      "put":
+        {
+          "operationId": "assignMemberRole",
+          "summary": "Assign a role",
+          "description": "Requires iam:role:assign and actual coverage of every role grant. Assignment requires active target membership and matching role version. Both assignment and unassignment require a matching role version. Unassignment preserves the last active tenant administrator.",
+          "tags": ["Tenants"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Completed.",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            { "$ref": "#/components/schemas/MutationResult" },
+                        },
+                    },
+                },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "requestBody":
+            {
+              "required": true,
+              "content":
+                {
+                  "application/json":
+                    {
+                      "schema":
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["expected_version"],
+                          "properties":
+                            {
+                              "expected_version":
+                                { "type": "integer", "minimum": 1 },
+                            },
+                        },
+                    },
+                },
+            },
+          "parameters":
+            [
+              {
+                "name": "tenant_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+              {
+                "name": "account_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+              {
+                "name": "role_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+            ],
+        },
+      "delete":
+        {
+          "operationId": "unassignMemberRole",
+          "summary": "Remove a role binding",
+          "description": "Requires iam:role:assign and actual coverage of every role grant. Assignment requires active target membership and matching role version. Both assignment and unassignment require a matching role version. Unassignment preserves the last active tenant administrator.",
+          "tags": ["Tenants"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Completed.",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            { "$ref": "#/components/schemas/MutationResult" },
+                        },
+                    },
+                },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "requestBody":
+            {
+              "required": true,
+              "content":
+                {
+                  "application/json":
+                    {
+                      "schema":
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["expected_version"],
+                          "properties":
+                            {
+                              "expected_version":
+                                { "type": "integer", "minimum": 1 },
+                            },
+                        },
+                    },
+                },
+            },
+          "parameters":
+            [
+              {
+                "name": "tenant_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+              {
+                "name": "account_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+              {
+                "name": "role_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+            ],
+        },
+    }
+  /api/v1/tenants/{tenant_id}/roles/{role_id}:
+    {
+      "get":
+        {
+          "operationId": "getRoleDetail",
+          "summary": "Read role grants, bindings, and version history",
+          "description": "Requires tenant-wide iam:role:read. Returns up to 20 newest versions strictly below before_version, with next_version when more exist. With summary=true, subjects is empty and subject_count is the complete binding count. Omit summary or use false to retain the existing full subject-ID response. Member identities are paged separately through the role members endpoint.",
+          "tags": ["Tenants"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Completed.",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            { "$ref": "#/components/schemas/RoleDetail" },
+                        },
+                    },
+                },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "parameters":
+            [
+              {
+                "name": "tenant_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+              {
+                "name": "role_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+              {
+                "name": "before_version",
+                "in": "query",
+                "schema": { "type": "integer", "minimum": 1 },
+              },
+              {
+                "name": "summary",
+                "in": "query",
+                "schema": { "type": "boolean", "default": false },
+              },
+            ],
+        },
+      "patch":
+        {
+          "operationId": "updateRole",
+          "summary": "Update versioned role details",
+          "description": "Update versioned role details.",
+          "tags": ["Tenants"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Completed.",
+                  "content":
+                    {
+                      "application/json":
+                        { "schema": { "$ref": "#/components/schemas/Role" } },
+                    },
+                },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "requestBody":
+            {
+              "required": true,
+              "content":
+                {
+                  "application/json":
+                    {
+                      "schema":
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required":
+                            ["expected_version", "name", "description"],
+                          "properties":
+                            {
+                              "expected_version":
+                                { "type": "integer", "minimum": 1 },
+                              "name":
+                                {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120,
+                                },
+                              "description":
+                                { "type": "string", "maxLength": 500 },
+                            },
+                        },
+                    },
+                },
+            },
+          "parameters":
+            [
+              {
+                "name": "tenant_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+              {
+                "name": "role_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+            ],
+        },
+      "delete":
+        {
+          "operationId": "retireRole",
+          "summary": "Retire an empty, unassigned role",
+          "description": "Retire an empty, unassigned role.",
+          "tags": ["Tenants"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "204": { "description": "Completed." },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "requestBody":
+            {
+              "required": true,
+              "content":
+                {
+                  "application/json":
+                    {
+                      "schema":
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["expected_version"],
+                          "properties":
+                            {
+                              "expected_version":
+                                { "type": "integer", "minimum": 1 },
+                            },
+                        },
+                    },
+                },
+            },
+          "parameters":
+            [
+              {
+                "name": "tenant_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+              {
+                "name": "role_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+            ],
+        },
+    }
+  /api/v1/tenants/{tenant_id}/roles/{role_id}/grants:
+    {
+      "post":
+        {
+          "operationId": "grantPermission",
+          "summary": "Add a scoped permission grant",
+          "description": "Requires tenant-wide iam:grant:manage plus actual coverage of the permission and scope being delegated. Stale versions and last-administrator removal return 409.",
+          "tags": ["Tenants"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Completed.",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            { "$ref": "#/components/schemas/MutationResult" },
+                        },
+                    },
+                },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "requestBody":
+            {
+              "required": true,
+              "content":
+                {
+                  "application/json":
+                    {
+                      "schema":
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required":
+                            ["expected_version", "permission", "scope"],
+                          "properties":
+                            {
+                              "expected_version":
+                                { "type": "integer", "minimum": 1 },
+                              "permission": { "type": "string" },
+                              "scope":
+                                {
+                                  "type": "string",
+                                  "enum": ["tenant", "own", "workspace"],
+                                },
+                              "workspace_roles":
+                                {
+                                  "type": ["array", "null"],
+                                  "items": { "type": "string" },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+          "parameters":
+            [
+              {
+                "name": "tenant_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+              {
+                "name": "role_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+            ],
+        },
+      "delete":
+        {
+          "operationId": "revokePermission",
+          "summary": "Revoke a scoped permission grant",
+          "description": "Requires tenant-wide iam:grant:manage plus actual coverage of the permission and scope being delegated. Stale versions and last-administrator removal return 409.",
+          "tags": ["Tenants"],
+          "security": [{ "bearerAuth": [] }],
+          "responses":
+            {
+              "200":
+                {
+                  "description": "Completed.",
+                  "content":
+                    {
+                      "application/json":
+                        {
+                          "schema":
+                            { "$ref": "#/components/schemas/MutationResult" },
+                        },
+                    },
+                },
+              "400": { "$ref": "#/components/responses/BadRequest" },
+              "401": { "$ref": "#/components/responses/Unauthorized" },
+              "403": { "$ref": "#/components/responses/Forbidden" },
+              "404": { "$ref": "#/components/responses/NotFound" },
+              "409": { "$ref": "#/components/responses/Conflict" },
+              "429": { "$ref": "#/components/responses/TooManyRequests" },
+            },
+          "requestBody":
+            {
+              "required": true,
+              "content":
+                {
+                  "application/json":
+                    {
+                      "schema":
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required":
+                            ["expected_version", "permission", "scope"],
+                          "properties":
+                            {
+                              "expected_version":
+                                { "type": "integer", "minimum": 1 },
+                              "permission": { "type": "string" },
+                              "scope":
+                                {
+                                  "type": "string",
+                                  "enum": ["tenant", "own", "workspace"],
+                                },
+                              "workspace_roles":
+                                {
+                                  "type": ["array", "null"],
+                                  "items": { "type": "string" },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+          "parameters":
+            [
+              {
+                "name": "tenant_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+              {
+                "name": "role_id",
+                "in": "path",
+                "required": true,
+                "schema":
+                  { "type": "string", "minLength": 1, "maxLength": 256 },
+              },
+            ],
+        },
+    }
+  /api/v1/tenants/{tenant_id}/roles/{role_id}/members:
+    get:
+      summary: Search members assigned or available to a role
+      operationId: listRoleMembers
+      tags:
+        - Tenants
+      security:
+        - bearerAuth: []
+      description: >-
+        Requires tenant-wide iam:role:read and iam:member:read. Assigned members include suspended
+        memberships; available members are tenant members without this binding. Suspended members
+        cannot receive new assignments through the existing versioned binding endpoint. Cursor,
+        totals, search and status semantics match the member directory, with cursors also bound to
+        role and assignment view.
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - name: role_id
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 256
+        - $ref: "#/components/parameters/DirectoryQuery"
+        - $ref: "#/components/parameters/DirectoryLimit"
+        - $ref: "#/components/parameters/DirectoryAfter"
+        - name: assignment
+          in: query
+          schema:
+            type: string
+            enum:
+              - assigned
+              - available
+            default: assigned
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - active
+              - suspended
+      responses:
+        "200":
+          description: A bounded collection page.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                  - total
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Member"
+                  total:
+                    type: integer
+                    format: int64
+                    minimum: 0
+                    description: Total matching rows before applying the cursor, in the same request snapshot.
+                  next_cursor:
+                    type: string
+                    maxLength: 8192
+                    description: Pass unchanged as after with the same search and status. Absent at the end.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
   securitySchemes:
     bearerAuth:
@@ -336,6 +1919,45 @@ components:
       in: cookie
       name: amsonia_refresh
   parameters:
+    AuditFrom:
+      name: from
+      in: query
+      description: >-
+        Inclusive event timestamp in RFC3339 with UTC offset or Z, years 0001–9999. Must precede until
+        when both are supplied.
+      schema:
+        type: string
+        format: date-time
+    AuditUntil:
+      name: until
+      in: query
+      description: >-
+        Exclusive event timestamp in RFC3339 with UTC offset or Z, years 0001–9999. Must follow from
+        when both are supplied.
+      schema:
+        type: string
+        format: date-time
+    DirectoryQuery:
+      name: q
+      in: query
+      description: Literal search text, trimmed; no SQL wildcard expansion.
+      schema:
+        type: string
+        maxLength: 128
+    DirectoryLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 30
+    DirectoryAfter:
+      name: after
+      in: query
+      schema:
+        type: string
+        maxLength: 8192
     TenantId:
       name: tenant_id
       in: path
@@ -344,23 +1966,41 @@ components:
   responses:
     BadRequest:
       description: Invalid input.
-      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+      content:
+        { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     Unauthorized:
       description: Authentication or session is invalid.
-      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+      content:
+        { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     Forbidden:
       description: The current account lacks required authority.
-      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+      content:
+        { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     NotFound:
       description: Resource is missing or intentionally hidden.
-      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+      content:
+        { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     Conflict:
       description: Version or uniqueness conflict.
-      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+      content:
+        { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     TooManyRequests:
       description: Login is temporarily locked.
-      content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
+      content:
+        { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   schemas:
+    OrganizationSettings:
+      type: object
+      required: [id, name, state, version, created_at, updated_at, can_manage]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        state: { type: string, const: active }
+        version: { type: integer, format: int64, minimum: 1 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        can_manage: { type: boolean }
+
     Account:
       type: object
       required: [id, email, system_admin, created_at]
@@ -374,7 +2014,7 @@ components:
       type: object
       required: [access_token, expires_at, account]
       properties:
-        access_token: { type: string, pattern: '^as_' }
+        access_token: { type: string, pattern: "^as_" }
         expires_at: { type: string, format: date-time }
         account: { $ref: "#/components/schemas/Account" }
     Tenant:
@@ -418,8 +2058,11 @@ components:
         deleted: { type: boolean }
     AuditEvent:
       type: object
-      required: [tenant_id, operation, phase, target_type, target_id, outcome, at]
+      required:
+        [id, tenant_id, operation, phase, target_type, target_id, outcome, at]
       properties:
+        id: { type: integer, minimum: 1 }
+        host_initiator: { type: string }
         tenant_id: { type: string }
         actor_subject_id: { type: string }
         operation: { type: string }
@@ -445,7 +2088,8 @@ components:
       required: [tenant_id, permission, mode, resource]
       properties:
         tenant_id: { type: string }
-        subject_id: { type: string, description: Defaults to the current account. }
+        subject_id:
+          { type: string, description: Defaults to the current account. }
         permission: { type: string }
         mode: { type: string, enum: [existing, create, tenant_action] }
         resource: { $ref: "#/components/schemas/ResourceContext" }
@@ -466,3 +2110,196 @@ components:
           properties:
             code: { type: string }
             message: { type: string }
+    Profile:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "email", "display_name", "created_at"],
+        "properties":
+          {
+            "id": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "display_name": { "type": "string", "maxLength": 80 },
+            "created_at": { "type": "string", "format": "date-time" },
+          },
+      }
+    AccountSession:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required":
+          [
+            "id",
+            "created_at",
+            "last_seen_at",
+            "expires_at",
+            "remote_address",
+            "user_agent",
+            "current",
+          ],
+        "properties":
+          {
+            "id": { "type": "string" },
+            "created_at": { "type": "string", "format": "date-time" },
+            "last_seen_at": { "type": "string", "format": "date-time" },
+            "expires_at": { "type": "string", "format": "date-time" },
+            "remote_address": { "type": "string" },
+            "user_agent": { "type": "string" },
+            "current": { "type": "boolean" },
+          },
+      }
+    Invitation:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "email", "expires_at", "created_at", "status"],
+        "properties":
+          {
+            "id": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "expires_at": { "type": "string", "format": "date-time" },
+            "created_at": { "type": "string", "format": "date-time" },
+            "status":
+              {
+                "type": "string",
+                "enum": ["pending", "accepted", "revoked", "expired"],
+              },
+          },
+      }
+    CreatedInvitation:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "email", "expires_at", "created_at", "token"],
+        "properties":
+          {
+            "id": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "expires_at": { "type": "string", "format": "date-time" },
+            "created_at": { "type": "string", "format": "date-time" },
+            "token":
+              {
+                "type": "string",
+                "description": "Shown once. Store privately; share using a URL fragment.",
+              },
+          },
+      }
+    InvitationPreview:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required":
+          [
+            "id",
+            "tenant_id",
+            "email",
+            "tenant_name",
+            "expires_at",
+            "account_exists",
+          ],
+        "properties":
+          {
+            "id": { "type": "string" },
+            "tenant_id": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "tenant_name": { "type": "string" },
+            "expires_at": { "type": "string", "format": "date-time" },
+            "account_exists": { "type": "boolean" },
+          },
+      }
+    ScopedPermission:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["permission", "scope"],
+        "properties":
+          {
+            "permission": { "type": "string" },
+            "scope":
+              { "type": "string", "enum": ["tenant", "own", "workspace"] },
+            "workspace_roles":
+              { "type": ["array", "null"], "items": { "type": "string" } },
+          },
+      }
+    RoleHistory:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required":
+          [
+            "version",
+            "name",
+            "description",
+            "grants",
+            "created_at",
+            "created_by",
+          ],
+        "properties":
+          {
+            "version": { "type": "integer", "minimum": 1 },
+            "name": { "type": "string" },
+            "description": { "type": "string" },
+            "grants":
+              {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/ScopedPermission" },
+              },
+            "created_at": { "type": "string", "format": "date-time" },
+            "created_by": { "type": "string" },
+          },
+      }
+    RoleDetail:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "grants", "subjects", "versions"],
+        "properties":
+          {
+            "role": { "$ref": "#/components/schemas/Role" },
+            "grants":
+              {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/ScopedPermission" },
+              },
+            "subjects": { "type": "array", "items": { "type": "string" } },
+            "subject_count":
+              {
+                "type": "integer",
+                "format": "int64",
+                "minimum": 0,
+                "description": "Complete binding count when summary=true; subjects is empty in that mode.",
+              },
+            "versions":
+              {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/RoleHistory" },
+              },
+            "next_version": { "type": "integer", "minimum": 1 },
+          },
+      }
+    MutationResult:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["Changed", "RoleVersion"],
+        "properties":
+          {
+            "Changed": { "type": "boolean" },
+            "RoleVersion": { "type": "integer", "minimum": 1 },
+          },
+      }
+    AuditPage:
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["items"],
+        "properties":
+          {
+            "items":
+              {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/AuditEvent" },
+              },
+            "next_cursor": { "type": "integer", "minimum": 1 },
+          },
+      }

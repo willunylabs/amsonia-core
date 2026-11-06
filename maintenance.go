@@ -34,6 +34,8 @@ func NewMaintenance(
 // ExportTenant returns a canonical, versioned snapshot of one tenant's
 // authorization state. Export reads one consistent snapshot under the same
 // per-tenant serialization used by normal mutations.
+// Policy collections use bytewise identifier/scope/constraint ordering and
+// numeric role-version ordering; mutation audit retains its recorded sequence.
 func (m *Maintenance) ExportTenant(ctx context.Context, tenantID TenantID) ([]byte, error) {
 	if err := tenantID.Validate(); err != nil {
 		return nil, err

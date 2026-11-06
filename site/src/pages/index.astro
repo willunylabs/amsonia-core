@@ -1,5 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import WebsiteArtwork from '../components/WebsiteArtwork.astro';
+import FeatureArtwork from '../components/FeatureArtwork.astro';
 import {
   absoluteUrl,
   amsoniaBrandReference,
@@ -10,7 +12,7 @@ import {
   SITE_ORIGIN
 } from '../lib/site';
 
-const description = 'Amsonia Next is a private Next.js SaaS starter with authentication, Stripe billing, PostgreSQL, and admin in one TypeScript application. Built by Willuny Labs.';
+const description = 'Explore Amsonia Next, our Next.js SaaS starter, and Amsonia Platform for Go + Next.js. Compare their scope and find the right foundation for your product.';
 const platformId = `${absoluteUrl('/platform')}#software`;
 const nextId = `${absoluteUrl('/next')}#software`;
 const schemas = [{
@@ -47,35 +49,39 @@ const schemas = [{
     <section class="hero family-hero">
       <div class="shell hero-inner">
         <div class="hero-copy">
-          <span class="eyebrow">Amsonia Next / By Willuny Labs</span>
-          <h1>Your SaaS. One Next.js codebase.</h1>
-          <p class="hero-thesis">A practical starting point for your SaaS.</p>
-          <p class="hero-summary">Authentication, Stripe billing, PostgreSQL, and admin in one full-stack TypeScript application. Start with Amsonia Next and spend your engineering time on the product your customers need.</p>
+          <span class="eyebrow">SaaS starters by Willuny Labs</span>
+          <h1>A foundation for your next SaaS.</h1>
+          <p class="hero-thesis">Start with Amsonia Next.</p>
+          <p class="hero-summary">Start with Amsonia Next for one full-stack TypeScript application. Choose Amsonia Platform when your product needs a separate Go service and multi-tenant operations.</p>
           <div class="hero-actions">
             <a class="button primary" href="/next/">Explore Amsonia Next <span aria-hidden="true">→</span></a>
-            <a class="button secondary" href={COMPANY_CONTACT_URL} data-cta-target="contact">Ask about availability <span aria-hidden="true">↗</span></a>
+            <a class="button secondary" href="/compare/platform-vs-next/">Compare Next and Platform <span aria-hidden="true">→</span></a>
           </div>
         </div>
-        <div class="hero-specimen family-specimen" aria-label="Amsonia Next and Platform summary">
-          <div class="hero-product-header"><span><img src="/amsonia-mark-v2.svg" width="34" height="34" alt="" /> Amsonia Next</span><strong>Private source</strong></div>
-          <a class="family-specimen-row" href="/next/"><span class="eyebrow">01 / NEXT.JS SAAS STARTER</span><strong>One application. Your product.</strong><small>Authentication · Stripe · PostgreSQL · Admin</small><span aria-hidden="true">→</span></a>
-          <a class="family-specimen-row" href="/platform/"><span class="eyebrow">02 / GO + NEXT.JS</span><strong>Amsonia Platform</strong><small>A separate foundation for multi-tenant B2B SaaS</small><span aria-hidden="true">→</span></a>
-          <div class="family-specimen-note"><span>Additional open source</span><a href={GITHUB_URL} data-cta-target="github">View engineering work on GitHub ↗</a></div>
-        </div>
+        <figure class="family-artwork">
+          <WebsiteArtwork />
+          <figcaption>
+            <div class="artwork-product-links">
+              <a href="/next/"><span class="eyebrow">01 / Private source</span><strong>Amsonia Next</strong><small>Authentication · Stripe · PostgreSQL · Admin</small><span aria-hidden="true">→</span></a>
+              <a href="/platform/"><span class="eyebrow">02 / Go + Next.js</span><strong>Amsonia Platform</strong><small>A separate foundation for multi-tenant B2B SaaS</small><span aria-hidden="true">→</span></a>
+            </div>
+            <a class="artwork-source-link" href={GITHUB_URL} data-cta-target="github">View engineering work on GitHub ↗</a>
+          </figcaption>
+        </figure>
       </div>
     </section>
 
     <section class="band"><div class="shell brand-contract">
       <div><span class="specimen-number">FAMILY / 00</span></div>
-      <div><h2>Build the features that make it yours.</h2><p>Keep account, payment, and admin work together in one Next.js application. Customize the source for your product and choose where you deploy it.</p></div>
+      <div><h2>Choose the foundation that fits.</h2><p>Next keeps your product in one TypeScript application. Platform pairs Next.js with a separate Go service for multi-tenant B2B products. Review each product before choosing your starting point.</p></div>
       <div><h3>Built by Willuny Labs.</h3><p>Amsonia Next is privately maintained. Talk to us about source access, licensing, and support before adopting it.</p></div>
     </div></section>
 
     <section class="section"><div class="shell">
       <div class="section-heading"><span class="eyebrow">Products / Start with Next</span><div class="section-heading-copy"><h2>A focused foundation for your SaaS.</h2><p>Amsonia Next is our main product focus. For teams that already need a Go service and multi-tenant operations, Amsonia Platform remains a separate option.</p></div></div>
       <div class="product-grid">
-        <article class="product-card product-card-featured"><span class="specimen-number">NEXT / PRIVATE SOURCE</span><h2>Amsonia Next</h2><p class="product-lede">A Next.js 16 SaaS starter for founders who want one full-stack TypeScript codebase.</p><ul class="capability-list"><li>Authentication and account lifecycle</li><li>Stripe checkout, subscriptions, and webhooks</li><li>PostgreSQL with Drizzle migrations</li><li>Admin, audit, and localized product routes</li></ul><div class="hero-actions"><a class="button primary" href="/next/">Explore Amsonia Next →</a><a class="button secondary" href={COMPANY_CONTACT_URL} data-cta-target="contact">Contact about Next ↗</a></div></article>
-        <article class="product-card"><span class="specimen-number">PLATFORM / GO + NEXT.JS</span><h2>Amsonia Platform</h2><p class="product-lede">A separate Go + Next.js SaaS starter kit for multi-tenant B2B products.</p><ul class="capability-list"><li>Go API and Next.js product surface</li><li>Tenant and workspace boundaries</li><li>Roles, permissions, and operations</li><li>Stripe-oriented commerce and billing</li></ul><div class="hero-actions"><a class="button secondary" href="/platform/">Evaluate Platform →</a><a class="button secondary" href="/go-saas-boilerplate/">Go SaaS guide →</a></div></article>
+        <article class="product-card product-card-featured"><span class="specimen-number">NEXT / PRIVATE SOURCE</span><div class="artwork-product-heading"><h2>Amsonia Next</h2><FeatureArtwork name="source" /></div><p class="product-lede">A Next.js 16 SaaS starter for founders who want one full-stack TypeScript codebase.</p><ul class="capability-list"><li>Authentication and account lifecycle</li><li>Stripe checkout, subscriptions, and webhooks</li><li>PostgreSQL with Drizzle migrations</li><li>Admin, audit, and localized product routes</li></ul><div class="hero-actions"><a class="button primary" href="/next/">Explore Amsonia Next →</a><a class="button secondary" href={COMPANY_CONTACT_URL} data-cta-target="contact">Contact about Next ↗</a></div></article>
+        <article class="product-card"><span class="specimen-number">PLATFORM / GO + NEXT.JS</span><div class="artwork-product-heading"><h2>Amsonia Platform</h2><FeatureArtwork name="tenancy" /></div><p class="product-lede">A separate Go + Next.js SaaS starter kit for multi-tenant B2B products.</p><ul class="capability-list"><li>Go API and Next.js product surface</li><li>Tenant and workspace boundaries</li><li>Roles, permissions, and operations</li><li>Stripe-oriented commerce and billing</li></ul><div class="hero-actions"><a class="button secondary" href="/platform/">Evaluate Platform →</a><a class="button secondary" href="/go-saas-boilerplate/">Go SaaS guide →</a></div></article>
       </div>
     </div></section>
 
