@@ -102,6 +102,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
   /api/v1/auth/refresh:
@@ -888,6 +889,91 @@ paths:
             ],
         },
     }
+  /api/v1/tenants/{tenant_id}/members/{account_id}/password-recovery:
+    post:
+      operationId: createPasswordRecovery
+      summary: Issue a private member password recovery link
+      description: Requires an active system administrator with tenant-wide iam:member:manage and their current password. The target must be an active ordinary member; system administrators use operator recovery. Credentials are global across organizations. The 30-minute single-use secret is returned once, only its hash is stored, and earlier pending links for the account are revoked. Deliver privately; no email is sent.
+      tags: [Tenants]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+        - name: account_id
+          in: path
+          required: true
+          schema: { type: string, minLength: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [current_password]
+              properties:
+                current_password: { type: string, format: password, maxLength: 128 }
+      responses:
+        "201":
+          description: Recovery secret shown once; share via a URL fragment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PasswordRecovery" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/password-recovery/preview:
+    post:
+      operationId: previewPasswordRecovery
+      summary: Inspect a member password recovery link
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token]
+              properties:
+                token: { type: string }
+      responses:
+        "200":
+          description: Active member and unexpired unused recovery link.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PasswordRecoveryPreview" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/password-recovery/complete:
+    post:
+      operationId: completePasswordRecovery
+      summary: Replace an ordinary member's password
+      description: Consumes the secret atomically, revokes all old access and refresh sessions and pending recovery links, and records a tenant audit event. It never restores suspended membership or changes roles. No session or cookie is created or changed; sign in afterwards. Used, expired, revoked, suspended, or out-of-organization links return 404.
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, new_password]
+              properties:
+                token: { type: string }
+                new_password: { type: string, format: password, minLength: 12, maxLength: 128 }
+      responses:
+        "204": { description: Password replaced; sign in with the new password. }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /api/v1/invitations/preview:
     {
       "post":
@@ -1989,6 +2075,23 @@ components:
       content:
         { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   schemas:
+    PasswordRecovery:
+      type: object
+      additionalProperties: false
+      required: [id, email, expires_at, token]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        expires_at: { type: string, format: date-time }
+        token: { type: string, pattern: "^pr_[A-Za-z0-9_-]{43}$" }
+    PasswordRecoveryPreview:
+      type: object
+      additionalProperties: false
+      required: [email, tenant_name, expires_at]
+      properties:
+        email: { type: string, format: email }
+        tenant_name: { type: string }
+        expires_at: { type: string, format: date-time }
     OrganizationSettings:
       type: object
       required: [id, name, state, version, created_at, updated_at, can_manage]

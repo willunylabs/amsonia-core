@@ -57,7 +57,8 @@ GRANT SELECT, INSERT, UPDATE ON
     amsonia.accounts,
     amsonia.system_administrators,
     amsonia.access_sessions,
-    amsonia.refresh_sessions
+    amsonia.refresh_sessions,
+    amsonia.member_password_recoveries
 TO :"runtime_role";
 GRANT INSERT ON amsonia.tenants TO :"runtime_role";
 GRANT USAGE, SELECT ON SEQUENCE amsonia.audit_events_id_seq TO :"runtime_role";

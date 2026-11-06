@@ -48,6 +48,8 @@ func (api *API) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/refresh", api.refresh)
 	mux.HandleFunc("POST /api/v1/auth/restore", api.restoreSession)
 	mux.HandleFunc("POST /api/v1/auth/logout", api.logout)
+	mux.HandleFunc("POST /api/v1/password-recovery/preview", api.previewPasswordRecovery)
+	mux.HandleFunc("POST /api/v1/password-recovery/complete", api.completePasswordRecovery)
 	mux.HandleFunc("POST /api/v1/invitations/preview", api.previewInvitation)
 	mux.HandleFunc("POST /api/v1/invitations/accept", api.acceptInvitation)
 	for pattern, handler := range map[string]http.HandlerFunc{
@@ -59,6 +61,7 @@ func (api *API) Handler() http.Handler {
 		mux.Handle(pattern, api.auth(handler))
 	}
 	for pattern, handler := range map[string]http.HandlerFunc{
+		"POST /api/v1/tenants/{tenant_id}/members/{account_id}/password-recovery": api.createPasswordRecovery,
 		"GET /api/v1/tenants/{tenant_id}/settings":                                api.organizationSettings,
 		"PATCH /api/v1/tenants/{tenant_id}/settings":                              api.renameOrganization,
 		"GET /api/v1/tenants/{tenant_id}/members/{account_id}":                    api.memberDetail,

@@ -133,3 +133,6 @@ export type OrganizationSettings = Tenant & {
   updated_at: string;
   can_manage: boolean;
 };
+
+export type PasswordRecovery = { id: string; email: string; expires_at: string; token: string };
+export type PasswordRecoveryPreview = { email: string; tenant_name: string; expires_at: string };

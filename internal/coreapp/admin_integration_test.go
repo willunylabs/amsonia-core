@@ -171,13 +171,17 @@ func TestCoreAdministrationLifecycle(t *testing.T) {
 	adminSession := login(admin.Email, password)
 	call := func(method, path, token string, input any, status int) *httptest.ResponseRecorder {
 		t.Helper()
-		body, _ := json.Marshal(input)
+		var body []byte
+		if input != nil {
+			body, _ = json.Marshal(input)
+		}
 		req := httptest.NewRequest(method, path, strings.NewReader(string(body)))
 		if token != "" {
 			req.Header.Set("Authorization", "Bearer "+token)
 		}
 		res := httptest.NewRecorder()
 		handler.ServeHTTP(res, req)
+		recordContract(t, req, body, res, true)
 		if res.Code != status {
 			t.Fatalf("%s %s: %d want %d: %s", method, path, res.Code, status, res.Body.String())
 		}

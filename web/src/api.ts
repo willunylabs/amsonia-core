@@ -1,4 +1,6 @@
 import type {
+  PasswordRecovery,
+  PasswordRecoveryPreview,
   OrganizationSettings,
   Account,
   DirectoryFilter,
@@ -305,6 +307,11 @@ export const api = {
     request<Member>(
       `/api/v1/tenants/${encodeURIComponent(tenant)}/members/${encodeURIComponent(id)}`,
     ),
+  createPasswordRecovery: (tenant: string, id: string, password: string) => request<PasswordRecovery>(
+    `/api/v1/tenants/${encodeURIComponent(tenant)}/members/${encodeURIComponent(id)}/password-recovery`,
+    {method: "POST", body: JSON.stringify({current_password: password})}),
+  previewPasswordRecovery: (token: string) => request<PasswordRecoveryPreview>("/api/v1/password-recovery/preview", {method: "POST", body: JSON.stringify({token})}),
+  completePasswordRecovery: (token: string, password: string) => request<void>("/api/v1/password-recovery/complete", {method: "POST", body: JSON.stringify({token, new_password: password})}),
   previewInvitation: (token: string) =>
     request<InvitationPreview>("/api/v1/invitations/preview", {
       method: "POST",

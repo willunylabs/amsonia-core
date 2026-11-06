@@ -27,15 +27,23 @@ func main() {
 	}
 }
 
-var errUsage = errors.New("usage: amsonia migrate | migration-status | admin-status | bootstrap-admin | recover-admin | setup-organization | provision-demo-viewer")
+var errUsage = errors.New("usage: amsonia migrate | migration-status | admin-status | bootstrap-admin | recover-admin | prune-sessions [--apply] [--retention-days=30] [--batch-size=1000] | setup-organization | provision-demo-viewer")
 
 func run(ctx context.Context, args []string) error {
-	if len(args) != 1 {
+	if len(args) == 0 || (args[0] != "prune-sessions" && len(args) != 1) {
 		return errUsage
+	}
+	var pruneOptions coreapp.SessionPruneOptions
+	if args[0] == "prune-sessions" {
+		var err error
+		pruneOptions, err = sessionPruneOptions(args[1:])
+		if err != nil {
+			return err
+		}
 	}
 	var dsnName string
 	switch args[0] {
-	case "migrate", "migration-status", "recover-admin":
+	case "migrate", "migration-status", "recover-admin", "prune-sessions":
 		dsnName = "AMSONIA_MIGRATION_DSN"
 	case "admin-status", "bootstrap-admin", "setup-organization", "provision-demo-viewer":
 		dsnName = "AMSONIA_DATABASE_DSN"
@@ -68,6 +76,8 @@ func run(ctx context.Context, args []string) error {
 		return bootstrapAdmin(ctx, pool)
 	case "recover-admin":
 		return recoverAdmin(ctx, pool)
+	case "prune-sessions":
+		return pruneSessions(ctx, pool, pruneOptions)
 	case "setup-organization":
 		service, err := newCLIService(pool)
 		if err != nil {

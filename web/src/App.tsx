@@ -9,7 +9,6 @@ import {
   useState,
 } from "react";
 import {
-  Activity,
   ArrowRight,
   BookOpenCheck,
   Building2,
@@ -46,6 +45,7 @@ import { InvitationsPage } from "./Invitations";
 import { FormPage } from "./navigation";
 import { RolesPage } from "./Roles";
 import { AuditWorkspace } from "./Audit";
+import { PasswordRecoveryLanding } from "./PasswordRecovery";
 import { OrganizationPage } from "./Organization";
 
 type Section =
@@ -198,10 +198,8 @@ function Login({ onLogin }: { onLogin: (account: Account) => void }) {
             {busy ? "Signing in…" : "Enter the console"}
             <ArrowRight size={17} />
           </button>
-          <p className="fine-print">
-            The shared demo account can inspect one sample tenant but cannot
-            create tenants, roles, grants, or members.
-          </p>
+          <details className="login-help"><summary>Forgot your password?</summary><p>Ask your administrator for a private recovery link. System administrators can use the operator recovery command.</p></details>
+          {hasPublicDemo ? <p className="fine-print">The shared demo account can inspect one sample tenant but cannot create tenants, roles, grants, or members.</p> : <p className="fine-print">Access is by invitation. Contact your organization administrator to join.</p>}
         </form>
       </section>
     </main>
@@ -213,16 +211,19 @@ export function App() {
   const [inviteToken, setInviteToken] = useState(
     () => new URLSearchParams(location.hash.slice(1)).get("invite") ?? "",
   );
+  const [resetToken, setResetToken] = useState(() => new URLSearchParams(location.hash.slice(1)).get("reset") ?? "");
   const [checking, setChecking] = useState(true);
   const [startupError, setStartupError] = useState("");
   const [sessionNotice, setSessionNotice] = useState("");
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    const readInvitation = () =>
+    const readInvitation = () => {
+      setResetToken(new URLSearchParams(location.hash.slice(1)).get("reset") ?? "");
       setInviteToken(
         new URLSearchParams(location.hash.slice(1)).get("invite") ?? "",
       );
+    };
     window.addEventListener("hashchange", readInvitation);
     return () => window.removeEventListener("hashchange", readInvitation);
   }, []);
@@ -240,7 +241,7 @@ export function App() {
     [],
   );
   useEffect(() => {
-    if (inviteToken) {
+    if (inviteToken || resetToken) {
       setChecking(false);
       return;
     }
@@ -265,8 +266,9 @@ export function App() {
     return () => {
       active = false;
     };
-  }, [inviteToken, attempt]);
+  }, [inviteToken, resetToken, attempt]);
 
+  if (resetToken) return <PasswordRecoveryLanding key={resetToken} token={resetToken} />;
   if (inviteToken)
     return (
       <InvitationLanding
@@ -547,6 +549,7 @@ function Console({
 
   return (
     <div className="console-shell">
+      <button className="skip-link" onClick={() => document.getElementById("main-content")?.focus()}>Skip to content</button>
       <aside className="sidebar">
         <div className="brand-lockup">
           <img className="brand-mark" src="/amsonia-mark-v2.svg" alt="" />
@@ -681,7 +684,7 @@ function Console({
             </button>
           </div>
         </header>
-        <main className="page">
+        <main className="page" id="main-content" tabIndex={-1}>
           {error ? (
             <div className="error-banner" role="alert">
               {error}
@@ -825,6 +828,8 @@ function SectionView(props: SectionProps) {
       return (
         <MembersPage
           tenant={props.tenant.id}
+          systemAdmin={props.account.system_admin}
+          actorID={props.account.id}
           revision={props.revision}
           capabilities={props.capabilities}
           onChanged={props.onChanged}
@@ -904,107 +909,35 @@ function SectionView(props: SectionProps) {
           roles={props.roles}
           permissions={props.permissions}
           audit={props.audit}
+          capabilities={props.capabilities}
         />
       );
   }
 }
 
-function Overview({
-  tenant,
-  members,
-  roles,
-  permissions,
-  audit,
-}: Omit<
-  SectionProps,
-  | "section"
-  | "account"
-  | "capabilities"
-  | "onCreateRole"
-  | "onChanged"
-  | "revision"
+function Overview({ tenant, members, roles, permissions, audit, capabilities }: Omit<
+  SectionProps, "section" | "account" | "onCreateRole" | "onChanged" | "revision"
 >) {
   const latest = audit[0];
-  return (
-    <>
-      <PageHeader
-        eyebrow="Authorization workspace"
-        title={`Good ${new Date().getHours() < 12 ? "morning" : "afternoon"}.`}
-        detail={`${tenant.name} is active. Here is the shape of its access model today.`}
-      />
-      <section className="metric-grid">
-        <article>
-          <span>Members</span>
-          <strong>
-            {members === null ? "—" : members.toString().padStart(2, "0")}
-          </strong>
-          <small>active memberships</small>
-        </article>
-        <article>
-          <span>Roles</span>
-          <strong>
-            {roles === null ? "—" : roles.toString().padStart(2, "0")}
-          </strong>
-          <small>versioned definitions</small>
-        </article>
-        <article>
-          <span>Catalog</span>
-          <strong>{permissions.length.toString().padStart(2, "0")}</strong>
-          <small>developer-owned keys</small>
-        </article>
-        <article className="accent-metric">
-          <span>Isolation</span>
-          <strong>
-            <ShieldCheck />
-          </strong>
-          <small>signed RLS binding</small>
-        </article>
-      </section>
-      <section className="overview-grid">
-        <article className="paper-card posture-card">
-          <div className="card-kicker">
-            <Activity size={17} />
-            Security posture
-          </div>
-          <h2>Boundaries are explicit.</h2>
-          <ul>
-            <li>
-              <Check size={15} />
-              Tenant ID signed per transaction
-            </li>
-            <li>
-              <Check size={15} />
-              Immutable role-version history
-            </li>
-            <li>
-              <Check size={15} />
-              Last-administrator protection
-            </li>
-          </ul>
-        </article>
-        <article className="paper-card latest-card">
-          <div className="card-kicker">
-            <ClipboardCheck size={17} />
-            Latest policy event
-          </div>
-          {latest ? (
-            <>
-              <h2>{latest.operation.replaceAll(".", " / ")}</h2>
-              <p>
-                {latest.target_type} · {latest.target_id}
-              </p>
-              <time>{new Date(latest.at).toLocaleString()}</time>
-            </>
-          ) : (
-            <>
-              <h2>No events yet</h2>
-              <p>No recent activity. Policy changes will appear here.</p>
-            </>
-          )}
-        </article>
-      </section>
-    </>
-  );
+  const tasks = [
+    {path: "members", title: "Manage members", description: "Review access and membership status.", icon: UsersRound, allowed: capabilities.permissions["iam:member:read"]},
+    {path: "invitations", title: "Invite a teammate", description: "Create and share a private invitation.", icon: MailPlus, allowed: capabilities.permissions["iam:member:manage"]},
+    {path: "roles", title: "Review roles", description: "Keep permissions aligned with responsibilities.", icon: ShieldCheck, allowed: capabilities.permissions["iam:role:read"]},
+    {path: "account/devices", title: "Secure your account", description: "Review devices and end unused sessions.", icon: Fingerprint, allowed: true},
+  ].filter((task) => task.allowed);
+  return <>
+    <PageHeader eyebrow={tenant.name} title="Organization overview" detail="Your people, their access, and the latest activity in one place." />
+    <section className="metric-grid" aria-label="Organization totals">
+      <article><span>Members</span><strong>{members ?? "—"}</strong><small>organization memberships</small></article>
+      <article><span>Roles</span><strong>{roles ?? "—"}</strong><small>current role definitions</small></article>
+      <article><span>Permissions</span><strong>{permissions.length}</strong><small>available in the catalog</small></article>
+      <article className="accent-metric"><span>Your account</span><strong><ShieldCheck size={30} /></strong><a href="#/account/devices">Review signed-in devices <ArrowRight size={14} /></a></article>
+    </section>
+    <section className="overview-grid">
+      <article className="paper-card tasks-card"><div className="card-kicker"><LayoutGrid size={16} /> Start here</div><h2>Common tasks</h2><div className="task-list">{tasks.map((task) => <a href={`#/${task.path}`} key={task.path}><span className="task-icon"><task.icon size={20} /></span><span><strong>{task.title}</strong><small>{task.description}</small></span><ArrowRight size={16} /></a>)}</div></article>
+      <article className="paper-card latest-card"><div className="card-kicker"><ClipboardCheck size={16} /> Latest activity</div>{latest ? <><span className="pill">{latest.outcome}</span><h2>{latest.operation.replaceAll(".", " / ")}</h2><p className="break-text">{latest.target_type} · {latest.target_id}</p><time dateTime={latest.at}>{new Date(latest.at).toLocaleString()}</time></> : <><h2>{capabilities.permissions["iam:audit:read"] ? "No activity yet" : "Activity is restricted"}</h2><p>{capabilities.permissions["iam:audit:read"] ? "Changes to members, roles, and permissions will appear here." : "Your role does not include access to organization audit history."}</p></>}{capabilities.permissions["iam:audit:read"] ? <a className="secondary-button" href="#/audit">Open audit trail <ArrowRight size={14} /></a> : null}</article>
+    </section>
+  </>;
 }
 
 function PermissionsPage({ items }: { items: Permission[] }) {
