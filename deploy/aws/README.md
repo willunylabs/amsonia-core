@@ -1,15 +1,25 @@
-# Dedicated Amsonia AWS origin
+# Legacy Amsonia AWS static origin
 
-Amsonia runs on an EC2 origin that is separate from the existing Willuny
-origin. The instance serves only the static Amsonia product and technical site;
-it does not host a Core API, Console, database, or public test credentials.
+Verified inventory update: 2026-10-26. The `amsonia-prod` instance below is
+**stopped**. The old AWS `deploy-site.yml` workflow is `disabled_manually`;
+`deploy-site-pages.yml` is active for the static product site. See the
+[current Pages release notes](../cloudflare/README.md). This corrects the old
+migration plan; it does not establish the exact cutover or retirement date.
 
-## Production inventory
+This instance served only the static Amsonia product/technical site. It is not
+the Willuny blog CMS backend. That backend is the separate, running
+`willuny-intl-app` instance `i-07cfb87c8d7f2e5fa` in `us-east-1`, exposed through
+`https://api.willuny.com`. The verified article publishing procedure lives in
+`amsonia-web/docs/runbooks/blog-cms-publishing.md`; publish through normal CMS
+APIs rather than deploying this static origin.
+
+## Legacy inventory
 
 | Resource | Value |
 | --- | --- |
 | Region | `us-east-1` |
 | EC2 name | `amsonia-prod` |
+| Observed state, 2026-10-26 | stopped |
 | Instance ID | `i-00e3d5d4c5c6b0dac` |
 | Elastic IP | `3.219.243.118` |
 | Security group | `sg-0c41faffb38af169e` (`amsonia-prod-sg`) |
@@ -27,11 +37,11 @@ The instance role can read:
 
 It does not reuse the Willuny runtime role or its application secrets.
 
-## Hostname rollout
+## Historical hostname rollout
 
-The production cutover completed on 2026-08-17. Both `amsonia.dev` and
-`demo.amsonia.dev` are proxied by Cloudflare to the dedicated Elastic IP. Since
-2026-08-28, the active `deploy/site/traefik-dynamic.yml` contract is:
+The historical AWS cutover was recorded on 2026-08-17, with Cloudflare-proxied
+hostnames pointing to this Elastic IP. The 2026-08-28
+`deploy/site/traefik-dynamic.yml` contract described:
 
 - `amsonia.dev` serves the indexable product site on `127.0.0.1:8084`;
 - `demo.amsonia.dev` returns a temporary, non-indexable redirect to the
@@ -42,7 +52,7 @@ The historical hosted Core Demo is retired and must not be re-created from this
 repository. The commercial demo runtime is owned by the commercial Amsonia
 repositories.
 
-## Release contract
+## Historical AWS release contract
 
 Keep at least two releases and retain each published artifact for 14 days:
 
@@ -52,11 +62,11 @@ Keep at least two releases and retain each published artifact for 14 days:
 
 The static origin binds only to `127.0.0.1:8084`.
 
-## Static-site deployment and migration
+## Disabled AWS release workflow
 
-`amsonia.dev` is released independently from Traefik configuration. A
-successful `CI` run for a push to `main`
-triggers `.github/workflows/deploy-site.yml`, which:
+The disabled `.github/workflows/deploy-site.yml` previously followed a
+successful main CI run and released the static site independently from Traefik
+configuration. Its historical steps were:
 
 1. checks out the exact CI commit;
 2. rebuilds and validates the Astro site;
@@ -85,7 +95,8 @@ as well as to the protected `amsonia-production` environment.
 The GitHub deployment role can publish only the `site` artifact prefix and can
 invoke only `AmsoniaDeploySite` against the dedicated Amsonia instance.
 
-This AWS origin remains the production and rollback path while the static build
-is validated on Cloudflare Pages. See `deploy/cloudflare/README.md`. Do not stop
-or terminate `amsonia-prod` until the Pages custom-domain cutover has completed
-its observation window and the retirement is approved separately.
+The stopped instance is not an immediately available rollback origin. Before
+any restoration, separately review its runtime, retained artifacts, health,
+networking and domain state; do not point DNS at a stopped or unverified host.
+No instance start/stop, DNS, IAM, SSM document or artifact retention change was
+made as part of this documentation correction.
