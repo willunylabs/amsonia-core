@@ -142,7 +142,7 @@ func setupPostgres(t *testing.T) *Store {
 	}
 	// Isolate each run: reset all tenant data and the purge tombstone.
 	if _, err := admin.Exec(context.Background(), `
-		TRUNCATE amsonia.audit_events, amsonia.role_versions, amsonia.grant_edges,
+		TRUNCATE amsonia.member_password_recoveries, amsonia.audit_events, amsonia.role_versions, amsonia.grant_edges,
 			amsonia.subject_roles, amsonia.role_permission_grants, amsonia.roles,
 			amsonia.tenant_state, amsonia.purge_ledger, amsonia.member_invitations,
 			amsonia.tenant_memberships, amsonia.refresh_sessions, amsonia.access_sessions,

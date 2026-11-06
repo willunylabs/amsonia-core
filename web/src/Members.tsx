@@ -6,8 +6,11 @@ import { ErrorMessage, PageHeader } from "./components";
 import type { Capabilities, Member, Role } from "./types";
 import { useDirectory } from "./useDirectory";
 import { DirectorySearch, DirectoryNavigation } from "./DirectoryControls";
+import { MemberPasswordRecovery } from "./PasswordRecovery";
 import { PageNavigation } from "./navigation";
 type Props = {
+  systemAdmin?: boolean;
+  actorID?: string;
   tenant: string;
   revision: number;
   capabilities: Capabilities;
@@ -40,7 +43,7 @@ function MemberDirectory({ tenant, revision, capabilities }: Props) {
       <PageHeader
         eyebrow="Identity"
         title="Members"
-        detail="Search tenant members and open their membership or role settings."
+        detail="Find people, review their roles, and manage organization access."
       />
       <DirectorySearch
         label="Find a member"
@@ -49,7 +52,7 @@ function MemberDirectory({ tenant, revision, capabilities }: Props) {
         onSearch={members.search}
       />
       <DirectoryNavigation directory={members} label="Members" />
-      <div className="table-card">
+      <div className="table-card" role="region" aria-label="Member results" tabIndex={0}>
         <table>
           <thead>
             <tr>
@@ -118,6 +121,8 @@ function MemberDirectory({ tenant, revision, capabilities }: Props) {
 function MemberWorkspace({
   tenant,
   id,
+  systemAdmin,
+  actorID,
   capabilities,
   onChanged,
 }: Props & { id: string }) {
@@ -192,6 +197,8 @@ function MemberWorkspace({
         detail={
           tab === "roles"
             ? "Review and assign this member's roles."
+            : tab === "recovery"
+              ? "Help this member recover access to their account."
             : tab === "remove"
               ? "Remove membership from this tenant."
               : "Review identity and update tenant access."
@@ -204,6 +211,8 @@ function MemberWorkspace({
           ...(capabilities.permissions["iam:role:read"]
             ? [{ path: `${base}/roles`, label: "Roles" }]
             : []),
+          ...(manage && systemAdmin && id !== actorID && member?.status === "active"
+            ? [{path: `${base}/recovery`, label: "Password recovery"}] : []),
           ...(manage
             ? [{ path: `${base}/remove`, label: "Remove membership" }]
             : []),
@@ -235,6 +244,8 @@ function MemberWorkspace({
             Your role does not include role read access.
           </p>
         )
+      ) : tab === "recovery" && manage && systemAdmin && id !== actorID && member.status === "active" ? (
+        <MemberPasswordRecovery tenant={tenant} id={id} email={member.email} />
       ) : tab === "details" ? (
         <form className="paper-card admin-form form-page" onSubmit={save}>
           <h2>Membership details</h2>

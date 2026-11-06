@@ -69,7 +69,7 @@ it("opens a zero-permission tenant without requesting protected collections", as
   render(<App />);
   await screen.findByText("Invited tenant");
   await waitFor(() => expect(api.capabilities).toHaveBeenCalledWith("tenant"));
-  await screen.findByText("Boundaries are explicit.");
+  await screen.findByText("Organization overview");
   expect(api.members).not.toHaveBeenCalled();
   expect(api.roles).not.toHaveBeenCalled();
   expect(api.audit).not.toHaveBeenCalled();
@@ -209,13 +209,13 @@ it("restores startup without a tab token and preserves it when retrying a networ
     "preserved-token",
   );
   fireEvent.click(screen.getByRole("button", { name: "Retry connection" }));
-  await screen.findByText("Boundaries are explicit.");
+  await screen.findByText("Organization overview");
   expect(api.restoreSession).toHaveBeenCalledTimes(2);
 });
 it("recovers a session even when sessionStorage has no access credential", async () => {
   mockWorkspace();
   render(<App />);
-  await screen.findByText("Boundaries are explicit.");
+  await screen.findByText("Organization overview");
   expect(api.restoreSession).toHaveBeenCalledOnce();
   expect(api.me).not.toHaveBeenCalled();
 });
@@ -223,7 +223,7 @@ it("remembers a tenant per account and validates the preference against current 
   mockWorkspace();
   localStorage.setItem("amsonia.core.tenant.v1:account", tenantB.id);
   render(<App />);
-  await screen.findByText("Boundaries are explicit.");
+  await screen.findByText("Organization overview");
   expect(api.capabilities).toHaveBeenCalledWith(tenantB.id);
   expect(
     (
@@ -273,7 +273,7 @@ it("ignores an obsolete tenant response before fetching its protected collection
   );
   resolve({ permissions: { "iam:member:read": true } });
   await waitFor(() =>
-    expect(screen.getByText("Boundaries are explicit.")).toBeTruthy(),
+    expect(screen.getByText("Organization overview")).toBeTruthy(),
   );
   expect(api.members).not.toHaveBeenCalledWith(tenantA.id, expect.anything());
 });
@@ -283,7 +283,7 @@ it("falls back to an accessible tenant when the selected membership disappears",
     .mockResolvedValueOnce([tenantA, tenantB])
     .mockResolvedValue([tenantB]);
   render(<App />);
-  await screen.findByText("Boundaries are explicit.");
+  await screen.findByText("Organization overview");
   fireEvent.click(screen.getByRole("button", { name: "Members" }));
   await screen.findByText("tenant-a@example.test");
   fireEvent.click(screen.getByRole("button", { name: "Refresh workspace" }));
@@ -297,7 +297,7 @@ it("clears tenant data when the last membership disappears after focus returns",
   mockWorkspace();
   vi.mocked(api.tenants).mockResolvedValueOnce([tenantA]).mockResolvedValue([]);
   render(<App />);
-  await screen.findByText("Boundaries are explicit.");
+  await screen.findByText("Organization overview");
   fireEvent.click(screen.getByRole("button", { name: "Members" }));
   await screen.findByText("tenant-a@example.test");
   fireEvent.focus(window);
@@ -336,7 +336,7 @@ it("rechecks capabilities once after a collection permission changes during refr
     })
     .mockRejectedValue(new APIError(403, "forbidden", "Permission changed"));
   render(<App />);
-  await screen.findByText("Boundaries are explicit.");
+  await screen.findByText("Organization overview");
   fireEvent.click(screen.getByRole("button", { name: "Members" }));
   await screen.findByText("old-member@example.test");
   fireEvent.click(screen.getByRole("button", { name: "Refresh workspace" }));
@@ -353,7 +353,7 @@ it("keeps the sign-out control available after a failed sign-out", async () => {
     )
     .mockResolvedValueOnce();
   render(<App />);
-  await screen.findByText("Boundaries are explicit.");
+  await screen.findByText("Organization overview");
   fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
   await screen.findByRole("alert");
   expect(
@@ -374,7 +374,7 @@ it("opens another invitation when its fragment changes in an already open consol
     account_exists: true,
   });
   render(<App />);
-  await screen.findByText("Boundaries are explicit.");
+  await screen.findByText("Organization overview");
   history.replaceState(null, "", "/#invite=next-invitation");
   fireEvent(window, new HashChangeEvent("hashchange"));
   await screen.findByRole("heading", { name: "Join Another invitation" });

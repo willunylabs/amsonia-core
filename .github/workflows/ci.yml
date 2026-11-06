@@ -160,8 +160,14 @@ jobs:
           cache: true
       - name: Integration tests (PostgreSQL)
         env:
+          AMSONIA_CONTRACT_OUTPUT: ${{ runner.temp }}/api-contract.jsonl
           TEST_DATABASE_ADMIN_URL: "postgres://amsonia_admin:test-only@localhost:5432/amsonia_test?sslmode=disable"
         run: go test -tags postgres -count=1 -p 1 ./postgres/ ./internal/coreapp/
+      - name: Validate real HTTP contracts against OpenAPI
+        run: |
+          python3 -m venv "$RUNNER_TEMP/api-contract-venv"
+          "$RUNNER_TEMP/api-contract-venv/bin/pip" install --disable-pip-version-check -r scripts/api-contract-requirements.txt
+          "$RUNNER_TEMP/api-contract-venv/bin/python" -B scripts/validate-api-contract.py openapi/openapi.yaml "$RUNNER_TEMP/api-contract.jsonl"
       - name: Check out the migration 9 application baseline
         uses: actions/checkout@v7
         with:

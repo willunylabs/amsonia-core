@@ -96,9 +96,13 @@ func revokeCredentialSessions(ctx context.Context, tx pgx.Tx, accountID string) 
 		SET revoked_at=now() WHERE account_id=$1 AND revoked_at IS NULL`, accountID); err != nil {
 		return err
 	}
-	_, err := tx.Exec(ctx, `UPDATE amsonia.refresh_sessions
+	if _, err := tx.Exec(ctx, `UPDATE amsonia.refresh_sessions
 		SET revoked_at=COALESCE(revoked_at, now()), rotated_to_hash=NULL
-		WHERE account_id=$1 AND (revoked_at IS NULL OR rotated_to_hash IS NOT NULL)`, accountID)
+		WHERE account_id=$1 AND (revoked_at IS NULL OR rotated_to_hash IS NOT NULL)`, accountID); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `UPDATE amsonia.member_password_recoveries SET revoked_at=now()
+  WHERE account_id=$1 AND consumed_at IS NULL AND revoked_at IS NULL`, accountID)
 	return err
 }
 

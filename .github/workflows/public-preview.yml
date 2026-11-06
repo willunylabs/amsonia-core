@@ -27,6 +27,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
+      # Keep known historical archives on their original Console contract.
+      # New candidate bundles run the complete current workflow in preview.yml.
+      SMOKE_CONSOLE_CONTRACT: ${{ (!inputs.tag || inputs.tag == 'v0.2.0-preview.2' || inputs.tag == 'v0.2.0-preview.3') && 'published-preview-2-3' || 'current' }}
       RELEASE_TAG: ${{ inputs.tag || 'v0.2.0-preview.3' }}
       FROM_TAG: ${{ github.event_name == 'pull_request' && 'v0.2.0-preview.2' || inputs.from_tag }}
     steps:

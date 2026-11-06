@@ -73,6 +73,8 @@ application-owned PostgreSQL tables.
 - A standalone Go API, migration/administration CLI, in-memory adapter, and
   React management console.
 
+See [member password recovery and bounded session cleanup](docs/member-recovery-and-session-retention.md) for credential recovery and retention.
+
 Daily administration includes organization settings, profiles and password changes, device session
 revocation, one-use member invitations, member suspension/removal, role editing,
 scoped grants, member role bindings, version history, and filtered audit paging.
