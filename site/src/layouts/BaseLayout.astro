@@ -15,6 +15,7 @@ interface Props {
 
 const { title, description, canonicalPath, noindex = false, schemas = [] } = Astro.props;
 const canonical = absoluteUrl(canonicalPath);
+const socialImage = absoluteUrl('/og-amsonia.png');
 const fullTitle = canonicalPath === '/' ? `${SITE_NAME} — SaaS Starters by Willuny Labs` : `${title} | ${SITE_NAME}`;
 ---
 
@@ -36,12 +37,15 @@ const fullTitle = canonicalPath === '/' ? `${SITE_NAME} — SaaS Starters by Wil
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta property="og:image" content={absoluteUrl('/og-amsonia.svg')} />
+    <meta property="og:image" content={socialImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:alt" content="Amsonia Next — authentication, Stripe billing, and admin in one Next.js application" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={fullTitle} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={absoluteUrl('/og-amsonia.svg')} />
+    <meta name="twitter:image" content={socialImage} />
     {schemas.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} />)}
   </head>
   <body>
