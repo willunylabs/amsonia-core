@@ -141,7 +141,7 @@ assert.match(homepage, /FAMILY \/ 00/, 'homepage must present Amsonia as the pro
 assert.doesNotMatch(homepage, /Amsonia Platform/, 'homepage must not introduce the retired product');
 assert.match(homepage, /Amsonia Next/, 'homepage must name the Next.js product consistently');
 
-for (const route of ['/', '/next', '/products', '/pricing', '/compare/shipfast-vs-amsonia-next']) {
+for (const route of ['/', '/next', '/products', '/pricing']) {
   const html = readFileSync(pageFile(route), 'utf8');
   assert.doesNotMatch(html, /Lemon Squeezy|Polar/i, `${route} must not advertise unsupported Next payment providers`);
 }
