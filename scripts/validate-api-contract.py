@@ -116,13 +116,15 @@ def main():
     records = [json.loads(line) for line in Path(sys.argv[2]).read_text().splitlines()]
     assert records, "No real HTTP traffic captured"
     covered = set()
+    failures = []
     for index, record in enumerate(records, 1):
         try:
             covered.add(contract.check(record))
         except Exception as error:
             # Do not print synthetic credentials or secret token bodies.
             detail = f"{error.validator} at /{'/'.join(map(str, error.absolute_path))}" if isinstance(error, ValidationError) else str(error)
-            raise AssertionError(f"Record {index}: {record['method']} {urlsplit(record['url']).path}: {type(error).__name__}: {detail}") from None
+            failures.append(f"Record {index}: {record['method']} {urlsplit(record['url']).path}: {type(error).__name__}: {detail}")
+    assert not failures, "\n".join(failures)
     methods = {"get", "post", "put", "patch", "delete", "options", "head", "trace"}
     required = {operation["operationId"] for path in contract.document["paths"].values() for method, operation in path.items() if method in methods}
     assert required <= covered, f"Missing operations: {sorted(required - covered)}"

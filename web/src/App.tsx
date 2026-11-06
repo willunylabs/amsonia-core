@@ -590,8 +590,8 @@ function Console({
         </nav>
         <div className="sidebar-meta">
           <div className="status-line">
-            <span className="status-dot" />
-            Core API connected
+            <ShieldCheck size={13} />
+            Self-hosted console
           </div>
           <a href={COMMERCIAL_URL} target="_blank" rel="noreferrer">
             Amsonia Source Distribution <ArrowRight size={13} />
@@ -928,7 +928,7 @@ function Overview({ tenant, members, roles, permissions, audit, capabilities }: 
   return <>
     <PageHeader eyebrow={tenant.name} title="Organization overview" detail="Your people, their access, and the latest activity in one place." />
     <section className="metric-grid" aria-label="Organization totals">
-      <article><span>Members</span><strong>{members ?? "—"}</strong><small>organization memberships</small></article>
+      <article><span>Members</span><strong>{members ?? "—"}</strong><small>active memberships</small></article>
       <article><span>Roles</span><strong>{roles ?? "—"}</strong><small>current role definitions</small></article>
       <article><span>Permissions</span><strong>{permissions.length}</strong><small>available in the catalog</small></article>
       <article className="accent-metric"><span>Your account</span><strong><ShieldCheck size={30} /></strong><a href="#/account/devices">Review signed-in devices <ArrowRight size={14} /></a></article>

@@ -216,7 +216,7 @@ func TestCoreAdministrationLifecycle(t *testing.T) {
 	call("GET", "/api/v1/tenants/"+other.ID+"/roles", memberSession.AccessToken, nil, 404)
 	call("POST", base+"/roles", adminSession.AccessToken, map[string]any{"id": "support", "name": "Support", "description": "", "permissions": []string{"iam:member:read", "iam:role:read"}}, 201)
 	call("PATCH", base+"/roles/support", adminSession.AccessToken, map[string]any{"name": "Support team", "description": "Updated", "expected_version": 1}, 200)
-	call("PATCH", base+"/roles/support", adminSession.AccessToken, map[string]any{"name": "Stale", "expected_version": 1}, 409)
+	call("PATCH", base+"/roles/support", adminSession.AccessToken, map[string]any{"name": "Stale", "description": "Stale update", "expected_version": 1}, 409)
 	call("POST", base+"/roles/support/grants", adminSession.AccessToken, map[string]any{"permission": "iam:audit:read", "scope": "own", "workspace_roles": []string{}, "expected_version": 2}, 200)
 	detailResponse := call("GET", base+"/roles/support", adminSession.AccessToken, nil, 200)
 	var detail RoleDetail
