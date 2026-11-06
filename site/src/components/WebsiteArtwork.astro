@@ -1,0 +1,11 @@
+---
+interface Props {
+  variant?: 'source' | 'platform';
+}
+const { variant = 'source' } = Astro.props;
+const artwork = variant === 'platform'
+  ? { file: 'amsonia-platform-hero.svg', width: 1440, alt: 'Conceptual illustration of identity, workspaces, billing and operations connected through an owned Amsonia Platform foundation.' }
+  : { file: 'willuny-source-hero.svg', width: 1200, alt: 'Source-code layers forming a foundation for a product and infrastructure you own.' };
+---
+
+<img class="website-artwork" src={`/artwork/affinity-web-v1/${artwork.file}`} width={artwork.width} height="960" alt={artwork.alt} loading="eager" fetchpriority="high" decoding="async" />

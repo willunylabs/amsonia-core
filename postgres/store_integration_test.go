@@ -12,10 +12,13 @@
 package postgres
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -108,6 +111,7 @@ func configureTestRoles(t *testing.T, admin *pgxpool.Pool) {
 		GRANT EXECUTE ON FUNCTION amsonia.bind_actor(TEXT, BIGINT, TEXT, TEXT) TO amsonia_test_runtime;
 		GRANT EXECUTE ON FUNCTION amsonia.list_account_tenants() TO amsonia_test_runtime;
 		GRANT EXECUTE ON FUNCTION amsonia.resolve_invitation(BYTEA) TO amsonia_test_runtime;
+		GRANT EXECUTE ON FUNCTION amsonia.inspect_invitation(BYTEA) TO amsonia_test_runtime;
 		GRANT EXECUTE ON FUNCTION amsonia.activate_tenant() TO amsonia_test_runtime;
 		GRANT EXECUTE ON FUNCTION amsonia.fail_created_tenant(TEXT) TO amsonia_test_runtime;
 		GRANT SELECT, DELETE ON
@@ -229,6 +233,41 @@ func bootstrapInput(tenantID amsonia.TenantID, owner amsonia.SubjectID, roleID a
 	}
 }
 
+func TestPostgresUnicodeIdentifierRoundTrip(t *testing.T) {
+	store := setupPostgres(t)
+	catalog := testCatalog(t)
+	bootstrapper, err := amsonia.NewBootstrapper(catalog, store, testControls, hostAuthorizer{}, fixedTime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	principal := amsonia.Principal{TenantID: "租户-\ufffd", SubjectID: "用户-\ufffd"}
+	roleID := amsonia.RoleID(strings.Repeat("r", 253) + "\ufffd")
+	if _, err := bootstrapper.BootstrapTenant(t.Context(), bootstrapInput(principal.TenantID, principal.SubjectID, roleID)); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.ReadTenant(t.Context(), principal.TenantID, func(reader amsonia.TenantReader) error {
+		role, err := reader.GetRole(t.Context(), roleID)
+		if err == nil && (role.TenantID != principal.TenantID || role.RoleID != roleID) {
+			t.Errorf("stored identifiers changed: tenant %q, role %q", role.TenantID, role.RoleID)
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	authorizer, err := amsonia.NewAuthorizer(catalog, store, noMemberships{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision, err := authorizer.Check(t.Context(), amsonia.CheckRequest{
+		Principal: principal, Permission: permInvoiceRead, Mode: amsonia.ResourceExisting,
+		Resource: amsonia.ResourceContext{TenantID: principal.TenantID, ResourceID: "账单-\ufffd"},
+	})
+	want := amsonia.Decision{Allowed: true, Reason: amsonia.ReasonAllowed, EffectiveScope: amsonia.ScopeTenant}
+	if err != nil || decision != want {
+		t.Fatalf("decision = %+v, err = %v; want %+v", decision, err, want)
+	}
+}
+
 func TestPostgresFullLifecycle(t *testing.T) {
 	store := setupPostgres(t)
 	cat := testCatalog(t)
@@ -255,8 +294,13 @@ func TestPostgresFullLifecycle(t *testing.T) {
 	tenantID := amsonia.TenantID("pg-tenant-1")
 	owner := amsonia.Principal{TenantID: tenantID, SubjectID: "owner-1"}
 
-	// Bootstrap.
-	if _, err := bs.BootstrapTenant(ctx, bootstrapInput(tenantID, owner.SubjectID, "role-owner")); err != nil {
+	// Tenant-scoped workspace metadata must not prevent management after a
+	// successful resource check. Exercise this through the full SQL lifecycle.
+	input := bootstrapInput(tenantID, owner.SubjectID, "role-owner")
+	for i := range input.Grants {
+		input.Grants[i].WorkspaceRoles = []string{"editor"}
+	}
+	if _, err := bs.BootstrapTenant(ctx, input); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
 
@@ -287,11 +331,30 @@ func TestPostgresFullLifecycle(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	// Insert same-permission scope/constraint ties in noncanonical order.
+	for i, grant := range []amsonia.GrantPermissionInput{
+		{Scope: amsonia.ScopeWorkspace, WorkspaceRoles: []string{"editor"}},
+		{Scope: amsonia.ScopeOwn},
+		{Scope: amsonia.ScopeWorkspace, WorkspaceRoles: []string{"admin"}},
+	} {
+		grant.RoleID, grant.Permission, grant.ExpectedVersion = role.RoleID, permInvoiceRead, int64(i+2)
+		if _, err := mgr.GrantPermission(ctx, owner, amsonia.MutationMetadata{ReasonCode: "setup"}, grant); err != nil {
+			t.Fatal(err)
+		}
+	}
 	// Assign to alice.
 	if _, err := mgr.AssignRole(ctx, owner, amsonia.MutationMetadata{ReasonCode: "setup"}, amsonia.AssignRoleInput{
-		SubjectID: "alice", RoleID: role.RoleID, ExpectedRoleVersion: 2,
+		SubjectID: "alice", RoleID: role.RoleID, ExpectedRoleVersion: 5,
 	}); err != nil {
 		t.Fatal(err)
+	}
+
+	// Retrying the binding reports the current role version without changing it.
+	result, err := mgr.AssignRole(ctx, owner, amsonia.MutationMetadata{ReasonCode: "retry"}, amsonia.AssignRoleInput{
+		SubjectID: "alice", RoleID: role.RoleID, ExpectedRoleVersion: 5,
+	})
+	if err != nil || result != (amsonia.MutationResult{RoleVersion: 5}) {
+		t.Fatalf("duplicate assignment result = %+v, err = %v; want no-op at version 5", result, err)
 	}
 
 	// Alice can read invoices.
@@ -324,6 +387,31 @@ func TestPostgresFullLifecycle(t *testing.T) {
 	if !strings.Contains(string(data), `"format": "amsonia.tenant.v1"`) {
 		t.Fatalf("export missing format marker")
 	}
+	again, err := maint.ExportTenant(ctx, tenantID)
+	if err != nil || !bytes.Equal(data, again) {
+		t.Fatalf("unchanged tenant produced different export bytes: %v", err)
+	}
+	var exported struct {
+		Grants []amsonia.RolePermissionGrant `json:"grants"`
+	}
+	if err := json.Unmarshal(data, &exported); err != nil {
+		t.Fatal(err)
+	}
+	var readerGrants []amsonia.RolePermissionGrant
+	for _, grant := range exported.Grants {
+		if grant.RoleID == role.RoleID {
+			readerGrants = append(readerGrants, grant)
+		}
+	}
+	wantGrants := []amsonia.RolePermissionGrant{
+		{RoleID: role.RoleID, Permission: permInvoiceRead, Scope: amsonia.ScopeOwn, WorkspaceRoles: []string{}},
+		{RoleID: role.RoleID, Permission: permInvoiceRead, Scope: amsonia.ScopeTenant, WorkspaceRoles: []string{}},
+		{RoleID: role.RoleID, Permission: permInvoiceRead, Scope: amsonia.ScopeWorkspace, WorkspaceRoles: []string{"admin"}},
+		{RoleID: role.RoleID, Permission: permInvoiceRead, Scope: amsonia.ScopeWorkspace, WorkspaceRoles: []string{"editor"}},
+	}
+	if !reflect.DeepEqual(readerGrants, wantGrants) {
+		t.Errorf("exported grants = %+v; want scope/constraint order %+v", readerGrants, wantGrants)
+	}
 
 	// Purge.
 	if err := maint.PurgeTenant(ctx, tenantID, amsonia.MutationMetadata{
@@ -354,6 +442,87 @@ func TestPostgresFullLifecycle(t *testing.T) {
 	}
 	if dec.Allowed {
 		t.Fatal("purged tenant must not allow access")
+	}
+}
+
+func TestPostgresRoleBindingsRejectMalformedTargetPolicy(t *testing.T) {
+	store := setupPostgres(t)
+	catalog := testCatalog(t)
+	manager, err := amsonia.NewManager(catalog, store, noMemberships{}, testControls, nullAudit{}, fixedTime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	bootstrapper, err := amsonia.NewBootstrapper(catalog, store, testControls, hostAuthorizer{}, fixedTime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := t.Context()
+	actor := amsonia.Principal{TenantID: "pg-target-policy", SubjectID: "owner"}
+	if _, err := bootstrapper.BootstrapTenant(ctx, bootstrapInput(actor.TenantID, actor.SubjectID, "owner-role")); err != nil {
+		t.Fatal(err)
+	}
+	meta := amsonia.MutationMetadata{ReasonCode: "policy_test"}
+	if _, _, err := manager.CreateRoleWithPermissions(ctx, actor, meta, amsonia.CreateRoleWithPermissionsInput{
+		RoleID: "reader", Name: "Reader", Permissions: []amsonia.PermissionKey{permInvoiceRead},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.AssignRole(ctx, actor, meta, amsonia.AssignRoleInput{SubjectID: "alice", RoleID: "reader", ExpectedRoleVersion: 1}); err != nil {
+		t.Fatal(err)
+	}
+	// Model a damaged persisted row through the low-level adapter. Manager
+	// inputs cannot create this invalid workspace-role constraint.
+	malformed := amsonia.RolePermissionGrant{
+		RoleID: "reader", Permission: permInvoiceRead, Scope: amsonia.ScopeWorkspace, WorkspaceRoles: []string{"*"},
+	}
+	if err := store.MutateTenant(ctx, actor.TenantID, func(tx amsonia.TenantTx) error {
+		_, err := tx.InsertRolePermissionGrant(ctx, malformed)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	assign := amsonia.AssignRoleInput{SubjectID: "bob", RoleID: "reader", ExpectedRoleVersion: 1}
+	unassign := amsonia.UnassignRoleInput{SubjectID: "alice", RoleID: "reader", ExpectedRoleVersion: 1}
+	if _, err := manager.AssignRole(ctx, actor, meta, assign); !errors.Is(err, amsonia.ErrInvalidPolicy) {
+		t.Errorf("assign error = %v; want invalid policy", err)
+	}
+	if _, err := manager.UnassignRole(ctx, actor, meta, unassign); !errors.Is(err, amsonia.ErrInvalidPolicy) {
+		t.Errorf("unassign error = %v; want invalid policy", err)
+	}
+	if err := store.ReadTenant(ctx, actor.TenantID, func(reader amsonia.TenantReader) error {
+		for _, subject := range []amsonia.SubjectID{"alice", "bob"} {
+			roles, err := reader.ListSubjectRoleIDs(ctx, subject)
+			if err != nil {
+				return err
+			}
+			wantBound := subject == "alice"
+			if bound := len(roles) == 1 && roles[0] == "reader"; bound != wantBound {
+				t.Errorf("%s roles = %v; want bound %t", subject, roles, wantBound)
+			}
+			path, err := reader.HasGrantPath(ctx, actor.SubjectID, subject)
+			if err != nil {
+				return err
+			}
+			if path != wantBound {
+				t.Errorf("%s grant path = %t; want %t", subject, path, wantBound)
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.MutateTenant(ctx, actor.TenantID, func(tx amsonia.TenantTx) error {
+		_, err := tx.DeleteRolePermissionGrant(ctx, malformed)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Repairing the row is visible immediately to the same Manager.
+	if _, err := manager.AssignRole(ctx, actor, meta, assign); err != nil {
+		t.Fatalf("assign after repair: %v", err)
+	}
+	if _, err := manager.UnassignRole(ctx, actor, meta, unassign); err != nil {
+		t.Fatalf("unassign after repair: %v", err)
 	}
 }
 

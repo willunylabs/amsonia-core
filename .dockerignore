@@ -8,3 +8,9 @@ coverage.out
 *.test
 .env
 .env.*
+.amsonia
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+**/.env
+**/.env.*

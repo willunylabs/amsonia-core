@@ -405,6 +405,68 @@ func TestLastAdministratorProtection(t *testing.T) {
 	}
 }
 
+func TestTenantWorkspaceMetadataDoesNotLockOutBootstrapOwner(t *testing.T) {
+	store, manager, bootstrapper, catalog := setup(t)
+	owner := amsonia.Principal{TenantID: "tenant-a", SubjectID: "owner"}
+	permissions := []amsonia.PermissionKey{permRoleManage, permGrantManage, permRoleAssign, permInvoiceRead}
+	grants := make([]amsonia.RolePermissionGrant, 0, len(permissions))
+	for _, permission := range permissions {
+		grants = append(grants, amsonia.RolePermissionGrant{
+			RoleID: "owner-role", Permission: permission, Scope: amsonia.ScopeTenant, WorkspaceRoles: []string{"editor"},
+		})
+	}
+	if _, err := bootstrapper.BootstrapTenant(t.Context(), amsonia.BootstrapInput{
+		TenantID: owner.TenantID, OwnerSubjectID: owner.SubjectID, OwnerRoleID: "owner-role", OwnerRoleName: "Owner",
+		Grants: grants, Metadata: meta(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	authorizer, err := amsonia.NewAuthorizer(catalog, store, noMemberships{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkOwner := func() {
+		t.Helper()
+		decision, err := authorizer.Check(t.Context(), amsonia.CheckRequest{
+			Principal: owner, Permission: permRoleManage, Mode: amsonia.ResourceTenantAction,
+		})
+		want := amsonia.Decision{Allowed: true, Reason: amsonia.ReasonAllowed, EffectiveScope: amsonia.ScopeTenant}
+		if err != nil || decision != want {
+			t.Fatalf("owner decision = %+v, err = %v; want %+v", decision, err, want)
+		}
+	}
+	checkOwner()
+	role, _, err := manager.CreateRole(t.Context(), owner, meta(), amsonia.CreateRoleInput{RoleID: "reader", Name: "Reader"})
+	if err != nil {
+		t.Fatalf("authorized bootstrap owner cannot create role: %v", err)
+	}
+	if _, err := manager.GrantPermission(t.Context(), owner, meta(), amsonia.GrantPermissionInput{
+		RoleID: role.RoleID, ExpectedVersion: 1, Permission: permInvoiceRead, Scope: amsonia.ScopeWorkspace, WorkspaceRoles: []string{"admin"},
+	}); err != nil {
+		t.Fatalf("tenant scope cannot delegate a workspace grant: %v", err)
+	}
+	if _, err := manager.AssignRole(t.Context(), owner, meta(), amsonia.AssignRoleInput{
+		SubjectID: "alice", RoleID: role.RoleID, ExpectedRoleVersion: 2,
+	}); err != nil {
+		t.Fatalf("tenant owner cannot assign covered workspace role: %v", err)
+	}
+	if _, err := manager.UnassignRole(t.Context(), owner, meta(), amsonia.UnassignRoleInput{
+		SubjectID: owner.SubjectID, RoleID: "owner-role", ExpectedRoleVersion: 1,
+	}); !errors.Is(err, amsonia.ErrLastAdministrator) {
+		t.Fatalf("removing only administrator returned %v; want last-administrator protection", err)
+	}
+	if err := store.ReadTenant(t.Context(), owner.TenantID, func(reader amsonia.TenantReader) error {
+		roles, err := reader.ListSubjectRoleIDs(t.Context(), owner.SubjectID)
+		if err == nil && (len(roles) != 1 || roles[0] != "owner-role") {
+			t.Errorf("blocked administrator removal changed live bindings: %v", roles)
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	checkOwner()
+}
+
 func TestMemoryStoreRollsBackCallbackError(t *testing.T) {
 	store, _, bs, _ := setup(t)
 	bootstrapTenant(t, bs, "tenant-a", "owner-1", "role-owner")
@@ -489,6 +551,104 @@ func TestTenantIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = store
+}
+
+func TestAuthorizationTracksPolicyMutations(t *testing.T) {
+	store, manager, bootstrapper, catalog := setup(t)
+	bootstrapTenant(t, bootstrapper, "tenant-a", "owner", "owner-role")
+	owner := amsonia.Principal{TenantID: "tenant-a", SubjectID: "owner"}
+	ctx := t.Context()
+	_, _, err := manager.CreateRoleWithPermissions(ctx, owner, meta(), amsonia.CreateRoleWithPermissionsInput{
+		RoleID: "reader", Name: "Reader", Permissions: []amsonia.PermissionKey{permInvoiceRead},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	authorizer, err := amsonia.NewAuthorizer(catalog, store, noMemberships{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := amsonia.CheckRequest{
+		Principal:  amsonia.Principal{TenantID: "tenant-a", SubjectID: "alice"},
+		Permission: permInvoiceRead,
+		Mode:       amsonia.ResourceExisting,
+		Resource:   amsonia.ResourceContext{TenantID: "tenant-a", ResourceID: "invoice-1"},
+	}
+	check := func(allowed bool) {
+		t.Helper()
+		decision, err := authorizer.Check(ctx, request)
+		want := amsonia.Decision{Reason: amsonia.ReasonPermissionNotGranted}
+		if allowed {
+			want = amsonia.Decision{Allowed: true, Reason: amsonia.ReasonAllowed, EffectiveScope: amsonia.ScopeTenant}
+		}
+		if err != nil || decision != want {
+			t.Fatalf("decision = %+v, err = %v; want %+v", decision, err, want)
+		}
+	}
+	check(false)
+	if _, err := manager.AssignRole(ctx, owner, meta(), amsonia.AssignRoleInput{SubjectID: "alice", RoleID: "reader", ExpectedRoleVersion: 1}); err != nil {
+		t.Fatal(err)
+	}
+	check(true)
+	if _, err := manager.RevokePermission(ctx, owner, meta(), amsonia.RevokePermissionInput{
+		RoleID: "reader", ExpectedVersion: 1, Permission: permInvoiceRead, Scope: amsonia.ScopeTenant,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	check(false)
+	if _, err := manager.GrantPermission(ctx, owner, meta(), amsonia.GrantPermissionInput{
+		RoleID: "reader", ExpectedVersion: 2, Permission: permInvoiceRead, Scope: amsonia.ScopeTenant,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	check(true)
+	if _, err := manager.UnassignRole(ctx, owner, meta(), amsonia.UnassignRoleInput{SubjectID: "alice", RoleID: "reader", ExpectedRoleVersion: 3}); err != nil {
+		t.Fatal(err)
+	}
+	check(false)
+}
+
+func TestConcurrentAuthorizationKeepsTenantPoliciesSeparate(t *testing.T) {
+	store, manager, bootstrapper, catalog := setup(t)
+	// Deliberately reuse role and subject IDs across tenants.
+	for _, tenant := range []amsonia.TenantID{"tenant-a", "tenant-b"} {
+		bootstrapTenant(t, bootstrapper, tenant, "owner", "owner-role")
+	}
+	owner := amsonia.Principal{TenantID: "tenant-a", SubjectID: "owner"}
+	if _, _, err := manager.CreateRoleWithPermissions(t.Context(), owner, meta(), amsonia.CreateRoleWithPermissionsInput{
+		RoleID: "reader", Name: "Reader", Permissions: []amsonia.PermissionKey{permInvoiceRead},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.AssignRole(t.Context(), owner, meta(), amsonia.AssignRoleInput{
+		SubjectID: "alice", RoleID: "reader", ExpectedRoleVersion: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	authorizer, err := amsonia.NewAuthorizer(catalog, store, noMemberships{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var workers sync.WaitGroup
+	for range 16 {
+		for _, tenant := range []amsonia.TenantID{"tenant-a", "tenant-b"} {
+			for _, subject := range []amsonia.SubjectID{"alice", "owner"} {
+				workers.Go(func() {
+					decision, err := authorizer.Check(t.Context(), amsonia.CheckRequest{
+						Principal:  amsonia.Principal{TenantID: tenant, SubjectID: subject},
+						Permission: permInvoiceRead,
+						Mode:       amsonia.ResourceExisting,
+						Resource:   amsonia.ResourceContext{TenantID: tenant, ResourceID: "invoice-1"},
+					})
+					wantAllowed := tenant == "tenant-a" || subject == "owner"
+					if err != nil || decision.Allowed != wantAllowed {
+						t.Errorf("tenant %s, subject %s: decision = %+v, err = %v; want allowed %t", tenant, subject, decision, err, wantAllowed)
+					}
+				})
+			}
+		}
+	}
+	workers.Wait()
 }
 
 func TestPurgeAndReuseTombstone(t *testing.T) {

@@ -1,0 +1,48 @@
+name: Preview bundle
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview-bundle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.19.0"
+      - name: Build pinned image bundle
+        run: scripts/build-preview.sh "$RUNNER_TEMP/preview"
+      - name: Prepare Chromium for browser verification
+        run: |
+          npm install --prefix "$RUNNER_TEMP/preview-browser" --no-save --no-package-lock playwright@1.58.2
+          "$RUNNER_TEMP/preview-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Install and verify archive
+        run: |
+          cd "$RUNNER_TEMP/preview"
+          sha256sum --check SHA256SUMS
+          tar -xzf amsonia-core-*-linux-amd64.tar.gz
+          python3 -B "$GITHUB_WORKSPACE/scripts/smoke-preview.py" amsonia-core-*-linux-amd64 \
+            --browser-module "$RUNNER_TEMP/preview-browser/node_modules/playwright" \
+            --screenshots "$RUNNER_TEMP/preview/screenshots"
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: preview-first-login
+          path: ${{ runner.temp }}/preview/screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        with:
+          name: amsonia-preview-linux-amd64
+          path: |
+            ${{ runner.temp }}/preview/*.tar.gz
+            ${{ runner.temp }}/preview/SHA256SUMS
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7

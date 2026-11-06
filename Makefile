@@ -37,4 +37,4 @@ site-check:
 
 postgres-check:
 	test -n "$(TEST_DATABASE_ADMIN_URL)"
-	go test -tags postgres -count=1 ./postgres/
+	go test -tags postgres -count=1 -p 1 ./postgres/ ./internal/coreapp/

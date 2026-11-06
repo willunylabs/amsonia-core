@@ -1,0 +1,9 @@
+---
+interface Props {
+  name: 'source' | 'identity' | 'tenancy' | 'billing' | 'operations' | 'database' | 'deploy' | 'docs';
+  class?: string;
+}
+const { name, class: className } = Astro.props;
+---
+
+<img class:list={['feature-artwork', className]} src={`/artwork/affinity-web-v1/icons/${name}.svg`} width="96" height="96" alt="" aria-hidden="true" loading="lazy" decoding="async" />

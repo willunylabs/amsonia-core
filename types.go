@@ -18,6 +18,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // Opaque identifier types. Values are preserved exactly as provided by the
@@ -128,9 +129,10 @@ type Decision struct {
 
 // EffectiveGrant is the read-only view of one scoped grant held by a subject.
 type EffectiveGrant struct {
-	RoleID         RoleID
-	Permission     PermissionKey
-	Scope          Scope
+	RoleID     RoleID
+	Permission PermissionKey
+	Scope      Scope
+	// WorkspaceRoles narrows workspace scope only; it does not narrow tenant or own scope.
 	WorkspaceRoles []string
 }
 
@@ -179,9 +181,10 @@ type Role struct {
 
 // RolePermissionGrant is one scoped permission grant on a role.
 type RolePermissionGrant struct {
-	RoleID         RoleID
-	Permission     PermissionKey
-	Scope          Scope
+	RoleID     RoleID
+	Permission PermissionKey
+	Scope      Scope
+	// WorkspaceRoles narrows workspace scope only; it does not narrow tenant or own scope.
 	WorkspaceRoles []string
 }
 
@@ -325,8 +328,11 @@ func validateOpaqueID(v, kind string) error {
 }
 
 func isValidUTF8NoControl(v string) bool {
+	if !utf8.ValidString(v) {
+		return false
+	}
 	for _, r := range v {
-		if r < 0x20 || r == 0x7f || r == 0xfffd {
+		if r < 0x20 || r == 0x7f {
 			return false
 		}
 	}

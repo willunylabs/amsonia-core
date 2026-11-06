@@ -1,9 +1,16 @@
 # Amsonia product site
 
 The Astro site in this directory is the canonical public product surface for
-Amsonia. It is deployed to `amsonia.dev` and has no hosted-demo dependency.
-Amsonia Platform transactions and any future read-only demo are operated by the
-commercial repositories, outside this indexable static site.
+Amsonia. It is deployed to `amsonia.dev`. The Next product page links to the
+separate public Amsonia Next demonstration after anonymous-access acceptance.
+The demo and Platform transactions run outside this indexable static site;
+the static build does not call them or depend on their runtime availability.
+
+The reviewed public demo destination lives in `config/public-links.json`, separate
+from runtime source and canonical-origin configuration. Keep this link restricted
+to the Next page, disclose its current preview limits, and reverify anonymous
+access and application permissions before changing it. No GitHub environment,
+workflow or hosting setting is needed to publish this public-link configuration.
 
 ## Shared Willuny visual system
 
@@ -26,10 +33,11 @@ and botanical-specimen presentation is retired.
 
 - `/` introduces the Amsonia product family and its Platform and Next products.
 - `/platform` owns the commercial Go + Next.js, multi-tenant product narrative.
-- `/next` owns the open-source, single-tenant Next.js product narrative.
+- `/next` owns the private-source Next.js starter narrative; source availability and
+  license terms are confirmed by Willuny inquiry.
 - `/docs` is the product-family documentation entry point.
 - product positioning, pricing, and purchase explanations remain indexable on
-  `amsonia.dev`; transaction CTAs enter the non-indexable Amsonia app;
+  `amsonia.dev`; transaction CTAs enter the non-indexable Willuny transaction surface;
 - company, publisher, blog, legal, and support content remain on `willuny.com`.
 - unreleased Amsonia products do not receive indexable placeholder pages.
 - retired `/core/*` and `/releases` site routes redirect to the external GitHub

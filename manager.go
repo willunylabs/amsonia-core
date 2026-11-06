@@ -2,6 +2,7 @@ package amsonia
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -161,9 +162,9 @@ func (m *Manager) auditEvent(tenantID TenantID, actor Principal, meta MutationMe
 
 func (m *Manager) recordDenied(ctx context.Context, actor Principal, meta MutationMetadata, operation, targetType, targetID string, roleVersion int64, cause error) {
 	outcome := AuditOutcomeDenied
-	if cause == ErrConflict {
+	if errors.Is(cause, ErrConflict) {
 		outcome = AuditOutcomeConflict
-	} else if cause != ErrForbidden {
+	} else if !errors.Is(cause, ErrForbidden) {
 		outcome = AuditOutcomeFailed
 	}
 	event := m.auditEvent(actor.TenantID, actor, meta, operation, targetType, targetID, outcome, roleVersion)
@@ -460,33 +461,13 @@ func (m *Manager) GrantPermission(ctx context.Context, actor Principal, meta Mut
 	if err := actor.TenantID.Validate(); err != nil || actor.SubjectID.Validate() != nil {
 		return MutationResult{}, ErrInvalidInput
 	}
-	if err := input.RoleID.Validate(); err != nil {
-		return MutationResult{}, ErrInvalidInput
-	}
-	if err := input.Permission.Validate(); err != nil {
-		return MutationResult{}, ErrInvalidInput
-	}
-	if _, ok := m.catalog.Lookup(input.Permission); !ok {
-		return MutationResult{}, ErrInvalidInput
-	}
-	switch input.Scope {
-	case ScopeOwn, ScopeWorkspace, ScopeTenant:
-	default:
-		return MutationResult{}, ErrInvalidInput
-	}
-	roles, err := normalizeWorkspaceRoles(input.WorkspaceRoles)
+	grant, err := m.validateGrantInput(input)
 	if err != nil {
 		return MutationResult{}, err
 	}
-	grant := RolePermissionGrant{
-		RoleID:         input.RoleID,
-		Permission:     input.Permission,
-		Scope:          input.Scope,
-		WorkspaceRoles: roles,
-	}
 	result := MutationResult{}
 	err = m.store.MutateTenant(ctx, actor.TenantID, func(tx TenantTx) error {
-		if err := m.requireActorForGrant(ctx, tx, actor, input.Permission, input.Scope, roles); err != nil {
+		if err := m.requireActorForGrant(ctx, tx, actor, grant.Permission, grant.Scope, grant.WorkspaceRoles); err != nil {
 			return err
 		}
 		role, err := tx.GetRole(ctx, input.RoleID)
@@ -538,25 +519,13 @@ func (m *Manager) RevokePermission(ctx context.Context, actor Principal, meta Mu
 	if err := actor.TenantID.Validate(); err != nil || actor.SubjectID.Validate() != nil {
 		return MutationResult{}, ErrInvalidInput
 	}
-	if err := input.RoleID.Validate(); err != nil {
-		return MutationResult{}, ErrInvalidInput
-	}
-	if err := input.Permission.Validate(); err != nil {
-		return MutationResult{}, ErrInvalidInput
-	}
-	roles, err := normalizeWorkspaceRoles(input.WorkspaceRoles)
+	grant, err := m.validateGrantInput(input)
 	if err != nil {
 		return MutationResult{}, err
 	}
-	grant := RolePermissionGrant{
-		RoleID:         input.RoleID,
-		Permission:     input.Permission,
-		Scope:          input.Scope,
-		WorkspaceRoles: roles,
-	}
 	result := MutationResult{}
 	err = m.store.MutateTenant(ctx, actor.TenantID, func(tx TenantTx) error {
-		if err := m.requireActorForGrant(ctx, tx, actor, input.Permission, input.Scope, roles); err != nil {
+		if err := m.requireActorForGrant(ctx, tx, actor, grant.Permission, grant.Scope, grant.WorkspaceRoles); err != nil {
 			return err
 		}
 		role, err := tx.GetRole(ctx, input.RoleID)
@@ -635,14 +604,8 @@ func (m *Manager) AssignRole(ctx context.Context, actor Principal, meta Mutation
 		if role.Version != input.ExpectedRoleVersion {
 			return ErrConflict
 		}
-		grants, err := tx.ListRolePermissionGrants(ctx, role.RoleID)
-		if err != nil {
+		if err := m.requireRoleCoverage(ctx, tx, actor, role.RoleID); err != nil {
 			return err
-		}
-		for _, g := range grants {
-			if err := m.requireActorForGrant(ctx, tx, actor, g.Permission, g.Scope, g.WorkspaceRoles); err != nil {
-				return err
-			}
 		}
 		if actor.SubjectID != input.SubjectID {
 			hasPath, err := tx.HasGrantPath(ctx, input.SubjectID, actor.SubjectID)
@@ -667,7 +630,11 @@ func (m *Manager) AssignRole(ctx context.Context, actor Principal, meta Mutation
 		}
 		if !changed {
 			event := m.auditEvent(actor.TenantID, actor, meta, "assign.role", "subject_role", string(input.SubjectID), AuditOutcomeNoop, role.Version)
-			return tx.InsertMutationAudit(ctx, event)
+			if err := tx.InsertMutationAudit(ctx, event); err != nil {
+				return err
+			}
+			result = MutationResult{Changed: false, RoleVersion: role.Version}
+			return nil
 		}
 		edge := GrantEdge{
 			TenantID:  actor.TenantID,
@@ -719,14 +686,8 @@ func (m *Manager) UnassignRole(ctx context.Context, actor Principal, meta Mutati
 		if role.Deleted {
 			return ErrNotFound
 		}
-		grants, err := tx.ListRolePermissionGrants(ctx, role.RoleID)
-		if err != nil {
+		if err := m.requireRoleCoverage(ctx, tx, actor, role.RoleID); err != nil {
 			return err
-		}
-		for _, g := range grants {
-			if err := m.requireActorForGrant(ctx, tx, actor, g.Permission, g.Scope, g.WorkspaceRoles); err != nil {
-				return err
-			}
 		}
 		removed, changed, err := tx.DeleteSubjectRoleGrant(ctx, input.SubjectID, input.RoleID)
 		if err != nil {
@@ -824,6 +785,35 @@ func sortedGrants(grants []RolePermissionGrant) []RolePermissionGrant {
 	return out
 }
 
+// validateGrantInput keeps grant and revoke validation and normalization at
+// the same input boundary, before either operation opens a tenant transaction.
+func (m *Manager) validateGrantInput(input GrantPermissionInput) (RolePermissionGrant, error) {
+	if err := input.RoleID.Validate(); err != nil {
+		return RolePermissionGrant{}, ErrInvalidInput
+	}
+	if err := input.Permission.Validate(); err != nil {
+		return RolePermissionGrant{}, ErrInvalidInput
+	}
+	if _, ok := m.catalog.Lookup(input.Permission); !ok {
+		return RolePermissionGrant{}, ErrInvalidInput
+	}
+	switch input.Scope {
+	case ScopeOwn, ScopeWorkspace, ScopeTenant:
+	default:
+		return RolePermissionGrant{}, ErrInvalidInput
+	}
+	roles, err := normalizeWorkspaceRoles(input.WorkspaceRoles)
+	if err != nil {
+		return RolePermissionGrant{}, err
+	}
+	return RolePermissionGrant{
+		RoleID:         input.RoleID,
+		Permission:     input.Permission,
+		Scope:          input.Scope,
+		WorkspaceRoles: roles,
+	}, nil
+}
+
 func normalizeWorkspaceRoles(roles []string) ([]string, error) {
 	if len(roles) == 0 {
 		return nil, nil
@@ -845,72 +835,66 @@ func normalizeWorkspaceRoles(roles []string) ([]string, error) {
 	return out, nil
 }
 
-// requireActor checks the actor holds an exact permission at tenant scope.
-func (m *Manager) requireActor(ctx context.Context, tx TenantTx, actor Principal, permission PermissionKey, scope Scope, workspaceRoles []string) error {
-	grants, err := tx.ListEffectiveGrants(ctx, actor.SubjectID, permission)
+// requireRoleCoverage validates the entire target policy before checking
+// delegation. Malformed rows must not be hidden by an earlier coverage denial.
+func (m *Manager) requireRoleCoverage(ctx context.Context, tx TenantTx, actor Principal, roleID RoleID) error {
+	grants, err := tx.ListRolePermissionGrants(ctx, roleID)
 	if err != nil {
 		return err
 	}
-	for _, g := range grants {
-		if g.Scope != scope {
-			continue
+	for _, grant := range grants {
+		if grant.RoleID != roleID {
+			return ErrInvalidPolicy
 		}
-		if coversWorkspaceRoles(g.WorkspaceRoles, workspaceRoles) {
-			return nil
+		if _, ok := m.catalog.Lookup(grant.Permission); !ok {
+			return ErrInvalidPolicy
+		}
+		effective := EffectiveGrant{
+			RoleID:         grant.RoleID,
+			Permission:     grant.Permission,
+			Scope:          grant.Scope,
+			WorkspaceRoles: grant.WorkspaceRoles,
+		}
+		if err := effective.Validate(grant.Permission); err != nil {
+			return err
 		}
 	}
-	return ErrForbidden
+	for _, grant := range grants {
+		if err := m.requireActorForGrant(ctx, tx, actor, grant.Permission, grant.Scope, grant.WorkspaceRoles); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// requireActor checks the actor holds an exact permission at tenant scope.
+func (m *Manager) requireActor(ctx context.Context, tx TenantTx, actor Principal, permission PermissionKey, scope Scope, workspaceRoles []string) error {
+	return m.requireGrant(ctx, tx, actor, permission, scope, workspaceRoles, true)
 }
 
 // requireActorForGrant checks the actor holds the exact permission with
 // coverage over the target scope and constraints. Tenant covers tenant,
 // workspace, and own; workspace covers only workspace; own covers only own.
 func (m *Manager) requireActorForGrant(ctx context.Context, tx TenantTx, actor Principal, permission PermissionKey, target Scope, targetRoles []string) error {
+	return m.requireGrant(ctx, tx, actor, permission, target, targetRoles, false)
+}
+
+// requireGrant evaluates fresh grants inside the existing tenant transaction;
+// No second policy copy or decision cache exists outside that boundary.
+func (m *Manager) requireGrant(ctx context.Context, tx TenantTx, actor Principal, permission PermissionKey, target Scope, targetRoles []string, exactScope bool) error {
 	grants, err := tx.ListEffectiveGrants(ctx, actor.SubjectID, permission)
 	if err != nil {
 		return err
 	}
+	for _, grant := range grants {
+		if err := grant.Validate(permission); err != nil {
+			return err
+		}
+	}
 	for _, g := range grants {
-		if coversScope(g.Scope, target) && coversWorkspaceRoles(g.WorkspaceRoles, targetRoles) {
+		if allowDelegation(permission, target, targetRoles, exactScope, g) {
 			return nil
 		}
 	}
 	return ErrForbidden
-}
-
-// coversScope reports whether an actor grant scope covers a target scope.
-// tenant > {tenant, workspace, own}; workspace > {workspace}; own > {own}.
-func coversScope(actor, target Scope) bool {
-	switch actor {
-	case ScopeTenant:
-		return true
-	case ScopeWorkspace:
-		return target == ScopeWorkspace
-	case ScopeOwn:
-		return target == ScopeOwn
-	default:
-		return false
-	}
-}
-
-// coversWorkspaceRoles reports whether an actor's constraint list covers the
-// target list. An unconstrained list (nil) covers any target; a constrained
-// list must be a superset of the target.
-func coversWorkspaceRoles(actorRoles, targetRoles []string) bool {
-	if len(actorRoles) == 0 {
-		return true
-	}
-	if len(targetRoles) == 0 {
-		return false
-	}
-	actorSet := make(map[string]struct{}, len(actorRoles))
-	for _, r := range actorRoles {
-		actorSet[r] = struct{}{}
-	}
-	for _, t := range targetRoles {
-		if _, ok := actorSet[t]; !ok {
-			return false
-		}
-	}
-	return true
 }

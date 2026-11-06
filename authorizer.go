@@ -2,11 +2,11 @@ package amsonia
 
 import (
 	"context"
-	"strings"
+	"errors"
 )
 
-// Authorizer evaluates authorization requests against the catalog and the
-// injected policy reader. It is safe for concurrent use.
+// Authorizer evaluates authorization requests against the catalog
+// and the injected policy reader. It is safe for concurrent use.
 type Authorizer struct {
 	catalog     *Catalog
 	policies    PolicyReader
@@ -76,6 +76,7 @@ func (a *Authorizer) Check(ctx context.Context, request CheckRequest) (Decision,
 	}
 
 	// Deterministic scope precedence: tenant, workspace, own.
+	var workspace workspaceMembershipSnapshot
 	bestDenied := deniedNone
 	for _, scope := range []Scope{ScopeTenant, ScopeWorkspace, ScopeOwn} {
 		var denied deniedReason
@@ -83,7 +84,7 @@ func (a *Authorizer) Check(ctx context.Context, request CheckRequest) (Decision,
 			if g.Scope != scope {
 				continue
 			}
-			allowed, reason, depErr := a.evaluate(ctx, request, g)
+			allowed, reason, depErr := a.evaluate(ctx, request, g, &workspace)
 			if depErr != nil {
 				return Decision{
 					Allowed: false,
@@ -145,6 +146,16 @@ func validateResourceContext(request CheckRequest) error {
 		}
 	case ResourceTenantAction:
 		if res.ResourceID != "" {
+			return ErrInvalidInput
+		}
+	}
+	if res.TenantID != "" {
+		if err := res.TenantID.Validate(); err != nil {
+			return ErrInvalidInput
+		}
+	}
+	if res.ResourceID != "" {
+		if err := res.ResourceID.Validate(); err != nil {
 			return ErrInvalidInput
 		}
 	}
@@ -219,53 +230,57 @@ func (d deniedReason) reasonOr(fallback ReasonCode) ReasonCode {
 	}
 }
 
+// workspaceMembershipSnapshot belongs to one Check call, including a missing
+// membership. Every candidate uses the same facts; later checks read afresh.
+type workspaceMembershipSnapshot struct {
+	loaded     bool
+	membership WorkspaceMembership
+	member     bool
+}
+
+func (s *workspaceMembershipSnapshot) load(ctx context.Context, reader WorkspaceMembershipReader, request CheckRequest) error {
+	if s.loaded {
+		return nil
+	}
+	membership, err := reader.LookupWorkspaceMembership(ctx, request.Principal.TenantID, request.Resource.WorkspaceID, request.Principal.SubjectID)
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return err
+	}
+	s.membership = membership
+	s.member = err == nil
+	s.loaded = true
+	return nil
+}
+
 // evaluate decides one grant against the request. The third return value is
 // a dependency error that must abort evaluation and never becomes a denial
 // reason.
-func (a *Authorizer) evaluate(ctx context.Context, request CheckRequest, grant EffectiveGrant) (bool, deniedReason, error) {
-	switch grant.Scope {
-	case ScopeTenant:
-		if request.Resource.TenantID != "" && request.Resource.TenantID != request.Principal.TenantID {
-			return false, deniedTenantMismatch, nil
-		}
-		return true, deniedNone, nil
-	case ScopeOwn:
-		if request.Mode == ResourceTenantAction {
-			return false, deniedOther, nil
-		}
-		if request.Resource.OwnerSubjectID == "" {
-			return false, deniedOwnerMismatch, nil
-		}
-		if request.Resource.OwnerSubjectID != request.Principal.SubjectID {
-			return false, deniedOwnerMismatch, nil
-		}
-		return true, deniedNone, nil
-	case ScopeWorkspace:
-		if request.Mode == ResourceTenantAction {
-			return false, deniedOther, nil
-		}
-		if request.Resource.WorkspaceID == "" {
-			return false, deniedWorkspaceMissing, nil
-		}
-		membership, err := a.memberships.LookupWorkspaceMembership(
-			ctx,
-			request.Principal.TenantID,
-			request.Resource.WorkspaceID,
-			request.Principal.SubjectID,
-		)
-		if err != nil {
-			if err == ErrNotFound {
-				return false, deniedWorkspaceMissing, nil
-			}
+func (a *Authorizer) evaluate(ctx context.Context, request CheckRequest, grant EffectiveGrant, workspace *workspaceMembershipSnapshot) (bool, deniedReason, error) {
+	if grant.Scope == ScopeWorkspace && request.Mode != ResourceTenantAction && request.Resource.WorkspaceID != "" {
+		if err := workspace.load(ctx, a.memberships, request); err != nil {
 			return false, deniedNone, err
 		}
-		if len(grant.WorkspaceRoles) == 0 {
-			return true, deniedNone, nil
-		}
-		for _, allowed := range grant.WorkspaceRoles {
-			if strings.EqualFold(strings.TrimSpace(allowed), strings.TrimSpace(membership.Role)) {
-				return true, deniedNone, nil
-			}
+	}
+
+	allowed := allowAccess(request, grant, workspace.membership, workspace.member)
+	if allowed {
+		return true, deniedNone, nil
+	}
+
+	// Translate denials to preserve
+	// the public reason codes and their deterministic precedence.
+	if request.Resource.TenantID != "" && request.Resource.TenantID != request.Principal.TenantID {
+		return false, deniedTenantMismatch, nil
+	}
+	if request.Mode == ResourceTenantAction {
+		return false, deniedOther, nil
+	}
+	switch grant.Scope {
+	case ScopeOwn:
+		return false, deniedOwnerMismatch, nil
+	case ScopeWorkspace:
+		if !workspace.member {
+			return false, deniedWorkspaceMissing, nil
 		}
 		return false, deniedWorkspaceRole, nil
 	default:
@@ -273,8 +288,8 @@ func (a *Authorizer) evaluate(ctx context.Context, request CheckRequest, grant E
 	}
 }
 
-// Validate checks a persisted grant against the catalog. It is exported for
-// adapters and tests; the authorizer calls it on every loaded grant.
+// Validate checks a persisted grant's identifier, permission, and constraints.
+// Authorizer and Manager call it on every loaded grant before evaluation.
 func (g EffectiveGrant) Validate(requested PermissionKey) error {
 	if err := g.Permission.Validate(); err != nil {
 		return ErrInvalidPolicy
@@ -287,7 +302,7 @@ func (g EffectiveGrant) Validate(requested PermissionKey) error {
 	default:
 		return ErrInvalidPolicy
 	}
-	if g.RoleID == "" {
+	if err := g.RoleID.Validate(); err != nil {
 		return ErrInvalidPolicy
 	}
 	for _, role := range g.WorkspaceRoles {

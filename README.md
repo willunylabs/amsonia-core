@@ -1,12 +1,13 @@
-# Amsonia Core — Tenant authorization for Go, enforced in PostgreSQL
+# Amsonia Core — Go/PostgreSQL administration scaffold
 
 [![Apache-2.0 license](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/willunylabs/amsonia-core/actions/workflows/ci.yml/badge.svg)](https://github.com/willunylabs/amsonia-core/actions/workflows/ci.yml)
 
-**Amsonia Core** is a self-hosted authorization foundation for Go teams building
-multi-tenant SaaS. It keeps tenant membership, delegated RBAC, administrator
-sessions, policy audit, and PostgreSQL row-level isolation in one source-owned
-system instead of leaving those boundaries to every handler.
+**Amsonia Core** is a self-hosted administration scaffold for Go/PostgreSQL
+applications. It starts with one organization, accounts, member invitations,
+roles, permissions, sessions, and audit history. Multi-tenancy is an explicit
+deployment option for SaaS applications. The authorization kernel retains
+PostgreSQL row-level isolation in both modes.
 
 [Visit Amsonia](https://amsonia.dev) · [Read the Core documentation](docs/getting-started.md) · [Explore Amsonia Platform](https://amsonia.dev/platform/) · [View the API contract](openapi/openapi.yaml)
 
@@ -40,9 +41,10 @@ Core makes those invariants explicit:
 
 ## Fit
 
-Use Core when you are building a Go/PostgreSQL multi-tenant product, want RBAC
-and tenant isolation to share one tested boundary, and prefer operating source
-code over depending on a hosted authorization control plane.
+Use Core as the administration foundation for a Go/PostgreSQL application.
+The default single-organization workflow needs no tenant creation or switching.
+Enable multi mode when one deployment must serve independent customer
+organizations. RBAC, audit and storage isolation use the same tested kernel.
 
 Core is not a general-purpose relationship graph, not an OAuth/OIDC identity
 provider, and not a drop-in replacement for every policy engine. The host
@@ -53,7 +55,7 @@ application-owned PostgreSQL tables.
 
 | Approach | Best fit | Tenant data isolation | Operating shape |
 | --- | --- | --- | --- |
-| **Amsonia Core** | Go SaaS with tenant RBAC, admin sessions, audit, and PostgreSQL | Signed context plus reference `FORCE RLS` policies | Self-hosted source, API, CLI, Console |
+| **Amsonia Core** | Go applications with RBAC, sessions, audit, and optional tenancy | Signed context plus reference `FORCE RLS` policies | Self-hosted source, API, CLI, Console |
 | Embedded policy library | Application-specific RBAC/ABAC logic | Designed separately by the application | Linked into each service |
 | Relationship/ReBAC service | Fine-grained object relationship graphs | Application database remains a separate boundary | Dedicated authorization service |
 | Identity platform | Login, federation, and user lifecycle | Depends on the product and integration | Hosted or self-hosted identity service |
@@ -61,7 +63,7 @@ application-owned PostgreSQL tables.
 ## What it provides
 
 - Tenant-first delegated authorization with `own`, `workspace`, and `tenant`
-  scopes.
+  scopes, evaluated by typed Go predicates.
 - PostgreSQL-enforced tenant isolation with signed transaction-local bindings
   and `FORCE ROW LEVEL SECURITY`.
 - Argon2id administrator authentication, lockout, rotating refresh sessions,
@@ -71,9 +73,37 @@ application-owned PostgreSQL tables.
 - A standalone Go API, migration/administration CLI, in-memory adapter, and
   React management console.
 
+Daily administration includes organization settings, profiles and password changes, device session
+revocation, one-use member invitations, member suspension/removal, role editing,
+scoped grants, member role bindings, version history, and filtered audit paging.
+See the [administration guide](docs/core-administration.md) and
+[authorization contract](docs/authorization.md).
+
+## Organization model
+
+The standalone API and CLI default to `AMSONIA_TENANCY_MODE=single`. Administrator
+bootstrap automatically prepares `My organization` (customize with
+`AMSONIA_ORGANIZATION_NAME`). The Console opens directly into that organization.
+`amsonia setup-organization` safely resumes an incomplete setup.
+
+For multi-tenant SaaS, set `AMSONIA_TENANCY_MODE=multi` on the API and operator CLI.
+For an existing database with multiple active tenants, explicitly enable multi
+mode or select an existing tenant using `AMSONIA_ORGANIZATION_ID` in single mode.
+An ambiguous deployment refuses to start. Apply all pending migrations and rerun the
+[role provisioning script](ops/configure_database_roles.sql) before upgrading.
+See [the setup guide](docs/getting-started.md#organization-model) for configuration.
+
+## Install a tagged preview
+
+For a release with a verified Linux amd64 preview asset, use the
+[install guide](deploy/preview/README.md) and the matching
+[GitHub Release](https://github.com/willunylabs/amsonia-core/releases).
+The archive includes prebuilt images and a checksum. To try an unreleased
+revision from source, use the workflow below.
+
 ## Verify it in five minutes
 
-Requirements: Docker with the Compose plugin and Go 1.25.13+.
+Requirements: Docker with the Compose plugin and Go 1.26.10+.
 
 ```bash
 git clone https://github.com/willunylabs/amsonia-core.git
@@ -90,7 +120,9 @@ stops the stack without deleting its PostgreSQL volume.
 Then run the host-table proof in
 [`examples/business-data-rls`](examples/business-data-rls): two tenants query
 the same invoice table without tenant predicates, each sees only its own row,
-and a cross-tenant insert is rejected by PostgreSQL RLS. The walkthrough is in
+and a cross-tenant insert is rejected by PostgreSQL RLS. The same example
+can serve a local invoice list and creation form without changing the default
+console. The walkthrough is in
 [`docs/business-data-rls.md`](docs/business-data-rls.md).
 
 ## Evidence, not feature claims
@@ -119,7 +151,7 @@ and a cross-tenant insert is rejected by PostgreSQL RLS. The walkthrough is in
 
 ## Manual development setup
 
-Requirements: Go 1.25.13+, PostgreSQL 16+, Node.js 22.15+, and npm 10.
+Requirements: Go 1.26.10+, PostgreSQL 16+, Node.js 22.15+, and npm 10.
 Docker is optional. The complete local setup, role provisioning, environment
 variables, and PostgreSQL checks are in
 [docs/getting-started.md](docs/getting-started.md).
@@ -142,6 +174,11 @@ npm --prefix web run dev
 ```
 
 Then open `http://127.0.0.1:3000` and sign in with the bootstrap administrator.
+
+For production upgrades and administrator recovery, see the
+[self-hosting runbook](docs/self-hosting.md). The
+[scaffold comparison](docs/scaffold-comparison.md) explains what Core provides
+and which features are intentionally left to the host application.
 
 ## HTTP API
 

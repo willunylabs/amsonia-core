@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: amsonia-core-postgres:${AMSONIA_RELEASE_VERSION:?missing release version}
+    platform: linux/amd64
+    pull_policy: never
+  migrate:
+    image: amsonia-core-api:${AMSONIA_RELEASE_VERSION:?missing release version}
+    platform: linux/amd64
+    pull_policy: never
+    build: !reset null
+  database-roles:
+    image: amsonia-core-postgres:${AMSONIA_RELEASE_VERSION:?missing release version}
+    platform: linux/amd64
+    pull_policy: never
+  api:
+    image: amsonia-core-api:${AMSONIA_RELEASE_VERSION:?missing release version}
+    platform: linux/amd64
+    pull_policy: never
+    build: !reset null
+  web:
+    image: amsonia-core-web:${AMSONIA_RELEASE_VERSION:?missing release version}
+    platform: linux/amd64
+    pull_policy: never
+    build: !reset null
+    ports: !override
+      - "127.0.0.1:${AMSONIA_WEB_PORT:-8080}:8080"
