@@ -138,28 +138,6 @@ func (s *Service) CreateInvitation(ctx context.Context, tenant, actor, email str
 	return item, nil
 }
 
-func (s *Service) ListInvitations(ctx context.Context, tenant string) ([]InvitationItem, error) {
-	items := make([]InvitationItem, 0)
-	err := s.store.RunTenant(ctx, amsonia.TenantID(tenant), true, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `SELECT invitation_id, display_email, expires_at, created_at,
-		    CASE WHEN accepted_at IS NOT NULL THEN 'accepted' WHEN revoked_at IS NOT NULL THEN 'revoked' WHEN expires_at <= $2 THEN 'expired' ELSE 'pending' END
-		    FROM amsonia.member_invitations WHERE tenant_id = $1 ORDER BY created_at DESC, invitation_id LIMIT 200`, tenant, s.now())
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var item InvitationItem
-			if err := rows.Scan(&item.ID, &item.Email, &item.ExpiresAt, &item.CreatedAt, &item.Status); err != nil {
-				return err
-			}
-			items = append(items, item)
-		}
-		return rows.Err()
-	})
-	return items, err
-}
-
 func (s *Service) RevokeInvitation(ctx context.Context, tenant, actor, id string) error {
 	return s.store.RunTenant(ctx, amsonia.TenantID(tenant), false, func(tx pgx.Tx) error {
 		if err := requireTenantPermission(ctx, tx, tenant, actor, PermissionMemberManage); err != nil {
@@ -279,7 +257,8 @@ func (s *Service) ManageMember(ctx context.Context, tenant, actor, account, stat
 		}
 		if remove || status == "suspended" {
 			var hasAdmin bool
-			if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT s.subject_id FROM amsonia.subject_roles s JOIN amsonia.roles r USING(tenant_id,role_id) JOIN amsonia.role_permission_grants g USING(tenant_id,role_id) JOIN amsonia.tenant_memberships m ON m.tenant_id=s.tenant_id AND m.account_id=s.subject_id WHERE s.tenant_id=$1 AND s.subject_id<>$2 AND NOT r.deleted AND m.status='active' AND g.scope='tenant' AND g.permission_key=ANY($3::text[]) GROUP BY s.subject_id HAVING count(DISTINCT g.permission_key)=4)`, tenant, account, []string{string(PermissionRoleManage), string(PermissionGrantManage), string(PermissionRoleAssign), string(PermissionMemberManage)}).Scan(&hasAdmin); err != nil {
+			permissions := administratorPermissions()
+			if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT s.subject_id FROM amsonia.subject_roles s JOIN amsonia.roles r USING(tenant_id,role_id) JOIN amsonia.role_permission_grants g USING(tenant_id,role_id) JOIN amsonia.tenant_memberships m ON m.tenant_id=s.tenant_id AND m.account_id=s.subject_id WHERE s.tenant_id=$1 AND s.subject_id<>$2 AND NOT r.deleted AND m.status='active' AND g.scope='tenant' AND g.permission_key=ANY($3::text[]) GROUP BY s.subject_id HAVING count(DISTINCT g.permission_key)=$4)`, tenant, account, permissions, len(permissions)).Scan(&hasAdmin); err != nil {
 				return err
 			}
 			if !hasAdmin {

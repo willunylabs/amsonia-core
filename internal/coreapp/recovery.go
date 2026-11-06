@@ -43,15 +43,7 @@ func RecoverAdministrator(ctx context.Context, pool *pgxpool.Pool, email, passwo
 		WHERE account_id=$2`, hash, id); err != nil {
 		return "", err
 	}
-	if _, err := tx.Exec(ctx, `UPDATE amsonia.access_sessions
-		SET revoked_at=now() WHERE account_id=$1 AND revoked_at IS NULL`, id); err != nil {
-		return "", err
-	}
-	// End the old refresh lineage: a pre-recovery replay must not revoke
-	// sessions established with the new credential.
-	if _, err := tx.Exec(ctx, `UPDATE amsonia.refresh_sessions
-		SET revoked_at=COALESCE(revoked_at, now()), rotated_to_hash=NULL
-		WHERE account_id=$1 AND (revoked_at IS NULL OR rotated_to_hash IS NOT NULL)`, id); err != nil {
+	if err := revokeCredentialSessions(ctx, tx, id); err != nil {
 		return "", err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO amsonia.administrator_recoveries (account_id) VALUES ($1)`, id); err != nil {

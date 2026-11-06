@@ -698,14 +698,7 @@ func (s *Service) ProvisionMember(ctx context.Context, actor Account, input Prov
 				return err
 			}
 			account.Email = strings.TrimSpace(input.Email)
-			if _, err := tx.Exec(ctx, `
-				UPDATE amsonia.access_sessions SET revoked_at = COALESCE(revoked_at, $1) WHERE account_id = $2
-			`, now, account.ID); err != nil {
-				return err
-			}
-			if _, err := tx.Exec(ctx, `
-				UPDATE amsonia.refresh_sessions SET revoked_at = COALESCE(revoked_at, $1) WHERE account_id = $2
-			`, now, account.ID); err != nil {
+			if err := revokeCredentialSessions(ctx, tx, account.ID); err != nil {
 				return err
 			}
 		}
@@ -757,31 +750,6 @@ func (s *Service) RequireMembership(ctx context.Context, tenantID, accountID str
 	})
 }
 
-func (s *Service) ListMembers(ctx context.Context, tenantID string) ([]Member, error) {
-	members := make([]Member, 0)
-	err := s.store.RunTenant(ctx, amsonia.TenantID(tenantID), true, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `
-			SELECT m.account_id, a.email, m.status, m.joined_at
-			FROM amsonia.tenant_memberships m
-			JOIN amsonia.accounts a ON a.account_id = m.account_id
-			WHERE m.tenant_id = $1 ORDER BY m.joined_at, m.account_id
-		`, tenantID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var member Member
-			if err := rows.Scan(&member.AccountID, &member.Email, &member.Status, &member.JoinedAt); err != nil {
-				return err
-			}
-			members = append(members, member)
-		}
-		return rows.Err()
-	})
-	return members, err
-}
-
 func (s *Service) ListRoles(ctx context.Context, tenantID string) ([]amsonia.Role, error) {
 	roles := make([]amsonia.Role, 0)
 	err := s.store.RunTenant(ctx, amsonia.TenantID(tenantID), true, func(tx pgx.Tx) error {
@@ -803,31 +771,4 @@ func (s *Service) ListRoles(ctx context.Context, tenantID string) ([]amsonia.Rol
 		return rows.Err()
 	})
 	return roles, err
-}
-
-func (s *Service) AuditEvents(ctx context.Context, tenantID string, limit int) ([]amsonia.MutationAuditEvent, error) {
-	if limit < 1 || limit > 200 {
-		limit = 50
-	}
-	events := make([]amsonia.MutationAuditEvent, 0)
-	err := s.store.RunTenant(ctx, amsonia.TenantID(tenantID), true, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, `
-			SELECT tenant_id, actor_subject, host_initiator, operation, phase,
-			       target_type, target_id, outcome, reason_code, request_id, role_version, at
-			FROM amsonia.audit_events WHERE tenant_id = $1 ORDER BY id DESC LIMIT $2
-		`, tenantID, limit)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var event amsonia.MutationAuditEvent
-			if err := rows.Scan(&event.TenantID, &event.ActorSubjectID, &event.HostInitiator, &event.Operation, &event.Phase, &event.TargetType, &event.TargetID, &event.Outcome, &event.ReasonCode, &event.RequestID, &event.RoleVersion, &event.At); err != nil {
-				return err
-			}
-			events = append(events, event)
-		}
-		return rows.Err()
-	})
-	return events, err
 }

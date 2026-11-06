@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
+	"time"
 )
 
 // MutationResult reports whether a mutation changed state and the resulting
@@ -168,7 +170,15 @@ func (m *Manager) recordDenied(ctx context.Context, actor Principal, meta Mutati
 		outcome = AuditOutcomeFailed
 	}
 	event := m.auditEvent(actor.TenantID, actor, meta, operation, targetType, targetID, outcome, roleVersion)
-	_ = m.securityAudit.RecordSecurityEvent(ctx, event) // best-effort; host must also log sanitized
+	// Preserve request metadata without inheriting cancellation from the failed
+	// mutation. Audit storage still gets a short, independent deadline.
+	auditCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+	defer cancel()
+	if err := m.securityAudit.RecordSecurityEvent(auditCtx, event); err != nil {
+		// Sink errors can contain driver SQL or host credentials. Correlate the
+		// failure without copying arbitrary adapter error text into logs.
+		slog.ErrorContext(auditCtx, "security audit persistence failed", "tenant", actor.TenantID, "operation", operation, "request_id", meta.RequestID, "error_type", fmt.Sprintf("%T", err))
+	}
 }
 
 // CreateRole creates an empty role.

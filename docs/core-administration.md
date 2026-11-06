@@ -44,7 +44,9 @@ Open **Account settings** beside the account avatar, then choose **Profile**,
 workflow. Save a display name on Profile, change your password using the current
 password and matching confirmation on Password, or sign out devices on Devices. Passwords
 must contain 12–128 Unicode characters. A successful password change revokes all
-access and refresh tokens and requires signing in again. Password verification
+access and refresh tokens and requires signing in again. Password changes,
+operator recovery and operator member provisioning also end the old refresh
+lineage: replaying a pre-change token cannot sign out the new session. Password verification
 uses the existing account lockout policy. Profiles and sessions are always scoped
 to the authenticated account; no account ID is accepted from the client.
 
@@ -126,6 +128,9 @@ current password; accepting never resets it. Suspended membership cannot be
 bypassed by an invitation. A joined member starts without roles. Administrators
 assign roles from the member's **Roles** page. A member with no read permissions
 can still open the console and account settings without denied collection calls.
+Opening a different invitation starts a fresh form, clearing the previous
+password and acceptance state. Late responses from the earlier form cannot
+complete its sign-in or dismiss the new invitation.
 
 Open **Members → Manage member** to view exact identity and membership details.
 The status form saves Active or Suspended membership; **Cancel** returns to the
@@ -229,8 +234,12 @@ value. The server sends `Cache-Control: no-store` and a generated attachment
 filename. No new migration or runtime database grant is needed.
 Generated `X-Request-ID` values connect HTTP requests and mutation audit records.
 Global account/profile/session changes are not tenant audit events. Kernel
-mutation failures are audited; malformed requests and pre-authentication failures
-are handled by HTTP logs rather than a tenant audit stream.
+mutation failures attempt audit persistence after rollback using an independent
+two-second deadline, including when the original request was cancelled. If the
+audit store is unavailable, a sanitized error log identifies the operation and
+request ID; the original mutation error is preserved. Audit storage is best
+effort during a database outage. Malformed requests and pre-authentication
+failures are handled by HTTP logs rather than a tenant audit stream.
 
 
 ## Page addresses and forms

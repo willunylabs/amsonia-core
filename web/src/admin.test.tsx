@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -378,6 +379,124 @@ it("opens another invitation when its fragment changes in an already open consol
   fireEvent(window, new HashChangeEvent("hashchange"));
   await screen.findByRole("heading", { name: "Join Another invitation" });
   expect(api.previewInvitation).toHaveBeenCalledWith("next-invitation");
+});
+
+it("resets the password and acceptance state when another invitation replaces a failed sign-in", async () => {
+  vi.mocked(api.previewInvitation).mockImplementation(async (token) => ({
+    id: token,
+    tenant_id: token,
+    tenant_name: `Team ${token}`,
+    email: `${token}@example.test`,
+    expires_at: "2030-01-01T00:00:00Z",
+    account_exists: true,
+  }));
+  vi.mocked(api.acceptInvitation).mockResolvedValue(account);
+  vi.mocked(api.login).mockRejectedValue(
+    new APIError(503, "unavailable", "Try signing in again."),
+  );
+  history.replaceState(null, "", "/#invite=first");
+  render(<App />);
+  await screen.findByRole("heading", { name: "Join Team first" });
+  fireEvent.change(screen.getByLabelText("Account password"), {
+    target: { value: "first-account-password" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Accept invitation" }));
+  await screen.findByRole("button", { name: "Sign in" });
+
+  history.replaceState(null, "", "/#invite=second");
+  fireEvent(window, new HashChangeEvent("hashchange"));
+  await screen.findByRole("heading", { name: "Join Team second" });
+  expect(
+    (screen.getByLabelText("Account password") as HTMLInputElement).value,
+  ).toBe("");
+  expect(screen.queryByRole("alert")).toBeNull();
+  fireEvent.change(screen.getByLabelText("Account password"), {
+    target: { value: "second-account-password" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Accept invitation" }));
+  await waitFor(() =>
+    expect(api.acceptInvitation).toHaveBeenCalledWith(
+      "second",
+      "second-account-password",
+    ),
+  );
+});
+
+it("does not sign in from an old acceptance response after switching invitations", async () => {
+  vi.mocked(api.previewInvitation).mockImplementation(async (token) => ({
+    id: token,
+    tenant_id: token,
+    tenant_name: `Team ${token}`,
+    email: account.email,
+    expires_at: "2030-01-01T00:00:00Z",
+    account_exists: true,
+  }));
+  let finishAcceptance!: (value: Account) => void;
+  vi.mocked(api.acceptInvitation).mockReturnValue(
+    new Promise((resolve) => {
+      finishAcceptance = resolve;
+    }),
+  );
+  history.replaceState(null, "", "/#invite=first");
+  render(<App />);
+  await screen.findByRole("heading", { name: "Join Team first" });
+  fireEvent.change(screen.getByLabelText("Account password"), {
+    target: { value: "first-account-password" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Accept invitation" }));
+  await waitFor(() => expect(api.acceptInvitation).toHaveBeenCalledTimes(1));
+  history.replaceState(null, "", "/#invite=second");
+  fireEvent(window, new HashChangeEvent("hashchange"));
+  await screen.findByRole("heading", { name: "Join Team second" });
+  await act(async () => finishAcceptance(account));
+  expect(api.login).not.toHaveBeenCalled();
+  expect(location.hash).toBe("#invite=second");
+  expect(
+    (screen.getByLabelText("Account password") as HTMLInputElement).value,
+  ).toBe("");
+});
+
+it("keeps an invalid new invitation visible when the old sign-in finishes late", async () => {
+  vi.mocked(api.previewInvitation)
+    .mockResolvedValueOnce({
+      id: "first",
+      tenant_id: "first",
+      tenant_name: "First team",
+      email: account.email,
+      expires_at: "2030-01-01T00:00:00Z",
+      account_exists: true,
+    })
+    .mockRejectedValue(
+      new APIError(404, "not_found", "This invitation is invalid."),
+    );
+  vi.mocked(api.acceptInvitation).mockResolvedValue(account);
+  let finishLogin!: (value: Awaited<ReturnType<typeof api.login>>) => void;
+  vi.mocked(api.login).mockReturnValue(
+    new Promise((resolve) => {
+      finishLogin = resolve;
+    }),
+  );
+  history.replaceState(null, "", "/#invite=first");
+  render(<App />);
+  await screen.findByRole("heading", { name: "Join First team" });
+  fireEvent.change(screen.getByLabelText("Account password"), {
+    target: { value: "first-account-password" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Accept invitation" }));
+  await waitFor(() => expect(api.login).toHaveBeenCalledTimes(1));
+  history.replaceState(null, "", "/#invite=invalid");
+  fireEvent(window, new HashChangeEvent("hashchange"));
+  await screen.findByText("This invitation is invalid.");
+  await act(async () => {
+    finishLogin({
+      account,
+      access_token: "late-token",
+      expires_at: "2030-01-01T00:00:00Z",
+    });
+  });
+  expect(location.hash).toBe("#invite=invalid");
+  expect(screen.getByRole("heading", { name: "Tenant invitation" })).toBeTruthy();
+  expect(screen.queryByLabelText("Account password")).toBeNull();
 });
 
 it("uses one organization without a tenant picker or creation route", async () => {

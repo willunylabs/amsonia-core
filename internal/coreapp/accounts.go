@@ -83,12 +83,23 @@ func (s *Service) ChangePassword(ctx context.Context, accountID, current, next s
 	if _, err := tx.Exec(ctx, `UPDATE amsonia.accounts SET password_hash = $1, failed_login_count = 0, locked_until = NULL, updated_at = $2 WHERE account_id = $3`, hash, s.now(), accountID); err != nil {
 		return err
 	}
-	for _, table := range []string{"access_sessions", "refresh_sessions"} {
-		if _, err := tx.Exec(ctx, `UPDATE amsonia.`+table+` SET revoked_at = COALESCE(revoked_at, $1) WHERE account_id = $2`, s.now(), accountID); err != nil {
-			return err
-		}
+	if err := revokeCredentialSessions(ctx, tx, accountID); err != nil {
+		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// Credential changes end the old refresh lineage as well as revoking sessions.
+// A pre-change rotated token must not revoke sessions using the new password.
+func revokeCredentialSessions(ctx context.Context, tx pgx.Tx, accountID string) error {
+	if _, err := tx.Exec(ctx, `UPDATE amsonia.access_sessions
+		SET revoked_at=now() WHERE account_id=$1 AND revoked_at IS NULL`, accountID); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `UPDATE amsonia.refresh_sessions
+		SET revoked_at=COALESCE(revoked_at, now()), rotated_to_hash=NULL
+		WHERE account_id=$1 AND (revoked_at IS NULL OR rotated_to_hash IS NOT NULL)`, accountID)
+	return err
 }
 
 func (s *Service) failedPassword(ctx context.Context, tx pgx.Tx, accountID string) error {

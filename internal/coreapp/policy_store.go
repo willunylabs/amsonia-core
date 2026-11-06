@@ -24,43 +24,48 @@ type corePolicyStore struct {
 	amsonia.Store
 }
 
+type policyQueryer interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}
+
+func administratorPermissions() []string {
+	return []string{string(PermissionRoleManage), string(PermissionGrantManage), string(PermissionRoleAssign), string(PermissionMemberManage)}
+}
+
 // PolicyStore adds Core membership and active-administrator invariants without
 // changing the reusable authorization kernel's host-independent contract.
 func (s *Service) PolicyStore() amsonia.Store { return corePolicyStore{Store: s.store} }
 func (store corePolicyStore) MutateTenant(ctx context.Context, tenant amsonia.TenantID, fn func(amsonia.TenantTx) error) error {
 	return store.Store.MutateTenant(ctx, tenant, func(tx amsonia.TenantTx) error {
 		guard, _ := ctx.Value(policyGuardKey{}).(policyGuard)
-		reader, ok := tx.(interface {
-			Query(context.Context, string, ...any) (pgx.Rows, error)
-		})
+		reader, ok := tx.(policyQueryer)
 		if !ok {
 			return amsonia.ErrInvalidInput
 		}
-		rows, err := reader.Query(ctx, `SELECT account_id,status FROM amsonia.tenant_memberships WHERE tenant_id=$1`, string(tenant))
-		if err != nil {
-			return err
-		}
-		members, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Member, error) {
-			var m Member
-			err := row.Scan(&m.AccountID, &m.Status)
-			return m, err
-		})
-		if err != nil {
-			return err
-		}
-		active := map[amsonia.SubjectID]bool{}
-		exists := map[string]bool{}
-		for _, member := range members {
-			exists[member.AccountID] = true
-			if member.Status == "active" {
-				active[amsonia.SubjectID(member.AccountID)] = true
+		if guard.Actor != "" || guard.Target != "" {
+			rows, err := reader.Query(ctx, `SELECT account_id,status FROM amsonia.tenant_memberships
+				WHERE tenant_id=$1 AND account_id=ANY($2::text[])`, string(tenant), []string{guard.Actor, guard.Target})
+			if err != nil {
+				return err
 			}
-		}
-		if guard.Actor != "" && !active[amsonia.SubjectID(guard.Actor)] {
-			return amsonia.ErrForbidden
-		}
-		if guard.Target != "" && (!exists[guard.Target] || guard.Assign && !active[amsonia.SubjectID(guard.Target)]) {
-			return amsonia.ErrNotFound
+			members, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Member, error) {
+				var m Member
+				err := row.Scan(&m.AccountID, &m.Status)
+				return m, err
+			})
+			if err != nil {
+				return err
+			}
+			statuses := make(map[string]string, len(members))
+			for _, member := range members {
+				statuses[member.AccountID] = member.Status
+			}
+			if guard.Actor != "" && statuses[guard.Actor] != "active" {
+				return amsonia.ErrForbidden
+			}
+			if status, exists := statuses[guard.Target]; guard.Target != "" && (!exists || guard.Assign && status != "active") {
+				return amsonia.ErrNotFound
+			}
 		}
 		if guard.Version > 0 {
 			role, err := tx.GetRole(ctx, guard.Role)
@@ -87,7 +92,7 @@ func (store corePolicyStore) MutateTenant(ctx context.Context, tenant amsonia.Te
 				return amsonia.ErrForbidden
 			}
 		}
-		wrapped := corePolicyTx{TenantTx: tx, active: active}
+		wrapped := corePolicyTx{TenantTx: tx, query: reader, tenant: tenant}
 		if err := fn(wrapped); err != nil {
 			return err
 		}
@@ -104,27 +109,45 @@ func (store corePolicyStore) MutateTenant(ctx context.Context, tenant amsonia.Te
 
 type corePolicyTx struct {
 	amsonia.TenantTx
-	active map[amsonia.SubjectID]bool
+	query  policyQueryer
+	tenant amsonia.TenantID
 }
 
 func (tx corePolicyTx) HasAdministrator(ctx context.Context, _ amsonia.ControlPermissions) (bool, error) {
-	for subject := range tx.active {
-		full := true
-		for _, key := range []amsonia.PermissionKey{PermissionRoleManage, PermissionGrantManage, PermissionRoleAssign, PermissionMemberManage} {
-			grants, err := tx.ListEffectiveGrants(ctx, subject, key)
-			if err != nil {
-				return false, err
-			}
-			allowed := false
-			for _, g := range grants {
-				if err := g.Validate(key); err != nil {
-					return false, err
-				}
-				allowed = allowed || g.Scope == amsonia.ScopeTenant
-			}
-			full = full && allowed
+	permissions := administratorPermissions()
+	rows, err := tx.query.Query(ctx, `SELECT s.subject_id,s.role_id,g.permission_key,g.scope,g.workspace_roles
+		FROM amsonia.subject_roles s
+		JOIN amsonia.role_permission_grants g USING (tenant_id,role_id)
+		JOIN amsonia.tenant_memberships m ON m.tenant_id=s.tenant_id AND m.account_id=s.subject_id
+		WHERE s.tenant_id=$1 AND m.status='active' AND g.permission_key=ANY($2::text[])`, string(tx.tenant), permissions)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	coverage := make(map[amsonia.SubjectID]map[amsonia.PermissionKey]bool)
+	for rows.Next() {
+		var subject amsonia.SubjectID
+		var grant amsonia.EffectiveGrant
+		if err := rows.Scan(&subject, &grant.RoleID, &grant.Permission, &grant.Scope, &grant.WorkspaceRoles); err != nil {
+			return false, err
 		}
-		if full {
+		// Validate every returned control grant before accepting any candidate.
+		// An invalid persisted row must not be hidden by a valid administrator.
+		if err := grant.Validate(grant.Permission); err != nil {
+			return false, err
+		}
+		if grant.Scope == amsonia.ScopeTenant {
+			if coverage[subject] == nil {
+				coverage[subject] = make(map[amsonia.PermissionKey]bool)
+			}
+			coverage[subject][grant.Permission] = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
+	for _, grants := range coverage {
+		if len(grants) == len(permissions) {
 			return true, nil
 		}
 	}
