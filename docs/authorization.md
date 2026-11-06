@@ -42,6 +42,9 @@ and member-management authority: at least one active member must hold all four
 `iam:role:manage`, `iam:grant:manage`, `iam:role:assign`, and `iam:member:manage`
 permissions at tenant scope. These checks run in the same locked transaction as
 the policy change. Member suspension/removal uses the same tenant lock.
+Core reads the relevant active-member control grants in one batch and validates
+them before accepting any administrator. The number of permission queries does
+not grow with ordinary membership; malformed control grants still fail closed.
 
 HTTP grant changes also require `iam:grant:manage`; possessing the permission
 being delegated alone does not open the grant-management UI or API. System

@@ -252,6 +252,7 @@ export function InvitationLanding({
   token: string;
   onLogin: (account: Account) => void;
 }) {
+  const alive = useAlive();
   const [preview, setPreview] = useState<InvitationPreview | null>(null);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -279,15 +280,17 @@ export function InvitationLanding({
     try {
       if (!accepted) {
         await api.acceptInvitation(token, password);
+        if (!alive.current) return;
         setAccepted(true);
       }
       const session = await api.login(preview.email, password);
+      if (!alive.current) return;
       history.replaceState(null, "", location.pathname + location.search);
       onLogin(session.account);
     } catch (cause) {
-      setError(friendlyError(cause));
+      if (alive.current) setError(friendlyError(cause));
     } finally {
-      setBusy(false);
+      if (alive.current) setBusy(false);
     }
   }
   return (

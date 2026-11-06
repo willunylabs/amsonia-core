@@ -270,6 +270,7 @@ export function App() {
   if (inviteToken)
     return (
       <InvitationLanding
+        key={inviteToken}
         token={inviteToken}
         onLogin={(value) => {
           setInviteToken("");
