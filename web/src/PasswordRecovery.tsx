@@ -82,6 +82,7 @@ export function PasswordRecoveryLanding({ token }: {
     const [error, setError] = useState("");
     const [done, setDone] = useState(false);
     const [attempt, setAttempt] = useState(0);
+    const [completionFailed, setCompletionFailed] = useState(false);
     useEffect(() => {
         let active = true;
         api.previewPasswordRecovery(token).then((value) => { if (active) {
@@ -105,6 +106,7 @@ export function PasswordRecoveryLanding({ token }: {
         }
         setBusy(true);
         setError("");
+        setCompletionFailed(false);
         try {
             await api.completePasswordRecovery(token, password);
             if (!alive.current)
@@ -116,8 +118,10 @@ export function PasswordRecoveryLanding({ token }: {
             setDone(true);
         }
         catch (cause) {
-            if (alive.current)
+            if (alive.current) {
                 setError(friendlyError(cause));
+                setCompletionFailed(true);
+            }
         }
         finally {
             if (alive.current)
@@ -137,5 +141,9 @@ export function PasswordRecoveryLanding({ token }: {
       <div className="info-note">This link works once, until {new Date(preview.expires_at).toLocaleString()}. Updating your password signs out all your devices.</div>
       <button className="primary-button" disabled={busy}>{busy ? "Updating password…" : "Set new password"}</button>
     </form> : error ? <><p className="fine-print">Expired or used link? Ask your administrator for a new one.</p><button className="secondary-button" onClick={() => setAttempt((value) => value + 1)}>Retry link</button><a className="back-link" href={location.pathname + location.search}>Back to sign in</a></> : <p role="status">Checking link…</p>}
+    {!done && preview ? <>
+      {completionFailed ? <p className="info-note">If your password was updated but the response was lost, try signing in with your new password. If that does not work and this link is expired or used, ask your administrator for a new link.</p> : null}
+      <a className="back-link" href={location.pathname + location.search}>Back to sign in</a>
+    </> : null}
   </section></main>;
 }

@@ -137,7 +137,7 @@ func coreApplicationFixture(t *testing.T, options *ApplicationOptions) (*Service
 	if err != nil {
 		t.Fatal(err)
 	}
-	api, err := NewAPI(service, manager, authorizer, catalog, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	api, err := NewAPI(service, manager, authorizer, catalog, slog.New(slog.NewTextHandler(io.Discard, nil)), "")
 	if err != nil {
 		t.Fatal(err)
 	}

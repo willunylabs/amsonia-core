@@ -114,12 +114,18 @@ type corePolicyTx struct {
 }
 
 func (tx corePolicyTx) HasAdministrator(ctx context.Context, _ amsonia.ControlPermissions) (bool, error) {
+	return hasActiveAdministrator(ctx, tx.query, tx.tenant, "")
+}
+
+func hasActiveAdministrator(ctx context.Context, query policyQueryer, tenant amsonia.TenantID, exclude string) (bool, error) {
 	permissions := administratorPermissions()
-	rows, err := tx.query.Query(ctx, `SELECT s.subject_id,s.role_id,g.permission_key,g.scope,g.workspace_roles
+	rows, err := query.Query(ctx, `SELECT s.subject_id,s.role_id,g.permission_key,g.scope,g.workspace_roles
 		FROM amsonia.subject_roles s
+		JOIN amsonia.roles r USING (tenant_id,role_id)
 		JOIN amsonia.role_permission_grants g USING (tenant_id,role_id)
 		JOIN amsonia.tenant_memberships m ON m.tenant_id=s.tenant_id AND m.account_id=s.subject_id
-		WHERE s.tenant_id=$1 AND m.status='active' AND g.permission_key=ANY($2::text[])`, string(tx.tenant), permissions)
+		WHERE s.tenant_id=$1 AND m.status='active' AND NOT r.deleted
+		AND s.subject_id<>$3 AND g.permission_key=ANY($2::text[])`, string(tenant), permissions, exclude)
 	if err != nil {
 		return false, err
 	}

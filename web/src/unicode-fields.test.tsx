@@ -1,0 +1,54 @@
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { AccountPage } from "./Account";
+import { DirectorySearch } from "./DirectoryControls";
+import { AuditWorkspace } from "./Audit";
+import { api } from "./api";
+
+afterEach(() => { cleanup(); vi.restoreAllMocks(); history.replaceState(null,"","/"); });
+it("saves all 80 supplementary display-name characters and blocks 81", async () => {
+  history.replaceState(null,"","/#/account/profile");
+  const profile = { id:"account",email:"member@example.test",display_name:"",created_at:"2026-01-01T00:00:00Z" };
+  vi.spyOn(api,"profile").mockResolvedValue(profile);
+  const save = vi.spyOn(api,"updateProfile").mockImplementation(async display_name => ({...profile,display_name}));
+  render(<AccountPage onLogout={vi.fn()} />);
+  const input = await screen.findByLabelText("Display name");
+  await waitFor(() => expect(input).toHaveProperty("disabled",false));
+  expect(input.getAttribute("maxlength")).toBeNull();
+  fireEvent.change(input,{target:{value:"🌿".repeat(80)}});
+  fireEvent.click(screen.getByRole("button",{name:"Save profile"}));
+  await screen.findByText("Profile saved.");
+  expect(save).toHaveBeenCalledWith("🌿".repeat(80));
+  fireEvent.change(input,{target:{value:"🌿".repeat(81)}});
+  fireEvent.click(screen.getByRole("button",{name:"Save profile"}));
+  await screen.findByText("Use at most 80 characters for your display name.");
+  expect(save).toHaveBeenCalledTimes(1);
+});
+it.each(["🌿", "e\u0301"])("uses code points for directory searches with %s", async character => {
+  const search=vi.fn();
+  render(<DirectorySearch label="Find a member" placeholder="Search" onSearch={search} />);
+  const input=screen.getByLabelText("Find a member");
+  const valid=character.repeat(character==="🌿" ? 128 : 64);
+  expect(input.getAttribute("maxlength")).toBeNull();
+  fireEvent.change(input,{target:{value:valid}});
+  fireEvent.click(screen.getByRole("button",{name:"Search"}));
+  expect(search).toHaveBeenLastCalledWith(valid,"");
+  fireEvent.change(input,{target:{value:valid+"a"}});
+  fireEvent.click(screen.getByRole("button",{name:"Search"}));
+  await screen.findByText("Use at most 128 characters for your search.");
+  expect(search).toHaveBeenCalledTimes(1);
+});
+it("applies the same 128-code-point boundary to audit queries",async () => {
+  const load=vi.spyOn(api,"auditPage").mockResolvedValue({items:[]});
+  render(<AuditWorkspace tenant="tenant" allowed />);
+  const input=await screen.findByLabelText("Search", {exact:true});
+  expect(input.getAttribute("maxlength")).toBeNull();
+  fireEvent.change(input,{target:{value:"🌿".repeat(128)}});
+  fireEvent.submit(input.closest("form")!);
+  await waitFor(()=>expect(load).toHaveBeenLastCalledWith("tenant",expect.objectContaining({q:"🌿".repeat(128)})));
+  const calls=load.mock.calls.length;
+  fireEvent.change(input,{target:{value:"🌿".repeat(129)}});
+  fireEvent.submit(input.closest("form")!);
+  await screen.findByText("Use at most 128 characters for your search.");
+  expect(load).toHaveBeenCalledTimes(calls);
+});

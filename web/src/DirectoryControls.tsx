@@ -14,8 +14,14 @@ export function DirectorySearch({
 }) {
   const [q, setQuery] = useState("");
   const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
   function submit(event: FormEvent) {
     event.preventDefault();
+    if (Array.from(q.trim()).length > 128) {
+      setError("Use at most 128 characters for your search.");
+      return;
+    }
+    setError("");
     onSearch(q, status);
   }
   return (
@@ -24,10 +30,9 @@ export function DirectorySearch({
         {label}
         <input
           type="search"
-          maxLength={128}
           value={q}
           placeholder={placeholder}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { setQuery(e.target.value); setError(""); }}
         />
       </label>
       {statuses.length ? (
@@ -52,11 +57,13 @@ export function DirectorySearch({
         onClick={() => {
           setQuery("");
           setStatus("");
+          setError("");
           onSearch("", "");
         }}
       >
         Reset
       </button>
+      <ErrorMessage message={error} />
     </form>
   );
 }

@@ -38,10 +38,10 @@ function auditQuery(filter: AuditFilter): string {
   ).toString();
 }
 
-const CONFIGURED_API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(
-  /\/$/,
-  "",
-);
+const CONFIGURED_API_BASE: string = import.meta.env.VITE_API_URL ?? "";
+if (!/^(?:\/[A-Za-z0-9._~-]+)*$/.test(CONFIGURED_API_BASE) || CONFIGURED_API_BASE.split("/").some(part => part === "." || part === "..")) {
+  throw new Error("VITE_API_URL must be an absolute same-origin path prefix without a trailing slash");
+}
 const configuredURL = new URL(
   CONFIGURED_API_BASE || window.location.origin,
   window.location.origin,

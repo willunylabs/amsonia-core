@@ -296,12 +296,20 @@ func (s *Service) issueSession(ctx context.Context, account Account, remoteAddre
 	}
 	defer tx.Rollback(context.Background())
 	var currentHash, status string
-	if err := tx.QueryRow(ctx, `SELECT password_hash, status FROM amsonia.accounts WHERE account_id = $1 FOR UPDATE`, account.ID).Scan(&currentHash, &status); err != nil {
+	var lockedUntil *time.Time
+	if err := tx.QueryRow(ctx, `SELECT password_hash, status, locked_until FROM amsonia.accounts WHERE account_id = $1 FOR UPDATE`, account.ID).Scan(&currentHash, &status, &lockedUntil); err != nil {
 		return Session{}, err
 	}
 	if currentHash != verifiedHash || status != "active" {
 		return Session{}, ErrInvalidCredentials
 	}
+	// A failed attempt may have locked the account while password verification
+	// was running. The account lock is the session issuance decision point.
+	now = s.now()
+	if lockedUntil != nil && lockedUntil.After(now) {
+		return Session{}, ErrAccountLocked
+	}
+	expiresAt = now.Add(s.sessions)
 	if _, err := tx.Exec(ctx, `
 		UPDATE amsonia.accounts SET failed_login_count = 0, locked_until = NULL, last_login_at = $1, updated_at = $1
 		WHERE account_id = $2
@@ -612,8 +620,7 @@ func (s *Service) createTenant(ctx context.Context, actor Account, input CreateT
 		Metadata:       amsonia.MutationMetadata{ReasonCode: "tenant_creation", RequestID: mutationMetadata(ctx).RequestID},
 	})
 	if err != nil {
-		_ = s.failCreatedTenant(ctx, actor.ID, tenant.ID)
-		return Tenant{}, err
+		return Tenant{}, s.failCreatedTenant(ctx, actor.ID, tenant.ID, err)
 	}
 	err = s.store.RunTenant(ctx, amsonia.TenantID(tenant.ID), false, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `
@@ -632,8 +639,7 @@ func (s *Service) createTenant(ctx context.Context, actor Account, input CreateT
 		return nil
 	})
 	if err != nil {
-		_ = s.failCreatedTenant(ctx, actor.ID, tenant.ID)
-		return Tenant{}, err
+		return Tenant{}, s.failCreatedTenant(ctx, actor.ID, tenant.ID, err)
 	}
 	tenant.State = "active"
 	return tenant, nil
@@ -716,17 +722,13 @@ func (s *Service) ProvisionMember(ctx context.Context, actor Account, input Prov
 	return account, nil
 }
 
-func (s *Service) failCreatedTenant(ctx context.Context, accountID, tenantID string) error {
-	return s.store.RunActor(ctx, accountID, func(tx pgx.Tx) error {
-		var failed bool
-		if err := tx.QueryRow(ctx, "SELECT amsonia.fail_created_tenant($1)", tenantID).Scan(&failed); err != nil {
-			return err
-		}
-		if !failed {
-			return amsonia.ErrConflict
-		}
-		return nil
-	})
+func (s *Service) failCreatedTenant(ctx context.Context, accountID, tenantID string, cause error) error {
+	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	if err := s.store.FailCreatedTenant(cleanup, accountID, amsonia.TenantID(tenantID)); err != nil {
+		return errors.Join(cause, fmt.Errorf("mark tenant %s failed: %w", tenantID, err))
+	}
+	return cause
 }
 
 func (s *Service) RequireMembership(ctx context.Context, tenantID, accountID string) error {

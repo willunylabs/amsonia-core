@@ -2,10 +2,27 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { App } from "./App";
 import { MembersPage } from "./Members";
-import { api } from "./api";
+import { api, APIError } from "./api";
 const preview = { email: "member@example.test", tenant_name: "Example team", expires_at: "2030-01-01T00:00:00Z" };
 beforeEach(() => { vi.restoreAllMocks(); sessionStorage.clear(); history.replaceState(null, "", "/#reset=first"); });
 afterEach(cleanup);
+it("keeps a sign-in escape after a committed recovery loses its response and retry finds a used link", async () => {
+    vi.spyOn(api, "previewPasswordRecovery").mockResolvedValue(preview);
+    const complete = vi.spyOn(api, "completePasswordRecovery")
+        .mockRejectedValueOnce(new TypeError("connection lost"))
+        .mockRejectedValueOnce(new APIError(404, "not_found", "The requested resource was not found."));
+    render(<App />);
+    await screen.findByText("Example team · member@example.test");
+    expect(screen.getByRole("link", { name: "Back to sign in" })).toHaveProperty("hash", "");
+    for (const label of ["New password", "Confirm new password"]) fireEvent.change(screen.getByLabelText(label, { exact: true }), { target: { value: "new-test-password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Set new password" }));
+    await screen.findByText(/If your password was updated but the response was lost/);
+    fireEvent.click(screen.getByRole("button", { name: "Set new password" }));
+    await screen.findByText("The requested resource was not found.");
+    expect(screen.getByRole("link", { name: "Back to sign in" }).getAttribute("href")).toBe("/");
+    expect(complete).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("heading", { name: "Your password is updated" })).toBeNull();
+});
 it("consumes a recovery link without logging out another browser account", async () => {
     vi.spyOn(api, "previewPasswordRecovery").mockResolvedValue(preview);
     const complete = vi.spyOn(api, "completePasswordRecovery").mockResolvedValue(undefined);

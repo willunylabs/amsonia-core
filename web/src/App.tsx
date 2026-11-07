@@ -12,7 +12,6 @@ import {
   ArrowRight,
   BookOpenCheck,
   Building2,
-  Check,
   ChevronDown,
   ClipboardCheck,
   Fingerprint,
@@ -26,7 +25,6 @@ import {
   Settings,
   ShieldCheck,
   UsersRound,
-  X,
 } from "lucide-react";
 import { api, APIError, subscribeSession } from "./api";
 import { COMMERCIAL_URL, SOURCE_URL } from "./config";
@@ -39,6 +37,7 @@ import type {
 } from "./types";
 
 import { PageHeader } from "./components";
+import { PolicyLab } from "./PolicyLab";
 import { AccountPage, InvitationLanding } from "./Account";
 import { MembersPage } from "./Members";
 import { InvitationsPage } from "./Invitations";
@@ -959,102 +958,6 @@ function PermissionsPage({ items }: { items: Permission[] }) {
             <BookOpenCheck size={19} />
           </article>
         ))}
-      </section>
-    </>
-  );
-}
-
-function PolicyLab({
-  tenant,
-  account,
-  permissions,
-}: {
-  tenant: Tenant;
-  account: Account;
-  permissions: Permission[];
-}) {
-  const [permission, setPermission] = useState(permissions[0]?.key ?? "");
-  const [result, setResult] = useState<{
-    allowed: boolean;
-    reason: string;
-    effective_scope?: string;
-  } | null>(null);
-  const [error, setError] = useState("");
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setError("");
-    setResult(null);
-    try {
-      setResult(
-        await api.check({
-          tenant_id: tenant.id,
-          subject_id: account.id,
-          permission,
-          mode: "tenant_action",
-          resource: { tenant_id: tenant.id },
-        }),
-      );
-    } catch (cause) {
-      setError(friendlyError(cause));
-    }
-  }
-
-  return (
-    <>
-      <PageHeader
-        eyebrow="Explainable decisions"
-        title="Policy lab"
-        detail="Ask the live authorization kernel one exact, tenant-scoped question."
-      />
-      <section className="lab-layout">
-        <form className="paper-card lab-form" onSubmit={submit}>
-          <label>
-            Subject
-            <input value={account.id} disabled />
-          </label>
-          <label>
-            Permission
-            <select
-              value={permission}
-              onChange={(event) => setPermission(event.target.value)}
-            >
-              {permissions.map((item) => (
-                <option key={item.key}>{item.key}</option>
-              ))}
-            </select>
-          </label>
-          <button className="primary-button" type="submit">
-            <Fingerprint size={17} />
-            Evaluate policy
-          </button>
-          {error ? <p className="form-error">{error}</p> : null}
-        </form>
-        <article
-          className={result?.allowed ? "decision-card allow" : "decision-card"}
-        >
-          <span className="eyebrow">Decision</span>
-          {result ? (
-            <>
-              <div className="decision-symbol">
-                {result.allowed ? <Check /> : <X />}
-              </div>
-              <h2>{result.allowed ? "Allowed" : "Denied"}</h2>
-              <p>{result.reason.replaceAll("_", " ")}</p>
-              <code>{result.effective_scope || "no effective scope"}</code>
-            </>
-          ) : (
-            <>
-              <div className="decision-symbol neutral">
-                <Fingerprint />
-              </div>
-              <h2>Awaiting a question</h2>
-              <p>
-                The result will include a stable reason and effective scope.
-              </p>
-            </>
-          )}
-        </article>
       </section>
     </>
   );

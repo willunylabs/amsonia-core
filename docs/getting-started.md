@@ -153,8 +153,20 @@ and selected ID. The organization name setting affects creation only.
 | `AMSONIA_HTTP_ADDR` | Optional | API listen address, default `:8080` |
 | `VITE_API_PROXY_TARGET` | Web development | Vite proxy target, default `http://127.0.0.1:8080` |
 | `VITE_API_URL` | Web build | Optional same-origin API path prefix |
+| `AMSONIA_API_PREFIX` | API behind a prefixed proxy | Same external prefix as `VITE_API_URL`, default empty; controls refresh-cookie Path |
 
 See [.env.example](../.env.example) for safe placeholders.
+
+For a source Compose build with an API prefix, set `VITE_API_URL=/backend`
+and rebuild the web image. Compose passes the same value to the API; the web
+proxy strips `/backend` before forwarding `/api/` and the API scopes its
+HttpOnly refresh cookie to `/backend/api/v1/auth`. A separately managed proxy
+must perform the same strip and forward the trusted HTTPS scheme, and the API
+process must set `AMSONIA_API_PREFIX=/backend`. Prefixes contain only ASCII
+letters, digits, `-._~` and slash-separated segments, without dot segments or
+a trailing slash. This is an API prefix, not a mount path for the whole web app.
+Prebuilt preview archives use the empty prefix; changing their `.env` cannot
+rebuild the static frontend. Keep their default or build from source.
 
 ## PostgreSQL integration checks
 

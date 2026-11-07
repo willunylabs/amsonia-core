@@ -181,6 +181,7 @@ code { font-family: var(--mono); font-size: 11px; }
 .decision-symbol.neutral { color: var(--muted); }
 .decision-card h2 { margin: 0 0 8px; font-size: 30px; letter-spacing: -.04em; }
 .decision-card p { color: var(--muted); text-transform: capitalize; }
+.decision-card code { text-transform: none; overflow-wrap: anywhere; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 20; padding: 20px; display: grid; place-items: center; background: rgba(28,41,39,.58); backdrop-filter: blur(4px); }
 .modal { width: min(510px,100%); padding: 27px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: var(--shadow-sm); }
 .modal > header { display: flex; justify-content: space-between; align-items: start; }

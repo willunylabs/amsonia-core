@@ -256,9 +256,8 @@ func (s *Service) ManageMember(ctx context.Context, tenant, actor, account, stat
 			return accountNotFound(err)
 		}
 		if remove || status == "suspended" {
-			var hasAdmin bool
-			permissions := administratorPermissions()
-			if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT s.subject_id FROM amsonia.subject_roles s JOIN amsonia.roles r USING(tenant_id,role_id) JOIN amsonia.role_permission_grants g USING(tenant_id,role_id) JOIN amsonia.tenant_memberships m ON m.tenant_id=s.tenant_id AND m.account_id=s.subject_id WHERE s.tenant_id=$1 AND s.subject_id<>$2 AND NOT r.deleted AND m.status='active' AND g.scope='tenant' AND g.permission_key=ANY($3::text[]) GROUP BY s.subject_id HAVING count(DISTINCT g.permission_key)=$4)`, tenant, account, permissions, len(permissions)).Scan(&hasAdmin); err != nil {
+			hasAdmin, err := hasActiveAdministrator(ctx, tx, amsonia.TenantID(tenant), account)
+			if err != nil {
 				return err
 			}
 			if !hasAdmin {

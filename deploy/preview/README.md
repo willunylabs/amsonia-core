@@ -36,6 +36,8 @@ Load the new images and run the new bundle's `up` command above. Migration
 and role provisioning run before the API starts. Do not bootstrap again.
 Upgrading from preview.3 to preview.4 applies migration 11 and grants the API
 access to member recovery records. Existing accounts, roles and data are retained.
+Preview.5 and preview.6 also use schema 11; upgrading from preview.4 or later
+does not add a migration. Prebuilt web images use an empty API path prefix.
 This procedure assumes the new bundle uses a compatible PostgreSQL major
 version; a major upgrade requires a separate database migration.
 
