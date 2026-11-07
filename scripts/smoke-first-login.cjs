@@ -66,8 +66,8 @@ async function main() {
           await page.getByRole("button", {name: "Search", exact: true}).click();
           await page.getByRole("alert").filter({hasText: "Use at most 128 characters"}).waitFor();
           await page.getByRole("button", {name: "Policy lab", exact: true}).click();
-          await page.getByLabel("Permission", {exact: true}).locator("option").nth(1).waitFor({state: "attached"});
-          const options = await page.getByLabel("Permission", {exact: true}).locator("option").evaluateAll(items => items.map(item => item.value));
+          await page.getByRole("combobox", {name: "Permission", exact: true}).locator("option").nth(1).waitFor({state: "attached"});
+          const options = await page.getByRole("combobox", {name: "Permission", exact: true}).locator("option").evaluateAll(items => items.map(item => item.value));
           assert.ok(options.length >= 2);
           let firstRoute;
           let firstHandled = false;
@@ -83,7 +83,7 @@ async function main() {
           try {
             await page.getByRole("button", {name: "Evaluate policy", exact: true}).click();
             await seen;
-            await page.getByLabel("Permission", {exact: true}).selectOption(options[1]);
+            await page.getByRole("combobox", {name: "Permission", exact: true}).selectOption(options[1]);
             await page.getByRole("button", {name: "Evaluate policy", exact: true}).click();
             await page.getByRole("heading", {name: "Denied", exact: true}).waitFor();
             const late = page.waitForResponse(response => new URL(response.url()).pathname.endsWith("/authorization/check"));
