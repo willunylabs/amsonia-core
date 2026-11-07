@@ -66,15 +66,15 @@ async function main() {
           await page.getByRole("button", {name: "Search", exact: true}).click();
           await page.getByRole("alert").filter({hasText: "Use at most 128 characters"}).waitFor();
           await page.getByRole("button", {name: "Policy lab", exact: true}).click();
-          let releaseFirst;
+          let firstRoute;
+          let firstHandled = false;
           let firstSeen;
           const seen = new Promise(resolve => { firstSeen = resolve; });
-          const hold = new Promise(resolve => { releaseFirst = resolve; });
           let checks = 0;
-          const route = async request => {
-            const index = ++checks;
-            if (index === 1) { firstSeen(); await hold; }
-            await request.fulfill({status: 200, contentType: "application/json", body: JSON.stringify(index === 1 ? {allowed: true, reason: "granted", effective_scope: "tenant"} : {allowed: false, reason: "not_granted"})});
+          const route = async intercepted => {
+            checks++;
+            if (!firstRoute) { firstRoute = intercepted; firstSeen(); return; }
+            await intercepted.fulfill({status: 200, contentType: "application/json", body: JSON.stringify({allowed: false, reason: "not_granted"})});
           };
           await page.route("**/api/v1/authorization/check", route);
           try {
@@ -85,15 +85,17 @@ async function main() {
             await page.getByRole("button", {name: "Evaluate policy", exact: true}).click();
             await page.getByRole("heading", {name: "Denied", exact: true}).waitFor();
             const late = page.waitForResponse(response => new URL(response.url()).pathname.endsWith("/authorization/check"));
-            releaseFirst();
+            firstHandled = true;
+            await firstRoute.fulfill({status: 200, contentType: "application/json", body: JSON.stringify({allowed: true, reason: "granted", effective_scope: "tenant"})});
             await late;
             await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
             await page.getByRole("heading", {name: "Denied", exact: true}).waitFor();
             assert.equal(await page.locator(".decision-card code").first().textContent(), options[1]);
+            assert.equal(checks, 2);
             await page.screenshot({path: path.join(screenshots, `policy-lab-${name}.png`)});
           } finally {
-            releaseFirst();
-            await page.unroute("**/api/v1/authorization/check", route);
+            if (firstRoute && !firstHandled) await firstRoute.abort();
+            await page.unrouteAll({behavior: "wait"});
           }
         }
         if (!historical) {

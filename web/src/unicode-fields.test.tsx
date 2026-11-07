@@ -41,7 +41,7 @@ it.each(["🌿", "e\u0301"])("uses code points for directory searches with %s", 
 it("applies the same 128-code-point boundary to audit queries",async () => {
   const load=vi.spyOn(api,"auditPage").mockResolvedValue({items:[]});
   render(<AuditWorkspace tenant="tenant" allowed />);
-  const input=screen.getByLabelText("Search audit");
+  const input=await screen.findByLabelText("Search audit");
   expect(input.getAttribute("maxlength")).toBeNull();
   fireEvent.change(input,{target:{value:"🌿".repeat(128)}});
   fireEvent.submit(input.closest("form")!);
