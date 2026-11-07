@@ -3,6 +3,26 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
+async function holdRequest(page, endpoint, trigger) {
+  let receive;
+  const intercepted = new Promise(resolve => { receive = resolve; });
+  await page.route(endpoint, receive, { times: 1 });
+  const deadline = AbortSignal.timeout(15000);
+  try {
+    const [route] = await Promise.all([
+      Promise.race([
+        intercepted,
+        new Promise((_, reject) => deadline.addEventListener("abort", () => reject(deadline.reason), { once: true })),
+      ]),
+      trigger(),
+    ]);
+    return route;
+  } catch (error) {
+    await page.unroute(endpoint, receive);
+    throw error;
+  }
+}
+
 async function checkPasswordCookieOrdering(memberPage, context, request, url, email, oldPassword) {
   const endpoint = "**/api/v1/auth/password";
   const nextPassword = "replacement-after-password-change";
@@ -19,25 +39,15 @@ async function checkPasswordCookieOrdering(memberPage, context, request, url, em
   const transport = await request.newContext({ timeout: 15000 });
   const oldAccess = await memberPage.evaluate(() => sessionStorage.getItem("amsonia.core.access.v1"));
   let held;
-  let receive;
-  const intercepted = new Promise(resolve => { receive = resolve; });
   let delivered = false;
-  await memberPage.route(endpoint, route => { held = route; receive(route); }, { times: 1 });
   try {
     await memberPage.getByRole("button", { name: "Account settings", exact: true }).click();
     await memberPage.getByRole("link", { name: "Password", exact: true }).click();
     await memberPage.getByLabel("Current password", { exact: true }).fill(oldPassword);
     await memberPage.getByLabel("New password", { exact: true }).fill(nextPassword);
     await memberPage.getByLabel("Confirm new password", { exact: true }).fill(nextPassword);
-    await Promise.all([
-      memberPage.waitForRequest(url + "/api/v1/auth/password"),
-      memberPage.getByRole("button", { name: "Change password and sign out", exact: true }).click(),
-    ]);
-    const deadline = AbortSignal.timeout(5000);
-    await Promise.race([
-      intercepted,
-      new Promise((_, reject) => deadline.addEventListener("abort", () => reject(deadline.reason), { once: true })),
-    ]);
+    held = await holdRequest(memberPage, endpoint, () =>
+      memberPage.getByRole("button", { name: "Change password and sign out", exact: true }).click());
     const response = await transport.fetch(held.request());
     assert.equal(response.status(), 204);
     assert.match(response.headers()["set-cookie"], /Max-Age=0/);
@@ -66,7 +76,6 @@ async function checkPasswordCookieOrdering(memberPage, context, request, url, em
     await restored.getByRole("heading", { name: "Organization overview", exact: true }).waitFor();
   } finally {
     if (held && !delivered) await held.abort();
-    await memberPage.unroute(endpoint);
     await transport.dispose();
   }
 }
@@ -178,21 +187,14 @@ async function main() {
           await page.getByLabel("Email", {exact: true}).fill(memberEmail);
           const inviteButton = page.getByRole("button", {name: "Create invitation", exact: true});
           if (edgeCases) {
-            let release;
-            const gate = new Promise(resolve => { release = resolve; });
             const endpoint = "**/api/v1/tenants/*/invitations";
-            const pause = async route => { await gate; await route.continue(); };
-            await page.route(endpoint, pause, { times: 1 });
+            const held = await holdRequest(page, endpoint, () => inviteButton.click());
             try {
-              const [sent] = await Promise.all([
-                page.waitForRequest(req => req.method() === "POST" && new URL(req.url()).pathname.endsWith("/invitations")),
-                inviteButton.click(),
-              ]);
-              assert.equal(sent.postDataJSON().email, memberEmail);
+              assert.equal(held.request().method(), "POST");
+              assert.equal(held.request().postDataJSON().email, memberEmail);
               assert.equal(await page.getByLabel("Email", { exact: true }).isDisabled(), true);
             } finally {
-              release();
-              await page.unroute(endpoint, pause);
+              await held.continue();
             }
             await page.getByText(`Invitation created for ${memberEmail}.`, { exact: true }).waitFor();
           } else {
