@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import urllib.error
@@ -56,7 +57,28 @@ def main():
     try:
         run(compose + ["up", "-d", "--wait", "--wait-timeout", "180"])
         assert json.loads(call("/readyz"))["status"] == "ready"
-        assert b"Amsonia Core" in call("/")
+        html = call("/")
+        assert b"Amsonia Core" in html
+        if env.get("SMOKE_CONSOLE_CONTRACT", "current") == "current":
+            asset = re.search(rb'src="(/assets/[^" ]+\.js)"', html)
+            assert asset, "Built Console script was not found"
+            for path in ("/", "/account/profile", asset[1].decode(), "/assets/missing-ci.js"):
+                try:
+                    response = urllib.request.urlopen(base_url + path, timeout=5)
+                except urllib.error.HTTPError as error:
+                    assert path == "/assets/missing-ci.js" and error.code == 404
+                    response = error
+                with response:
+                    headers = response.headers
+                    assert headers["X-Content-Type-Options"] == "nosniff", path
+                    assert headers["Referrer-Policy"] == "no-referrer", path
+                    assert headers["X-Frame-Options"] == "DENY", path
+                    assert "frame-ancestors 'none'" in headers["Content-Security-Policy"], path
+                    if path == asset[1].decode():
+                        assert "immutable" in ",".join(headers.get_all("Cache-Control")), path
+                    if path in ("/", "/account/profile"):
+                        assert headers["Cache-Control"] == "no-cache", path
+            print("Installed archive security headers and cache policy passed (HTML, SPA, built asset and 404).")
         email = (b"Administrator email: ", "owner@example.test")
         current_console = env.get("SMOKE_CONSOLE_CONTRACT", "current") in ("current", "published-preview-5")
         original = "🔐" * 128 if current_console else "preview-original-test-password"
