@@ -53,6 +53,7 @@ if (configuredURL.origin !== window.location.origin) {
 }
 const API_BASE = CONFIGURED_API_BASE;
 const TOKEN_KEY = "amsonia.core.access.v1";
+const PASSWORD_PATH = "/api/v1/auth/password";
 let authEpoch = 0;
 let activeAccountID = "";
 let authQueue: Promise<unknown> = Promise.resolve();
@@ -209,8 +210,20 @@ async function request<T>(
   const epoch = authEpoch;
   const token = getToken();
   const accountID = activeAccountID;
+  const send = () => {
+    if (path !== PASSWORD_PATH) return execute<T>(path, init, read);
+    // Lock each attempt separately. A 401 may need to refresh under this lock.
+    return withAuthLock(async () => {
+      if (epoch !== authEpoch || (accountID && accountID !== activeAccountID))
+        throw sessionChanged();
+      const result = await execute<T>(path, init, read);
+      if (epoch !== authEpoch) throw sessionChanged();
+      setToken("");
+      return result;
+    });
+  };
   try {
-    return await execute<T>(path, init, read);
+    return await send();
   } catch (error) {
     const canRefresh =
       error instanceof APIError &&
@@ -231,7 +244,7 @@ async function request<T>(
     if (epoch !== authEpoch || (accountID && accountID !== activeAccountID))
       throw sessionChanged();
     try {
-      return await execute<T>(path, init, read);
+      return await send();
     } catch (retryError) {
       if (retryError instanceof APIError && retryError.status === 401)
         expireSession(epoch);
@@ -276,7 +289,7 @@ export const api = {
       body: JSON.stringify({ display_name }),
     }),
   changePassword: (current_password: string, new_password: string) =>
-    request<void>("/api/v1/auth/password", {
+    request<void>(PASSWORD_PATH, {
       method: "POST",
       body: JSON.stringify({ current_password, new_password }),
     }),
@@ -327,7 +340,7 @@ export const api = {
       `/api/v1/tenants/${encodeURIComponent(tenant)}/invitations${directoryQuery(filter)}`,
     ),
   createInvitation: (tenant: string, email: string) =>
-    request<Invitation & { token: string }>(
+    request<Omit<Invitation, "status"> & { token: string }>(
       `/api/v1/tenants/${encodeURIComponent(tenant)}/invitations`,
       { method: "POST", body: JSON.stringify({ email }) },
     ),

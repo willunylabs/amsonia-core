@@ -11,7 +11,7 @@ import { AccountPage } from "./Account";
 import { MembersPage } from "./Members";
 import { InvitationsPage } from "./Invitations";
 import { RolesPage } from "./Roles";
-import { api, setToken, getToken } from "./api";
+import { api, APIError, setToken, getToken } from "./api";
 import type { RoleDetail } from "./types";
 const role = {
   tenant_id: "tenant",
@@ -156,6 +156,70 @@ it("does not create an invitation when cancelling the full-page form", async () 
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   await screen.findByRole("heading", { name: "Invitations" });
   expect(create).not.toHaveBeenCalled();
+});
+it("freezes the invite email during submission and confirms the issued address", async () => {
+  go("invitations/new");
+  let finish!: (value: Awaited<ReturnType<typeof api.createInvitation>>) => void;
+  const create = vi.spyOn(api, "createInvitation")
+    .mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+  render(<InvitationsPage tenant="tenant" revision={1} capabilities={capabilities} onChanged={changed} />);
+  const email = screen.getByLabelText<HTMLInputElement>("Email");
+  fireEvent.change(email, { target: { value: "ORIGINAL@example.test" } });
+  fireEvent.submit(email.closest("form")!);
+  expect(email.disabled).toBe(true);
+  fireEvent.submit(email.closest("form")!);
+  expect(create).toHaveBeenCalledExactlyOnceWith("tenant", "ORIGINAL@example.test");
+  await act(async () => finish({
+    id: "invite", token: "private", email: "original@example.test",
+    expires_at: "2030-01-01T00:00:00Z", created_at: "2026-01-01T00:00:00Z",
+  }));
+  expect(screen.getByRole("status").textContent).toBe("Invitation created for original@example.test.");
+  expect(screen.getByLabelText<HTMLInputElement>("Invitation link").value).toContain("#invite=private");
+});
+
+it("recovers member assignments after an independent read fails", async () => {
+  go("members/person/roles");
+  vi.spyOn(api, "member").mockResolvedValue({
+    account_id: "person", email: "person@example.test", status: "active",
+    joined_at: "2026-01-01T00:00:00Z",
+  });
+  vi.spyOn(api, "roles").mockResolvedValue({ items: [role], total: 1 });
+  const assignments = vi.spyOn(api, "memberRoles")
+    .mockRejectedValueOnce(new APIError(503, "unavailable", "Assignments temporarily unavailable."))
+    .mockResolvedValueOnce([role.role_id]);
+  render(<MembersPage tenant="tenant" revision={1} capabilities={capabilities} onChanged={changed} />);
+  const retry = await screen.findByRole("button", { name: "Retry assignments" });
+  const checkbox = await screen.findByRole<HTMLInputElement>("checkbox", { name: /Support/ });
+  expect(checkbox.disabled).toBe(true);
+  expect(screen.queryByText("Loading assignments…")).toBeNull();
+  fireEvent.click(retry);
+  await waitFor(() => expect(checkbox.checked && !checkbox.disabled).toBe(true));
+  expect(assignments).toHaveBeenCalledTimes(2);
+});
+
+it("validates role edits by Unicode characters before submitting", async () => {
+  go("roles/support%2F%E4%B8%80/details");
+  vi.spyOn(api, "role").mockResolvedValue(detail);
+  const update = vi.spyOn(api, "updateRole").mockResolvedValue(role);
+  render(<RolesPage tenant="tenant" revision={1} permissions={[]} capabilities={capabilities}
+    onChanged={changed} onCreate={vi.fn()} />);
+  await screen.findByDisplayValue("Support");
+  const name = screen.getByLabelText("Name");
+  const description = screen.getByLabelText("Description");
+  const form = name.closest("form")!;
+  fireEvent.change(name, { target: { value: "🌿".repeat(65) } });
+  fireEvent.submit(form);
+  await screen.findByText(/Enter a role name with 1–64 characters/);
+  fireEvent.change(name, { target: { value: ` ${"🌿".repeat(64)} ` } });
+  fireEvent.change(description, { target: { value: "🔑".repeat(501) } });
+  fireEvent.submit(form);
+  await screen.findByText(/Enter a description with up to 500 characters/);
+  expect(update).not.toHaveBeenCalled();
+  fireEvent.change(description, { target: { value: "🔑".repeat(500) } });
+  fireEvent.submit(form);
+  await waitFor(() => expect(update).toHaveBeenCalledExactlyOnceWith(
+    "tenant", role, "🌿".repeat(64), "🔑".repeat(500),
+  ));
 });
 it("blocks mismatched password confirmation without fetching profile or devices", async () => {
   go("account/password");

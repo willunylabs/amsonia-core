@@ -60,6 +60,7 @@ jobs:
             v0.2.0-preview.2|v0.2.0-preview.3) contract=published-preview-2-3 ;;
             v0.2.0-preview.4) contract=published-preview-4 ;;
             v0.2.0-preview.5) contract=published-preview-5 ;;
+            v0.2.0-preview.6) contract=published-preview-6 ;;
             *) contract=current ;;
           esac
           printf 'RELEASE_TAG=%s\nFROM_TAG=%s\nSMOKE_CONSOLE_CONTRACT=%s\n' \

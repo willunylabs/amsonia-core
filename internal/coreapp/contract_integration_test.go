@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -103,6 +104,29 @@ func TestAuthenticationAPIContract(t *testing.T) {
 	call("GET", base+"/members?q=contract&status=active&limit=1", nil, 200, true)
 	call("GET", base+"/members?limit=0", nil, 400, false)
 	call("PATCH", base+"/settings", map[string]any{"name": "Renamed contract organization", "expected_version": 1}, 200, true)
+	roleName := strings.Repeat("🌿", 64)
+	roleDescription := strings.Repeat("🔑", 500)
+	roleID := strings.Repeat("a", 256)
+	createRole := func(id, name, description string, status int, valid bool) {
+		t.Helper()
+		call("POST", base+"/roles", map[string]any{
+			"id": id, "name": name, "description": description, "permissions": []string{},
+		}, status, valid)
+	}
+	createRole(roleID, roleName, roleDescription, 201, true)
+	createRole("invalid-role", strings.Repeat("a", 65), "", 400, false)
+	createRole("invalid-role", "Name", roleDescription+"a", 400, false)
+	createRole("invalid-role", "Name\x01", "", 400, true)
+	createRole("invalid-role", " \t ", "", 400, true)
+	updateRole := func(name, description string, status int, valid bool) {
+		t.Helper()
+		call("PATCH", base+"/roles/"+roleID, map[string]any{
+			"name": name, "description": description, "expected_version": 1,
+		}, status, valid)
+	}
+	updateRole(roleName+"🌿", "", 400, false)
+	updateRole("Name", strings.Repeat("a", 501), 400, false)
+	updateRole(" "+strings.Repeat("a", 62)+" ", roleDescription, 200, true)
 	call("POST", "/api/v1/tenants", map[string]string{"name": "Additional contract organization"}, 201, true)
 	invitationResponse := call("POST", base+"/invitations", map[string]string{"email": "revoke@example.test"}, 201, true)
 	var invitation CreatedInvitation

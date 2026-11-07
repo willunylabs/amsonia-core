@@ -164,33 +164,37 @@ function InviteForm({
 }) {
   const alive = useAlive();
   const [email, setEmail] = useState("");
-  const [link, setLink] = useState("");
+  const [issued, setIssued] = useState<{ email: string; link: string } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (busy || issued) return;
     setBusy(true);
     setError("");
     try {
       const item = await api.createInvitation(tenant, email);
       if (!alive.current) return;
-      setLink(
-        `${location.origin}${location.pathname}#invite=${encodeURIComponent(item.token)}`,
-      );
+      setIssued({
+        email: item.email,
+        link: `${location.origin}${location.pathname}#invite=${encodeURIComponent(item.token)}`,
+      });
       await onCreated();
     } catch (cause) {
-      setError(friendlyError(cause));
+      if (alive.current) setError(friendlyError(cause));
     } finally {
-      setBusy(false);
+      if (alive.current) setBusy(false);
     }
   }
   async function copy() {
+    if (!issued) return;
+    setError("");
     try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
+      await navigator.clipboard.writeText(issued.link);
+      if (alive.current) setCopied(true);
     } catch {
-      setError("Copy the invitation link from the field below.");
+      if (alive.current) setError("Copy the invitation link from the field below.");
     }
   }
   return (
@@ -201,11 +205,11 @@ function InviteForm({
     >
       <form className="admin-form" onSubmit={submit}>
         <p>Share the link privately. It is shown once; no email is sent.</p>
-        {link ? (
+        {issued ? (
           <>
             <label>
               Invitation link
-              <input readOnly value={link} onFocus={(e) => e.target.select()} />
+              <input readOnly value={issued.link} onFocus={(e) => e.target.select()} />
             </label>
             <button
               type="button"
@@ -214,7 +218,7 @@ function InviteForm({
             >
               {copied ? "Copied" : "Copy invitation link"}
             </button>
-            <p role="status">Invitation created for {email}.</p>
+            <p role="status">Invitation created for {issued.email}.</p>
           </>
         ) : (
           <>
@@ -226,6 +230,7 @@ function InviteForm({
                 maxLength={254}
                 autoFocus
                 value={email}
+                disabled={busy}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
@@ -243,7 +248,7 @@ function InviteForm({
             disabled={busy}
             onClick={onClose}
           >
-            {link ? "Done" : "Cancel"}
+            {issued ? "Done" : "Cancel"}
           </button>
         </div>
       </form>

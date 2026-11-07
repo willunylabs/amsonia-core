@@ -93,3 +93,68 @@ func TestAssignRoleRetriesReportVersionAndRecheckCoverage(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestUnassignRoleChecksVersionWhenProvided(t *testing.T) {
+	store, _, bootstrapper, catalog := setup(t)
+	bootstrapTenant(t, bootstrapper, "tenant-a", "owner", "owner-role")
+	audit := &recordingSecurityAudit{}
+	manager, err := amsonia.NewManager(catalog, store, noMemberships{}, controls, audit, fixedTime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := t.Context()
+	actor := amsonia.Principal{TenantID: "tenant-a", SubjectID: "owner"}
+	if _, _, err := manager.CreateRoleWithPermissions(ctx, actor, meta(), amsonia.CreateRoleWithPermissionsInput{
+		RoleID: "reader", Name: "Reader", Permissions: []amsonia.PermissionKey{permInvoiceRead},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := manager.UpdateRole(ctx, actor, meta(), amsonia.UpdateRoleInput{
+		RoleID: "reader", ExpectedVersion: 1, Name: "Invoice Reader",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	current := amsonia.AssignRoleInput{SubjectID: "alice", RoleID: "reader", ExpectedRoleVersion: 2}
+	assign := func() {
+		t.Helper()
+		if _, err := manager.AssignRole(ctx, actor, meta(), current); err != nil {
+			t.Fatal(err)
+		}
+	}
+	checkConflict := func() {
+		t.Helper()
+		stale := current
+		stale.ExpectedRoleVersion = 1
+		before := len(store.DebugAuditEvents(actor.TenantID))
+		beforeSecurity := len(audit.events)
+		result, err := manager.UnassignRole(ctx, actor, meta(), stale)
+		if !errors.Is(err, amsonia.ErrConflict) || result != (amsonia.MutationResult{}) {
+			t.Fatalf("stale unassignment = %+v, %v; want conflict", result, err)
+		}
+		if len(store.DebugAuditEvents(actor.TenantID)) != before {
+			t.Fatal("stale unassignment committed a mutation audit")
+		}
+		if len(audit.events) != beforeSecurity+1 {
+			t.Fatal("stale unassignment must record one conflict audit")
+		}
+		event := audit.events[beforeSecurity]
+		if event.Operation != "unassign.role" || event.Outcome != amsonia.AuditOutcomeConflict || event.RoleVersion != 1 {
+			t.Fatalf("stale unassignment audit = %+v", event)
+		}
+	}
+	unassign := func(input amsonia.UnassignRoleInput, changed bool) {
+		t.Helper()
+		result, err := manager.UnassignRole(ctx, actor, meta(), input)
+		if want := (amsonia.MutationResult{Changed: changed, RoleVersion: 2}); err != nil || result != want {
+			t.Fatalf("unassignment = %+v, %v; want %+v", result, err, want)
+		}
+	}
+
+	assign()
+	checkConflict()
+	unassign(current, true)
+	checkConflict()
+	unassign(current, false)
+	assign()
+	unassign(amsonia.UnassignRoleInput{SubjectID: current.SubjectID, RoleID: current.RoleID}, true)
+}

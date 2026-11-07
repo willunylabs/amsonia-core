@@ -288,8 +288,6 @@ func (s *Service) issueSession(ctx context.Context, account Account, remoteAddre
 	if err != nil {
 		return Session{}, err
 	}
-	now := s.now()
-	expiresAt := now.Add(s.sessions)
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return Session{}, err
@@ -305,11 +303,11 @@ func (s *Service) issueSession(ctx context.Context, account Account, remoteAddre
 	}
 	// A failed attempt may have locked the account while password verification
 	// was running. The account lock is the session issuance decision point.
-	now = s.now()
+	now := s.now()
 	if lockedUntil != nil && lockedUntil.After(now) {
 		return Session{}, ErrAccountLocked
 	}
-	expiresAt = now.Add(s.sessions)
+	expiresAt := now.Add(s.sessions)
 	if _, err := tx.Exec(ctx, `
 		UPDATE amsonia.accounts SET failed_login_count = 0, locked_until = NULL, last_login_at = $1, updated_at = $1
 		WHERE account_id = $2
@@ -317,15 +315,15 @@ func (s *Service) issueSession(ctx context.Context, account Account, remoteAddre
 		return Session{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO amsonia.access_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, tokenHash(access), account.ID, expiresAt, bounded(remoteAddress, 128), bounded(userAgent, 512), family); err != nil {
+		INSERT INTO amsonia.access_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id, created_at, last_seen_at, session_started_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $7)
+	`, tokenHash(access), account.ID, expiresAt, bounded(remoteAddress, 128), bounded(userAgent, 512), family, now); err != nil {
 		return Session{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO amsonia.refresh_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, tokenHash(refresh), account.ID, now.Add(s.refresh), bounded(remoteAddress, 128), bounded(userAgent, 512), family); err != nil {
+		INSERT INTO amsonia.refresh_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id, created_at, session_started_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+	`, tokenHash(refresh), account.ID, now.Add(s.refresh), bounded(remoteAddress, 128), bounded(userAgent, 512), family, now); err != nil {
 		return Session{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -350,7 +348,6 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 	if err != nil {
 		return Session{}, err
 	}
-	now := s.now()
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
 		return Session{}, err
@@ -375,18 +372,19 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 	var rotatedTo []byte
 	var lastLoginAt *time.Time
 	var family string
+	var startedAt time.Time
 	err = tx.QueryRow(ctx, `
 		SELECT a.account_id, a.email, a.status, a.created_at,
 		       a.last_login_at,
 		       EXISTS (SELECT 1 FROM amsonia.system_administrators sa WHERE sa.account_id = a.account_id),
-		       r.expires_at, r.revoked_at, r.rotated_to_hash, r.session_id
+		       r.expires_at, r.revoked_at, r.rotated_to_hash, r.session_id, r.session_started_at
 		FROM amsonia.refresh_sessions r
 		JOIN amsonia.accounts a ON a.account_id = r.account_id
 		WHERE r.token_hash = $1
 		FOR UPDATE OF r
 	`, tokenHash(input.RefreshToken)).Scan(
 		&account.ID, &account.Email, &accountStatus, &account.CreatedAt, &lastLoginAt,
-		&account.SystemAdmin, &refreshExpires, &revokedAt, &rotatedTo, &family,
+		&account.SystemAdmin, &refreshExpires, &revokedAt, &rotatedTo, &family, &startedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Session{}, ErrSessionInvalid
@@ -400,6 +398,7 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 	if lastLoginAt != nil {
 		account.LastLoginAt = *lastLoginAt
 	}
+	now := s.now()
 	if len(rotatedTo) > 0 {
 		if _, err := tx.Exec(ctx, `UPDATE amsonia.refresh_sessions SET revoked_at = COALESCE(revoked_at, $1) WHERE account_id = $2`, now, account.ID); err != nil {
 			return Session{}, err
@@ -434,15 +433,15 @@ func (s *Service) Refresh(ctx context.Context, input RefreshInput) (Session, err
 	}
 	expiresAt := now.Add(s.sessions)
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO amsonia.access_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, tokenHash(access), account.ID, expiresAt, bounded(input.RemoteAddress, 128), bounded(input.UserAgent, 512), family); err != nil {
+		INSERT INTO amsonia.access_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id, created_at, last_seen_at, session_started_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8)
+	`, tokenHash(access), account.ID, expiresAt, bounded(input.RemoteAddress, 128), bounded(input.UserAgent, 512), family, now, startedAt); err != nil {
 		return Session{}, err
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO amsonia.refresh_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, tokenHash(nextRefresh), account.ID, now.Add(s.refresh), bounded(input.RemoteAddress, 128), bounded(input.UserAgent, 512), family); err != nil {
+		INSERT INTO amsonia.refresh_sessions (token_hash, account_id, expires_at, remote_address, user_agent, session_id, created_at, session_started_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`, tokenHash(nextRefresh), account.ID, now.Add(s.refresh), bounded(input.RemoteAddress, 128), bounded(input.UserAgent, 512), family, now, startedAt); err != nil {
 		return Session{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {

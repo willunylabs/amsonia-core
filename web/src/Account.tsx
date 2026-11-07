@@ -1,7 +1,7 @@
 import { useConsoleRoute, useAlive } from "./routing";
 import { friendlyError } from "./errors";
 import { useEffect, useState, type FormEvent } from "react";
-import { api, setToken } from "./api";
+import { api, APIError } from "./api";
 import { ErrorMessage, PageHeader } from "./components";
 import { DeviceSessions } from "./DeviceSessions";
 import { PageNavigation } from "./navigation";
@@ -186,14 +186,11 @@ function PasswordForm({
     setBusy(true);
     try {
       await api.changePassword(current, next);
-      if (alive.current) {
-        setToken("");
-        onLogout();
-      }
+      if (alive.current) onLogout();
     } catch (e) {
-      setError(friendlyError(e));
+      if (alive.current) setError(friendlyError(e));
     } finally {
-      setBusy(false);
+      if (alive.current) setBusy(false);
     }
   }
   return (
@@ -263,6 +260,7 @@ export function InvitationLanding({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [showSignInHelp, setShowSignInHelp] = useState(false);
   useEffect(() => {
     let active = true;
     api
@@ -271,7 +269,11 @@ export function InvitationLanding({
         if (active) setPreview(value);
       })
       .catch((cause) => {
-        if (active) setError(friendlyError(cause));
+        if (active) {
+          setError(friendlyError(cause));
+          if (cause instanceof APIError && cause.status === 404)
+            setShowSignInHelp(true);
+        }
       });
     return () => {
       active = false;
@@ -286,10 +288,13 @@ export function InvitationLanding({
     }
     setBusy(true);
     setError("");
+    setShowSignInHelp(false);
+    let joined = accepted;
     try {
       if (!accepted) {
         await api.acceptInvitation(token, password);
         if (!alive.current) return;
+        joined = true;
         setAccepted(true);
       }
       const session = await api.login(preview.email, password);
@@ -297,7 +302,11 @@ export function InvitationLanding({
       history.replaceState(null, "", location.pathname + location.search);
       onLogin(session.account);
     } catch (cause) {
-      if (alive.current) setError(friendlyError(cause));
+      if (alive.current) {
+        setError(friendlyError(cause));
+        if (!joined && (!(cause instanceof APIError) || cause.status >= 500 || cause.status === 404))
+          setShowSignInHelp(true);
+      }
     } finally {
       if (alive.current) setBusy(false);
     }
@@ -308,6 +317,13 @@ export function InvitationLanding({
         <span className="eyebrow">Amsonia Core · Invitation</span>
         <h1>{preview ? `Join ${preview.tenant_name}` : "Tenant invitation"}</h1>
         <ErrorMessage message={error} />
+        {showSignInHelp ? (
+          <p>
+            If you already joined, go back to sign in with your password. If
+            you cannot sign in and the link no longer works, contact your
+            administrator.
+          </p>
+        ) : null}
         {preview ? (
           <form className="admin-form" onSubmit={submit}>
             <p>
@@ -331,6 +347,7 @@ export function InvitationLanding({
                 }
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={busy}
                 required
               />
             </label>
@@ -344,7 +361,7 @@ export function InvitationLanding({
         ) : !error ? (
           <p>Loading invitation…</p>
         ) : null}
-        <a href="/">Back to sign in</a>
+        <a href={location.pathname + location.search}>Back to sign in</a>
       </section>
     </main>
   );

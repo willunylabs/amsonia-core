@@ -5,6 +5,7 @@ package coreapp
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
@@ -154,6 +155,7 @@ func TestSignOutOtherDevices(t *testing.T) {
 
 	// Pause on the account lock, then revoke the caller before releasing it.
 	// Authentication must be checked again inside the locked transaction.
+	survivor := login(account.Email)
 	locker, err := owner.Begin(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -162,32 +164,29 @@ func TestSignOutOtherDevices(t *testing.T) {
 	if _, err = locker.Exec(ctx, `SELECT account_id FROM amsonia.accounts WHERE account_id=$1 FOR UPDATE`, account.ID); err != nil {
 		t.Fatal(err)
 	}
-	pendingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	pendingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	done := make(chan error, 1)
-	go func() { done <- s.revokeOtherSessions(pendingCtx, account.ID, current.AccessToken) }()
-	deadline := time.Now().Add(3 * time.Second)
-	for {
-		var blocked bool
-		err := owner.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND wait_event_type='Lock' AND query LIKE 'SELECT account_id FROM amsonia.accounts WHERE account_id=$1 AND status=%')`).Scan(&blocked)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if blocked {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("action did not reach account lock")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/sessions/revoke-others", strings.NewReader("{}")).WithContext(pendingCtx)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+current.AccessToken)
+	done := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		res := httptest.NewRecorder()
+		handler.ServeHTTP(res, req)
+		done <- res
+	}()
+	waitForAccountLock(t, owner, "SELECT account_id FROM amsonia.accounts WHERE account_id=$1 AND status=%")
 	if _, err = locker.Exec(ctx, `UPDATE amsonia.access_sessions SET revoked_at=now() WHERE token_hash=$1`, tokenHash(current.AccessToken)); err != nil {
 		t.Fatal(err)
 	}
 	if err = locker.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if err := <-done; !errors.Is(err, ErrSessionInvalid) {
-		t.Fatalf("stale authentication accepted after lock: %v", err)
+	stale := <-done
+	if stale.Code != http.StatusUnauthorized || !strings.Contains(stale.Body.String(), `"code":"session_invalid"`) || stale.Header().Get("Set-Cookie") != "" {
+		t.Fatalf("stale authentication: %d %s", stale.Code, stale.Body.String())
+	}
+	if _, err := s.Authenticate(ctx, survivor.AccessToken); err != nil {
+		t.Fatal("stale caller affected another device", err)
 	}
 }

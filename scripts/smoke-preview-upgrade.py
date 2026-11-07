@@ -17,7 +17,8 @@ PASSWORD = "preview-upgrade-test-password"
 ORG_NAME = "My organization after upgrade"
 BASE_URL = "http://127.0.0.1:8080"
 
-# Ignore only the bookkeeping timestamp that role provisioning refreshes.
+# Ignore the bookkeeping timestamp that role provisioning refreshes.
+# For the upgrade to schema 12, compare the previous session columns separately.
 # Compare hashes rather than putting credentials or application data in CI logs.
 SNAPSHOT = r"""
 SELECT format(
@@ -25,12 +26,29 @@ SELECT format(
         (SELECT (%s)::text AS row_data FROM %I.%I t) rows',
     schemaname || '.' || tablename,
     CASE WHEN schemaname = 'amsonia' AND tablename = 'runtime_secrets'
-         THEN 'to_jsonb(t) - ''rotated_at''' ELSE 'to_jsonb(t)' END,
+         THEN 'to_jsonb(t) - ''rotated_at'''
+         WHEN :omit_session_start AND schemaname = 'amsonia'
+             AND tablename IN ('access_sessions', 'refresh_sessions')
+         THEN 'to_jsonb(t) - ''session_started_at'''
+         ELSE 'to_jsonb(t)' END,
     schemaname, tablename)
 FROM pg_tables
 WHERE schemaname IN ('amsonia', 'public')
 ORDER BY schemaname, tablename
 \gexec
+"""
+
+SESSION_BACKFILL = """
+WITH sessions AS (
+    SELECT account_id, session_id, created_at, session_started_at FROM amsonia.access_sessions
+    UNION ALL
+    SELECT account_id, session_id, created_at, session_started_at FROM amsonia.refresh_sessions
+)
+SELECT count(*) > 0 AND bool_and(session_started_at IS NOT DISTINCT FROM first_created_at)
+FROM (
+    SELECT session_started_at, min(created_at) OVER (PARTITION BY account_id, session_id) AS first_created_at
+    FROM sessions
+) families;
 """
 
 
@@ -83,8 +101,9 @@ def main():
     def pg(bundle, command, *options, **kwargs):
         return compose(bundle, "exec", "-T", "postgres", command, "-U", "amsonia_owner", *options, **kwargs)
 
-    def snapshot(bundle, database="amsonia_core"):
+    def snapshot(bundle, database="amsonia_core", *, omit_session_start=False):
         result = pg(bundle, "psql", "-XAt", "-v", "ON_ERROR_STOP=1", "-d", database,
+                    "-v", f"omit_session_start={'true' if omit_session_start else 'false'}",
                     input=SNAPSHOT, text=True, capture_output=True)
         return dict(line.split("|", 1) for line in result.stdout.splitlines())
 
@@ -142,7 +161,13 @@ def main():
         assert request("/readyz")["status"] == "ready"
         after = snapshot(args.new)
         new_migrations = migration_history(args.new)
-        verify_upgrade(before, after, old_migrations, new_migrations)
+        if len(old_migrations) < 12 <= len(new_migrations):
+            verify_upgrade(before, snapshot(args.new, omit_session_start=True), old_migrations, new_migrations)
+            result = pg(args.new, "psql", "-XAt", "-v", "ON_ERROR_STOP=1", "-d", "amsonia_core",
+                        input=SESSION_BACKFILL, text=True, capture_output=True)
+            assert result.stdout.strip() == "t", "Session start backfill differs from earliest retained family rows"
+        else:
+            verify_upgrade(before, after, old_migrations, new_migrations)
         print(f"In-place upgrade preserved {len(before) - 1} data tables and prior migration history; "
               f"schema {len(old_migrations)} → {len(new_migrations)}.", flush=True)
         if "amsonia.member_password_recoveries" in after:

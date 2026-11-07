@@ -1,5 +1,6 @@
 import { useConsoleRoute, useAlive } from "./routing";
 import { friendlyError } from "./errors";
+import { roleDetailsError, trimRoleName } from "./roleFields";
 import { useEffect, useState, type FormEvent } from "react";
 import { ShieldCheck } from "lucide-react";
 import { api } from "./api";
@@ -190,10 +191,17 @@ function RoleWorkspace({
   }
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (detail)
-      await change(() =>
-        api.updateRole(tenant, detail.role, name, description),
-      );
+    if (!detail || busy) return;
+    const roleName = trimRoleName(name);
+    const validation = roleDetailsError(roleName, description);
+    if (validation) {
+      setNotice("");
+      setError(validation);
+      return;
+    }
+    await change(() =>
+      api.updateRole(tenant, detail.role, roleName, description),
+    );
   }
   async function grant(event: FormEvent) {
     event.preventDefault();
@@ -309,21 +317,24 @@ function RoleWorkspace({
                   Name
                   <input
                     value={name}
-                    maxLength={128}
                     disabled={!manage || busy}
                     onChange={(e) => setName(e.target.value)}
+                    aria-describedby="edit-role-name-limit"
                     required
                   />
                 </label>
+                <small id="edit-role-name-limit">Up to 64 characters.</small>
                 <label>
                   Description
                   <textarea
                     value={description}
                     disabled={!manage || busy}
                     onChange={(e) => setDescription(e.target.value)}
+                    aria-describedby="edit-role-description-limit"
                     rows={2}
                   />
                 </label>
+                <small id="edit-role-description-limit">Up to 500 characters.</small>
                 {manage ? (
                   <div className="form-actions">
                     <a className="secondary-button" href="#/roles">

@@ -121,6 +121,7 @@ function MemberDirectory({ tenant, revision, capabilities }: Props) {
 function MemberWorkspace({
   tenant,
   id,
+  revision,
   systemAdmin,
   actorID,
   capabilities,
@@ -236,6 +237,7 @@ function MemberWorkspace({
           <MemberRoles
             tenant={tenant}
             member={member}
+            revision={revision}
             canAssign={!!capabilities.permissions["iam:role:assign"]}
             onChanged={onChanged}
           />
@@ -331,40 +333,45 @@ function MemberWorkspace({
 function MemberRoles({
   tenant,
   member,
+  revision,
   canAssign,
   onChanged,
 }: {
   tenant: string;
   member: Member;
+  revision: number;
   canAssign: boolean;
   onChanged: () => Promise<void>;
 }) {
-  const directory = useDirectory(api.roles, tenant, true);
+  const directory = useDirectory(api.roles, tenant, true, revision);
+  const alive = useAlive();
   const [notice, setNotice] = useState("");
-  const [ids, setIDs] = useState<string[]>([]);
-  const [ready, setReady] = useState(false);
+  const [ids, setIDs] = useState<string[]>();
+  const [assignmentError, setAssignmentError] = useState("");
+  const [attempt, setAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
     let active = true;
+    setIDs(undefined);
+    setAssignmentError("");
     api
       .memberRoles(tenant, member.account_id)
       .then((value) => {
-        if (active) {
-          setIDs(value);
-          setReady(true);
-        }
+        if (active) setIDs(value);
       })
       .catch((cause) => {
-        if (active) setError(friendlyError(cause));
+        if (active) setAssignmentError(friendlyError(cause));
       });
     return () => {
       active = false;
     };
-  }, [tenant, member.account_id]);
+  }, [tenant, member.account_id, revision, attempt]);
   async function toggle(role: Role) {
+    if (!ids || busy || !canAssign) return;
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       await api.bindRole(
         tenant,
@@ -372,20 +379,20 @@ function MemberRoles({
         role,
         !ids.includes(role.role_id),
       );
-      setIDs(await api.memberRoles(tenant, member.account_id));
+      if (!alive.current) return;
       setNotice("Role assignment saved.");
-      directory.retry();
       await onChanged();
     } catch (cause) {
-      setError(friendlyError(cause));
-      directory.retry();
-      try {
-        setIDs(await api.memberRoles(tenant, member.account_id));
-      } catch {
-        /* Preserve the original mutation error for a deliberate retry. */
+      if (alive.current) {
+        setError(friendlyError(cause));
+        directory.retry();
       }
     } finally {
-      setBusy(false);
+      if (alive.current) {
+        setIDs(undefined);
+        setAttempt((value) => value + 1);
+        setBusy(false);
+      }
     }
   }
   return (
@@ -393,11 +400,23 @@ function MemberRoles({
       <div className="admin-form">
         <p className="break-text">{member.email}</p>
         <ErrorMessage message={error} />
-        <p>
-          {ready
-            ? `${ids.length} assigned roles across all pages.`
-            : "Loading assignments…"}
-        </p>
+        {assignmentError ? (
+          <>
+            <ErrorMessage message={assignmentError} />
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => setAttempt((value) => value + 1)}
+            >
+              Retry assignments
+            </button>
+          </>
+        ) : ids ? (
+          <p>{ids.length} assigned roles across all pages.</p>
+        ) : (
+          <p role="status">Loading assignments…</p>
+        )}
         {notice ? <p role="status">{notice}</p> : null}
         {busy ? <p role="status">Saving role assignment…</p> : null}
         <DirectorySearch
@@ -413,9 +432,9 @@ function MemberRoles({
           <label className="permission-choice" key={role.role_id}>
             <input
               type="checkbox"
-              checked={ids.includes(role.role_id)}
+              checked={ids?.includes(role.role_id) ?? false}
               disabled={
-                !ready ||
+                !ids ||
                 busy ||
                 !canAssign ||
                 (member.status !== "active" && !ids.includes(role.role_id))

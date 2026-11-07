@@ -1,5 +1,6 @@
 import { useConsoleRoute, useAlive } from "./routing";
 import { friendlyError } from "./errors";
+import { roleDetailsError, trimRoleName, validRoleID } from "./roleFields";
 import {
   FormEvent,
   useCallback,
@@ -1051,12 +1052,21 @@ function CreateRoleForm({
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (busy) return;
+    const roleName = trimRoleName(name);
+    const validation = !validRoleID(id)
+      ? "Enter a role ID with up to 256 UTF-8 bytes and no control characters."
+      : roleDetailsError(roleName, description);
+    if (validation) {
+      setError(validation);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       await api.createRole(tenant.id, {
         id,
-        name,
+        name: roleName,
         description,
         permissions: selected,
       });
@@ -1094,18 +1104,21 @@ function CreateRoleForm({
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Support specialist"
-            maxLength={128}
+            aria-describedby="create-role-name-limit"
             required
           />
         </label>
+        <small id="create-role-name-limit">Up to 64 characters.</small>
         <label>
           Description
           <textarea
             value={description}
             onChange={(event) => setDescription(event.target.value)}
+            aria-describedby="create-role-description-limit"
             rows={3}
           />
         </label>
+        <small id="create-role-description-limit">Up to 500 characters.</small>
         <fieldset className="permission-picker">
           <legend>Initial permissions</legend>
           {permissions.map((permission) => (
