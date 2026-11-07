@@ -180,6 +180,11 @@ async function main() {
               await page.getByLabel("Your administrator password", {exact: true}).fill(process.env.SMOKE_LOGIN_PASSWORD);
               await page.getByRole("button", {name: "Create recovery link", exact: true}).click();
               const replacementLink = await page.getByLabel("Private recovery link", {exact: true}).inputValue();
+              // As with the first link, use a fresh tab without the access
+              // credential that this second recovery is about to revoke.
+              await memberPage.close();
+              memberPage = await memberContext.newPage();
+              observeMemberPage(memberPage);
               await memberPage.goto(replacementLink);
               await memberPage.getByRole("heading", {name: "Choose a new password", exact: true}).waitFor();
             }
