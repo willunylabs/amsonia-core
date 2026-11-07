@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0-preview.7
 
 - Order password changes with sign-in and session rotation across Console tabs.
   Return 401 when an authenticated device is revoked while its request waits.
@@ -11,9 +11,12 @@
   description limits. Existing role descriptions stay in the database.
 - Preserve device sign-in times across token rotation and cleanup, and show
   browser and address metadata from the same activity record.
+- Check a supplied role version when unassigning roles through the Go SDK.
+  Existing callers can omit the version.
 
 Migration 12 backfills the start of each device session family from its earliest
-retained token. Upgrade the API, CLI and Console together.
+retained token. Upgrade the API, CLI and Console together using the
+[archive install guide](deploy/preview/README.md).
 
 ## 0.2.0-preview.6
 

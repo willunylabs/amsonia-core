@@ -66,7 +66,8 @@ type AssignRoleInput struct {
 	ExpectedRoleVersion int64
 }
 
-// UnassignRoleInput removes a subject-role binding.
+// UnassignRoleInput removes a subject-role binding. A zero ExpectedRoleVersion
+// omits the version check for existing callers.
 type UnassignRoleInput = AssignRoleInput
 
 // BootstrapInput is the tenant-provisioning payload. Grants must all
@@ -696,6 +697,9 @@ func (m *Manager) UnassignRole(ctx context.Context, actor Principal, meta Mutati
 		if role.Deleted {
 			return ErrNotFound
 		}
+		if input.ExpectedRoleVersion != 0 && role.Version != input.ExpectedRoleVersion {
+			return ErrConflict
+		}
 		if err := m.requireRoleCoverage(ctx, tx, actor, role.RoleID); err != nil {
 			return err
 		}
@@ -736,7 +740,7 @@ func (m *Manager) UnassignRole(ctx context.Context, actor Principal, meta Mutati
 		return nil
 	})
 	if err != nil {
-		m.recordDenied(ctx, actor, meta, "unassign.role", "subject_role", string(input.SubjectID), 0, err)
+		m.recordDenied(ctx, actor, meta, "unassign.role", "subject_role", string(input.SubjectID), input.ExpectedRoleVersion, err)
 		return MutationResult{}, err
 	}
 	return result, nil
