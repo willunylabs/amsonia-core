@@ -13,7 +13,8 @@ export function PolicyLab({ tenant, account, permissions }: {
 }) {
   const alive = useAlive();
   const serial = useRef(0);
-  const [permission, setPermission] = useState(permissions[0]?.key ?? "");
+  const [selection, setPermission] = useState("");
+  const permission = permissions.find(item => item.key === selection)?.key ?? permissions[0]?.key ?? "";
   const question = JSON.stringify([tenant.id, account.id, permission]);
   const [pending, setPending] = useState<string | null>(null);
   const [answer, setAnswer] = useState<{ question: string; value: Awaited<ReturnType<typeof api.check>> } | null>(null);

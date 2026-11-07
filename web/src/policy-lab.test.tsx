@@ -61,3 +61,15 @@ it("does not display a prior account's decision in a new tenant or account", asy
   expect(screen.queryByRole("heading", { name: "Allowed" })).toBeNull();
   expect(screen.getByRole("button", { name: "Evaluate policy" })).toHaveProperty("disabled", false);
 });
+
+it("accepts a catalog loaded after mount and clears decisions when the selected permission disappears",async () => {
+  vi.spyOn(api,"check").mockResolvedValue(allowed);
+  const { rerender }=render(<PolicyLab {...props} permissions={[]} />);
+  expect(screen.getByRole("button",{name:"Evaluate policy"})).toHaveProperty("disabled",true);
+  rerender(<PolicyLab {...props} />);
+  fireEvent.click(screen.getByRole("button",{name:"Evaluate policy"}));
+  await screen.findByRole("heading",{name:"Allowed"});
+  rerender(<PolicyLab {...props} permissions={[props.permissions[1]]} />);
+  expect(screen.queryByRole("heading",{name:"Allowed"})).toBeNull();
+  expect(screen.getByLabelText("Permission")).toHaveProperty("value",props.permissions[1].key);
+});

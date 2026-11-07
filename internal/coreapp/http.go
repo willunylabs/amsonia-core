@@ -200,7 +200,7 @@ func (api *API) auth(next http.Handler) http.Handler {
 		account, err := api.service.Authenticate(request.Context(), token)
 		if err != nil {
 			if !errors.Is(err, ErrSessionInvalid) {
-				api.logger.Error("session authentication failed", "error", err)
+				api.logger.Error("session authentication failed", "request_id", mutationMetadata(request.Context()).RequestID, "error", err)
 				writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
 				return
 			}
@@ -226,7 +226,7 @@ func (api *API) tenant(next http.Handler) http.Handler {
 				writeError(response, http.StatusNotFound, "not_found", "The requested tenant was not found.")
 				return
 			}
-			api.logger.Error("tenant membership check failed", "tenant", tenantID, "error", err)
+			api.logger.Error("tenant membership check failed", "request_id", mutationMetadata(request.Context()).RequestID, "tenant", tenantID, "error", err)
 			writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
 			return
 		}
@@ -343,7 +343,7 @@ func (api *API) login(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 		if !errors.Is(err, ErrInvalidCredentials) {
-			api.logger.Error("login failed", "error", err)
+			api.logger.Error("login failed", "request_id", mutationMetadata(request.Context()).RequestID, "error", err)
 			writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
 			return
 		}
@@ -382,7 +382,7 @@ func (api *API) rotateSession(response http.ResponseWriter, request *http.Reques
 	})
 	if err != nil {
 		if !errors.Is(err, ErrSessionInvalid) {
-			api.logger.Error("session refresh failed", "error", err)
+			api.logger.Error("session refresh failed", "request_id", mutationMetadata(request.Context()).RequestID, "error", err)
 			writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
 			return
 		}
@@ -510,7 +510,7 @@ func (api *API) capabilities(response http.ResponseWriter, request *http.Request
 	for _, permission := range permissions {
 		allowed, err := api.permissionAllowed(request, permission)
 		if err != nil {
-			api.logger.Error("capability check failed", "tenant", request.PathValue("tenant_id"), "permission", permission, "error", err)
+			api.logger.Error("capability check failed", "request_id", mutationMetadata(request.Context()).RequestID, "tenant", request.PathValue("tenant_id"), "permission", permission, "error", err)
 			writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
 			return
 		}
@@ -549,7 +549,7 @@ func (api *API) createRole(response http.ResponseWriter, request *http.Request) 
 func (api *API) requirePermission(response http.ResponseWriter, request *http.Request, permission amsonia.PermissionKey) bool {
 	allowed, err := api.permissionAllowed(request, permission)
 	if err != nil {
-		api.logger.Error("permission check failed", "tenant", request.PathValue("tenant_id"), "permission", permission, "error", err)
+		api.logger.Error("permission check failed", "request_id", mutationMetadata(request.Context()).RequestID, "tenant", request.PathValue("tenant_id"), "permission", permission, "error", err)
 		writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
 		return false
 	}
@@ -597,7 +597,7 @@ func (api *API) checkAuthorization(response http.ResponseWriter, request *http.R
 			writeError(response, http.StatusNotFound, "not_found", "The requested tenant was not found.")
 			return
 		}
-		api.logger.Error("authorization membership check failed", "tenant", input.TenantID, "error", err)
+		api.logger.Error("authorization membership check failed", "request_id", mutationMetadata(request.Context()).RequestID, "tenant", input.TenantID, "error", err)
 		writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
 		return
 	}
