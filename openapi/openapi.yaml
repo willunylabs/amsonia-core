@@ -110,7 +110,11 @@ paths:
       summary: Rotate a session
       tags: [Authentication]
       operationId: refreshSession
-      description: Rotates the HttpOnly refresh cookie and returns a new access token. Invalid credentials clear the cookie; service failures preserve it for retry. Reuse of a rotated token revokes all account sessions; an explicitly revoked current token is rejected without revoking other devices.
+      description: >-
+        Rotates the HttpOnly refresh cookie and returns a new access token. Invalid credentials clear the cookie;
+        service failures preserve it. Reuse of a rotated token revokes all account sessions, including when the
+        client retries after losing a successful rotation response. An explicitly revoked current token is
+        rejected without revoking other devices.
       security:
         - refreshCookie: []
       responses:
@@ -430,14 +434,17 @@ paths:
                 id:
                   type: string
                   minLength: 1
-                  maxLength: 128
+                  maxLength: 256
+                  description: Stable ID of at most 256 UTF-8 bytes, with no ASCII control characters.
                 name:
                   type: string
                   minLength: 1
-                  maxLength: 120
+                  maxLength: 64
+                  description: Must be nonempty and contain no ASCII control characters after trimming surrounding whitespace.
                 description:
                   type: string
                   maxLength: 500
+                  pattern: '^[^\u0000]*$'
                 permissions:
                   type: array
                   uniqueItems: true
@@ -1678,10 +1685,11 @@ paths:
                                 {
                                   "type": "string",
                                   "minLength": 1,
-                                  "maxLength": 120,
+                                  "maxLength": 64,
+                                  "description": "Must be nonempty and contain no ASCII control characters after trimming surrounding whitespace.",
                                 },
                               "description":
-                                { "type": "string", "maxLength": 500 },
+                                { "type": "string", "maxLength": 500, "pattern": '^[^\u0000]*$' },
                             },
                         },
                     },
@@ -2243,7 +2251,7 @@ components:
         "properties":
           {
             "id": { "type": "string" },
-            "created_at": { "type": "string", "format": "date-time" },
+            "created_at": { "type": "string", "format": "date-time", "description": "Start of the device session family, retained across rotations and cleanup." },
             "last_seen_at": { "type": "string", "format": "date-time" },
             "expires_at": { "type": "string", "format": "date-time" },
             "remote_address": { "type": "string" },

@@ -136,7 +136,7 @@ it("does not consume an invitation twice if the subsequent login needs retrying"
   await waitFor(() => expect(api.login).toHaveBeenCalledTimes(2));
   expect(api.acceptInvitation).toHaveBeenCalledTimes(1);
 });
-it("changes the account password and drops the local access credential after success", async () => {
+it("returns to sign-in after the password change succeeds", async () => {
   vi.mocked(api.profile).mockResolvedValue({
     id: account.id,
     email: account.email,
@@ -145,7 +145,6 @@ it("changes the account password and drops the local access credential after suc
   });
   vi.mocked(api.sessions).mockResolvedValue([]);
   vi.mocked(api.changePassword).mockResolvedValue();
-  setToken("old-session");
   const onLogout = vi.fn();
   history.replaceState(null, "", "/#/account/password");
   render(<AccountPage onLogout={onLogout} />);
@@ -166,7 +165,6 @@ it("changes the account password and drops the local access credential after suc
     "current-password",
     "replacement-password",
   );
-  expect(sessionStorage.length).toBe(0);
 });
 
 const tenantA = {

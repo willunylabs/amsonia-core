@@ -80,7 +80,9 @@ def main():
                         assert headers["Cache-Control"] == "no-cache", path
             print("Installed archive security headers and cache policy passed (HTML, SPA, built asset and 404).")
         email = (b"Administrator email: ", "owner@example.test")
-        current_console = env.get("SMOKE_CONSOLE_CONTRACT", "current") in ("current", "published-preview-5")
+        current_console = env.get("SMOKE_CONSOLE_CONTRACT", "current") in (
+            "current", "published-preview-5", "published-preview-6"
+        )
         original = "🔐" * 128 if current_console else "preview-original-test-password"
         replacement = "preview-replacement-test-password"
         enter(

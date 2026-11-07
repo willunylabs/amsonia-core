@@ -281,6 +281,8 @@ func writeError(response http.ResponseWriter, status int, code, message string) 
 func writeDomainError(response http.ResponseWriter, err error) {
 	var pgError *pgconn.PgError
 	switch {
+	case errors.Is(err, ErrSessionInvalid):
+		writeError(response, http.StatusUnauthorized, "session_invalid", "Your session has expired. Sign in again.")
 	case errors.Is(err, ErrInvalidCredentials):
 		writeError(response, http.StatusBadRequest, "invalid_credentials", "The current password is incorrect.")
 	case errors.Is(err, ErrAccountLocked):
@@ -529,6 +531,10 @@ func (api *API) createRole(response http.ResponseWriter, request *http.Request) 
 	if !decodeJSON(response, request, &input) {
 		return
 	}
+	if !validRoleDetails(input.Name, input.Description) {
+		writeDomainError(response, amsonia.ErrInvalidInput)
+		return
+	}
 	account := accountFromContext(request.Context())
 	permissions := make([]amsonia.PermissionKey, len(input.Permissions))
 	for index, permission := range input.Permissions {
@@ -544,6 +550,12 @@ func (api *API) createRole(response http.ResponseWriter, request *http.Request) 
 		return
 	}
 	writeJSON(response, http.StatusCreated, role)
+}
+
+func validRoleDetails(name, description string) bool {
+	return utf8.RuneCountInString(name) <= 64 &&
+		utf8.RuneCountInString(description) <= 500 &&
+		!strings.ContainsRune(description, 0)
 }
 
 func (api *API) requirePermission(response http.ResponseWriter, request *http.Request, permission amsonia.PermissionKey) bool {

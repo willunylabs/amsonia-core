@@ -7,7 +7,25 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+func waitForAccountLock(t *testing.T, owner *pgxpool.Pool, query string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	for {
+		var blocked bool
+		if err := owner.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND wait_event_type='Lock' AND query LIKE $1)`, query).Scan(&blocked); err != nil {
+			t.Fatal("request did not reach the account lock:", err)
+		}
+		if blocked {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
 
 func TestLoginRechecksLockoutAfterPasswordVerification(t *testing.T) {
 	s, _, _, owner := coreFixture(t)
@@ -29,20 +47,7 @@ func TestLoginRechecksLockoutAfterPasswordVerification(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() { _, err := s.Login(pending, LoginInput{Email: account.Email, Password: password}); done <- err }()
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		var blocked bool
-		if err := owner.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() AND wait_event_type='Lock' AND query LIKE 'SELECT password_hash, status%FOR UPDATE')`).Scan(&blocked); err != nil {
-			t.Fatal(err)
-		}
-		if blocked {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("login did not reach account lock after password verification")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+	waitForAccountLock(t, owner, "SELECT password_hash, status%FOR UPDATE")
 	// Commit exactly the lockout state produced by the fifth failed attempt,
 	// after the correct-password request has read the earlier unlocked state.
 	if _, err := locker.Exec(ctx, `UPDATE amsonia.accounts SET failed_login_count=0,locked_until=now()+interval '15 minutes' WHERE account_id=$1`, account.ID); err != nil {

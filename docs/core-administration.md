@@ -52,7 +52,10 @@ to the authenticated account; no account ID is accepted from the client.
 
 A device session family keeps its stable ID across refresh rotations. Revoking
 it invalidates both token types. The session list contains timestamps and browser
-metadata, never token hashes or secrets. Remote addresses come from the API's
+metadata. The sign-in time stays fixed after older token rows are cleaned up.
+Migration 12 initializes it from the earliest retained row in each family.
+The displayed address and browser come from the same most recently active
+token record. Remote addresses come from the API's
 connection, so reverse-proxy addresses may appear. Activity updates are throttled
 to once per minute.
 
@@ -86,9 +89,10 @@ out waits for server confirmation and revokes the entire device session family,
 including older live access tokens from refresh rotations. Other device families
 remain active. Revoked current refresh tokens are rejected without affecting
 other devices; reuse of a token already consumed by rotation still invokes the
-account-wide replay response.
+account-wide replay response. If rotation commits but its response is lost,
+retrying with the old cookie triggers that response and requires a fresh sign-in.
 
-Cookie-changing sign-in, refresh, and sign-out requests are ordered within each
+Cookie-changing sign-in, refresh, sign-out and password-change requests are ordered within each
 page and, when available, across tabs using the browser's
 [Web Locks API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Locks_API).
 Refresh responses arriving after a local sign-out cannot restore local
@@ -176,6 +180,10 @@ is reached through **Permissions → New permission grant**; it does not share t
 listing or other role tasks. History loads 20 versions at a time. Each mutation
 uses the displayed role version; a conflict asks for a deliberate retry. Only
 empty, unassigned roles can be retired.
+
+The Core API accepts role names of up to 64 Unicode characters and descriptions
+of up to 500. To edit a role with a longer description saved by an older API,
+shorten its description before saving. Roles keep their existing IDs and grants.
 
 The role's **Role members** section lists assigned people and available tenant
 members with search, status filters and 30-row cursor pages. Member identities

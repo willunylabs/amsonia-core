@@ -277,7 +277,7 @@ func (api *API) updateRole(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &input) {
 		return
 	}
-	if input.Version < 1 {
+	if input.Version < 1 || !validRoleDetails(input.Name, input.Description) {
 		writeDomainError(w, amsonia.ErrInvalidInput)
 		return
 	}

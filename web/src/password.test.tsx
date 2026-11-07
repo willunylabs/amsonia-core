@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AccountPage, InvitationLanding } from "./Account";
 import { MemberPasswordRecovery, PasswordRecoveryLanding } from "./PasswordRecovery";
-import { api } from "./api";
+import { api, APIError } from "./api";
 
 const expires = "2030-01-01T00:00:00Z";
 const account = { id: "member", email: "member@example.test", system_admin: false, created_at: expires };
@@ -79,6 +79,25 @@ it("does not apply new-password policy to an existing invited account", async ()
   fireEvent.submit(field.closest("form")!);
   await waitFor(() => expect(onLogin).toHaveBeenCalledWith(account));
   expect(accept).toHaveBeenCalledWith("invite", "legacy");
+});
+
+it("offers sign-in after a lost acceptance response and a consumed link", async () => {
+  const accept = vi.spyOn(api, "acceptInvitation")
+    .mockRejectedValueOnce(new TypeError("Network request failed"))
+    .mockRejectedValueOnce(new APIError(404, "not_found", "Invitation unavailable."));
+  const login = vi.spyOn(api, "login");
+  history.replaceState(null, "", "/console?org=team#invite=invite");
+  render(<InvitationLanding token="invite" onLogin={vi.fn()} />);
+  const field = await screen.findByLabelText("Choose a password");
+  fireEvent.change(field, { target: { value: "new-password-123" } });
+  fireEvent.submit(field.closest("form")!);
+  await screen.findByText(/If you already joined, go back to sign in/);
+  fireEvent.click(screen.getByRole("button", { name: "Accept invitation" }));
+  await screen.findByText("Invitation unavailable.");
+  expect(screen.getByRole("link", { name: "Back to sign in" }).getAttribute("href"))
+    .toBe("/console?org=team");
+  expect(accept).toHaveBeenCalledTimes(2);
+  expect(login).not.toHaveBeenCalled();
 });
 
 it("completes recovery with an unchanged 128-character Unicode password", async () => {

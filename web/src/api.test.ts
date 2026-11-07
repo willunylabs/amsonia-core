@@ -458,6 +458,44 @@ describe("session recovery", () => {
     expect(request.mock.calls[0][0]).toBe("amsonia.core.auth:");
     expect(getToken()).toBe("");
   });
+
+  it("releases the password attempt lock before refreshing on 401", async () => {
+    const request = vi.fn(async (_name: string, action: () => Promise<unknown>) => {
+      return action();
+    });
+    vi.stubGlobal("navigator", { locks: { request } });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(unauthorized())
+      .mockResolvedValueOnce(jsonResponse(freshSession))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    setToken("expired-access");
+
+    await api.changePassword("current-password", "replacement-password");
+
+    expect(request).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "/api/v1/auth/password", "/api/v1/auth/refresh", "/api/v1/auth/password",
+    ]);
+    expect(fetchMock.mock.calls[2][1].headers).toMatchObject({
+      Authorization: "Bearer fresh-token",
+    });
+    expect(getToken()).toBe("");
+  });
+
+  it("preserves a newer tab identity when a password response arrives late", async () => {
+    const response = deferred<Response>();
+    const fetchMock = vi.fn().mockReturnValue(response.promise);
+    vi.stubGlobal("fetch", fetchMock);
+    setToken("old-access");
+    const changed = api.changePassword("current-password", "replacement-password");
+    const rejected = expect(changed).rejects.toMatchObject({ code: "session_changed" });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    setToken("new-access");
+    response.resolve(new Response(null, { status: 204 }));
+    await rejected;
+    expect(getToken()).toBe("new-access");
+  });
 });
 
 describe("audit CSV downloads", () => {

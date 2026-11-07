@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Order password changes with sign-in and session rotation across Console tabs.
+  Return 401 when an authenticated device is revoked while its request waits.
+- Confirm the recipient from the issued invitation, and offer sign-in when an
+  invitation may have been accepted before its response was lost.
+- Let administrators retry member role assignments that fail to load, and align
+  role creation and editing with the API's 64-character name and 500-character
+  description limits. Existing role descriptions stay in the database.
+- Preserve device sign-in times across token rotation and cleanup, and show
+  browser and address metadata from the same activity record.
+
+Migration 12 backfills the start of each device session family from its earliest
+retained token. Upgrade the API, CLI and Console together.
+
 ## 0.2.0-preview.6
 
 - Preserve Nginx security headers alongside static cache policies, and align

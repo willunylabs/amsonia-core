@@ -3,16 +3,85 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
+async function checkPasswordCookieOrdering(memberPage, context, request, url, email, oldPassword) {
+  const endpoint = "**/api/v1/auth/password";
+  const nextPassword = "replacement-after-password-change";
+  const loginPage = await context.newPage();
+  loginPage.setDefaultTimeout(15000);
+  // Show sign-in in a second tab while preserving the first tab's cookie.
+  await loginPage.route("**/api/v1/auth/restore", route => route.fulfill({ status: 204 }), { times: 1 });
+  await loginPage.goto(url);
+  await loginPage.getByLabel("Email", { exact: true }).fill(email);
+  await loginPage.getByLabel("Password", { exact: true }).fill(nextPassword);
+
+  // An independent request context keeps Set-Cookie out of the browser until
+  // the held response is actually delivered to the password-change tab.
+  const transport = await request.newContext({ timeout: 15000 });
+  const oldAccess = await memberPage.evaluate(() => sessionStorage.getItem("amsonia.core.access.v1"));
+  let held;
+  let receive;
+  const intercepted = new Promise(resolve => { receive = resolve; });
+  let delivered = false;
+  await memberPage.route(endpoint, route => { held = route; receive(route); }, { times: 1 });
+  try {
+    await memberPage.getByRole("button", { name: "Account settings", exact: true }).click();
+    await memberPage.getByRole("link", { name: "Password", exact: true }).click();
+    await memberPage.getByLabel("Current password", { exact: true }).fill(oldPassword);
+    await memberPage.getByLabel("New password", { exact: true }).fill(nextPassword);
+    await memberPage.getByLabel("Confirm new password", { exact: true }).fill(nextPassword);
+    await Promise.all([
+      memberPage.waitForRequest(url + "/api/v1/auth/password"),
+      memberPage.getByRole("button", { name: "Change password and sign out", exact: true }).click(),
+    ]);
+    const deadline = AbortSignal.timeout(5000);
+    await Promise.race([
+      intercepted,
+      new Promise((_, reject) => deadline.addEventListener("abort", () => reject(deadline.reason), { once: true })),
+    ]);
+    const response = await transport.fetch(held.request());
+    assert.equal(response.status(), 204);
+    assert.match(response.headers()["set-cookie"], /Max-Age=0/);
+    let loginDispatched = false;
+    loginPage.on("request", req => {
+      if (new URL(req.url()).pathname === "/api/v1/auth/login") loginDispatched = true;
+    });
+    await loginPage.getByRole("button", { name: "Enter the console", exact: true }).click();
+    await loginPage.waitForFunction(async () =>
+      (await navigator.locks.query()).pending.some(lock => lock.name === "amsonia.core.auth:"),
+      null, { timeout: 10000 });
+    assert.equal(loginDispatched, false);
+    await held.fulfill({ status: 204, headers: response.headers() });
+    delivered = true;
+    await memberPage.getByRole("button", { name: "Enter the console", exact: true }).waitFor();
+    await loginPage.getByRole("heading", { name: "Organization overview", exact: true }).waitFor();
+    const freshAccess = await loginPage.evaluate(() => sessionStorage.getItem("amsonia.core.access.v1"));
+    assert.ok(freshAccess && freshAccess !== oldAccess);
+    for (const [access, status] of [[oldAccess, 401], [freshAccess, 200]]) {
+      const me = await transport.get(url + "/api/v1/auth/me", { headers: { Authorization: `Bearer ${access}` } });
+      assert.equal(me.status(), status);
+    }
+    assert.ok((await context.cookies()).some(cookie => cookie.name === "amsonia_refresh" && cookie.value));
+    const restored = await context.newPage();
+    await restored.goto(url);
+    await restored.getByRole("heading", { name: "Organization overview", exact: true }).waitFor();
+  } finally {
+    if (held && !delivered) await held.abort();
+    await memberPage.unroute(endpoint);
+    await transport.dispose();
+  }
+}
+
 async function main() {
   const [modulePath, url, screenshots] = process.argv.slice(2);
-  const { chromium } = require(modulePath);
+  const { chromium, request } = require(modulePath);
   // Published archives keep their original UI contract. Candidates always
   // exercise the current Console, including Unicode and pending dialog checks.
   const contract = process.env.SMOKE_CONSOLE_CONTRACT ?? "current";
-  assert.ok(["current", "published-preview-2-3", "published-preview-4", "published-preview-5"].includes(contract), "Unknown Console contract");
+  assert.ok(["current", "published-preview-2-3", "published-preview-4", "published-preview-5", "published-preview-6"].includes(contract), "Unknown Console contract");
   const historical = contract === "published-preview-2-3";
-  const current = contract === "current" || contract === "published-preview-5";
-  const deepReview = contract === "current";
+  const edgeCases = contract === "current";
+  const deepReview = edgeCases || contract === "published-preview-6";
+  const current = deepReview || contract === "published-preview-5";
   await fs.mkdir(screenshots, { recursive: true });
   const browser = await chromium.launch();
   try {
@@ -107,7 +176,28 @@ async function main() {
           const oldPassword = current ? "🌿".repeat(128) : "preview-member-original-password";
           const newPassword = current ? "🔑".repeat(128) : "preview-member-recovered-password";
           await page.getByLabel("Email", {exact: true}).fill(memberEmail);
-          await page.getByRole("button", {name: "Create invitation", exact: true}).click();
+          const inviteButton = page.getByRole("button", {name: "Create invitation", exact: true});
+          if (edgeCases) {
+            let release;
+            const gate = new Promise(resolve => { release = resolve; });
+            const endpoint = "**/api/v1/tenants/*/invitations";
+            const pause = async route => { await gate; await route.continue(); };
+            await page.route(endpoint, pause, { times: 1 });
+            try {
+              const [sent] = await Promise.all([
+                page.waitForRequest(req => req.method() === "POST" && new URL(req.url()).pathname.endsWith("/invitations")),
+                inviteButton.click(),
+              ]);
+              assert.equal(sent.postDataJSON().email, memberEmail);
+              assert.equal(await page.getByLabel("Email", { exact: true }).isDisabled(), true);
+            } finally {
+              release();
+              await page.unroute(endpoint, pause);
+            }
+            await page.getByText(`Invitation created for ${memberEmail}.`, { exact: true }).waitFor();
+          } else {
+            await inviteButton.click();
+          }
           const invitation = await page.getByLabel("Invitation link", {exact: true}).inputValue();
           const memberContext = await browser.newContext({viewport});
           try {
@@ -126,7 +216,26 @@ async function main() {
             }
             await memberPage.getByLabel("Choose a password", {exact: true}).fill(oldPassword);
             assert.equal(await memberPage.getByLabel("Choose a password", {exact: true}).inputValue(), oldPassword);
-            await memberPage.getByRole("button", {name: "Accept invitation", exact: true}).click();
+            if (edgeCases && name === "desktop") {
+              const endpoint = "**/api/v1/invitations/accept";
+              const failureCount = failures.length;
+              let acceptedStatus;
+              await memberPage.route(endpoint, async route => {
+                acceptedStatus = (await route.fetch()).status();
+                await route.abort("failed");
+              }, { times: 1 });
+              await memberPage.getByRole("button", { name: "Accept invitation", exact: true }).click();
+              await memberPage.getByText(/If you already joined, go back to sign in/).waitFor();
+              assert.equal(acceptedStatus, 200);
+              const induced = failures.splice(failureCount);
+              assert.ok(induced.every(error => error.includes("net::ERR_FAILED")), JSON.stringify(induced));
+              await memberPage.getByRole("link", { name: "Back to sign in", exact: true }).click();
+              await memberPage.getByLabel("Email", { exact: true }).fill(memberEmail);
+              await memberPage.getByLabel("Password", { exact: true }).fill(oldPassword);
+              await memberPage.getByRole("button", { name: "Enter the console", exact: true }).click();
+            } else {
+              await memberPage.getByRole("button", {name: "Accept invitation", exact: true}).click();
+            }
             await memberPage.getByRole("heading", {name: "Organization overview", exact: true}).waitFor();
             const oldAccess = await memberPage.evaluate(() => sessionStorage.getItem("amsonia.core.access.v1"));
             await page.getByRole("button", {name: "Members", exact: true}).click();
@@ -134,6 +243,23 @@ async function main() {
             await page.getByRole("button", {name: "Search", exact: true}).click();
             const row = page.getByRole("row").filter({hasText: memberEmail});
             await row.getByRole("button", {name: "Manage member", exact: true}).click();
+            if (edgeCases) {
+              const failureCount = failures.length;
+              await page.route("**/api/v1/tenants/*/members/*/roles", route => route.fulfill({
+                status: 503, json: { error: { code: "unavailable", message: "Assignments temporarily unavailable." } },
+              }), { times: 1 });
+              await page.getByRole("link", { name: "Roles", exact: true }).click();
+              await page.getByText("Assignments temporarily unavailable.", { exact: true }).waitFor();
+              assert.equal(await page.getByText("Loading assignments…", { exact: true }).count(), 0);
+              const induced = failures.splice(failureCount);
+              assert.ok(induced.some(error => error.startsWith("503 ") && error.endsWith("/roles")));
+              assert.ok(induced.every(error => error.includes("503")), JSON.stringify(induced));
+              await page.getByRole("button", { name: "Retry assignments", exact: true }).click();
+              await page.getByText("0 assigned roles across all pages.", { exact: true }).waitFor();
+              const roles = page.getByRole("checkbox");
+              await roles.first().waitFor();
+              assert.equal(await roles.first().isEnabled(), true);
+            }
             await page.getByRole("link", {name: "Password recovery", exact: true}).click();
             await page.getByLabel("Your administrator password", {exact: true}).fill(process.env.SMOKE_LOGIN_PASSWORD);
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
@@ -202,6 +328,7 @@ async function main() {
             await memberPage.getByLabel("Password", {exact: true}).fill(newPassword);
             await memberPage.getByRole("button", {name: "Enter the console"}).click();
             await memberPage.getByRole("heading", {name: "Organization overview", exact: true}).waitFor();
+            if (edgeCases) await checkPasswordCookieOrdering(memberPage, memberContext, request, url, memberEmail, newPassword);
           } finally { await memberContext.close(); }
           await page.getByRole("button", {name: "Account settings", exact: true}).click();
           await page.getByRole("link", {name: "Devices", exact: true}).click();

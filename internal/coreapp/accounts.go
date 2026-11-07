@@ -116,14 +116,24 @@ func (s *Service) failedPassword(ctx context.Context, tx pgx.Tx, accountID strin
 
 func (s *Service) ListSessions(ctx context.Context, accountID, accessToken string) ([]AccountSession, error) {
 	rows, err := s.pool.Query(ctx, `
-	    SELECT session_id, min(created_at), max(last_seen_at), max(expires_at), max(remote_address), max(user_agent), bool_or(current_session)
-	    FROM (
-	      SELECT session_id, created_at, last_seen_at, expires_at, remote_address, user_agent, token_hash = $2 AS current_session
+	    WITH active AS (
+	      SELECT session_id, session_started_at, created_at, last_seen_at, expires_at,
+	             remote_address, user_agent, token_hash, token_hash = $2 AS current_session
 	      FROM amsonia.access_sessions WHERE account_id = $1 AND revoked_at IS NULL AND expires_at > $3
 	      UNION ALL
-	      SELECT session_id, created_at, created_at, expires_at, remote_address, user_agent, false
+	      SELECT session_id, session_started_at, created_at, created_at, expires_at,
+	             remote_address, user_agent, token_hash, false
 	      FROM amsonia.refresh_sessions WHERE account_id = $1 AND revoked_at IS NULL AND expires_at > $3
-	    ) active GROUP BY session_id ORDER BY min(created_at) DESC, session_id`, accountID, tokenHash(accessToken), s.now())
+	    ), latest AS (
+	      SELECT DISTINCT ON (session_id) session_id, session_started_at, last_seen_at,
+	             max(expires_at) OVER family AS expires_at, remote_address, user_agent,
+	             bool_or(current_session) OVER family AS current_session
+	      FROM active
+	      WINDOW family AS (PARTITION BY session_id)
+	      ORDER BY session_id, last_seen_at DESC, created_at DESC, token_hash
+	    )
+	    SELECT session_id, session_started_at, last_seen_at, expires_at, remote_address, user_agent, current_session
+	    FROM latest ORDER BY session_started_at DESC, session_id`, accountID, tokenHash(accessToken), s.now())
 	if err != nil {
 		return nil, err
 	}
