@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0-preview.6
+
+- Preserve Nginx security headers alongside static cache policies, and align
+  same-origin API prefixes with proxy routing and refresh-cookie scope.
+- Compensate failed organization creation in a bounded writable transaction,
+  even after request cancellation, and preserve both failure causes.
+- Recheck login lockouts under the account lock and keep slow request bodies
+  outside the password-work budget. Validate administrator grants consistently
+  when suspending or removing members.
+- Bind Policy lab results to the submitted question, use Unicode character
+  limits for profile/search fields, and retain a sign-in path when a one-use
+  recovery response is lost. Log unexpected API failures with status and request ID.
+- Add deterministic database, HTTPS cookie, Nginx and desktop/mobile browser
+  regressions. Bound browser dependency setup separately from archive verification.
+
+This release uses schema 11. Upgrade the API, CLI and Console together using
+the [archive install guide](deploy/preview/README.md). Installations already on
+preview.4 or preview.5 need no new database migration.
+
 ## 0.2.0-preview.5
 
 - Count new passwords by Unicode code points throughout invitation, account

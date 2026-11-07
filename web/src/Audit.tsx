@@ -65,6 +65,10 @@ export function AuditWorkspace({
     event.preventDefault();
     if (exporting) return;
     setError("");
+    if (Array.from(draft.q).length > 128) {
+      setError("Use at most 128 characters for your search.");
+      return;
+    }
     const from = draft.from ? new Date(draft.from) : undefined;
     const until = draft.until ? new Date(draft.until) : undefined;
     if (
@@ -139,7 +143,6 @@ export function AuditWorkspace({
           <input
             type="search"
             value={draft.q}
-            maxLength={128}
             onChange={(e) => setDraft((d) => ({ ...d, q: e.target.value }))}
           />
         </label>

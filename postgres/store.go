@@ -160,10 +160,32 @@ func bindContext(ctx context.Context, tx pgx.Tx, purpose, value string, bindingS
 // RunActor executes one read-only callback under a signed account binding.
 // Discovery functions use this context rather than a caller-controlled ID.
 func (s *Store) RunActor(ctx context.Context, accountID string, fn func(pgx.Tx) error) error {
+	return s.runActor(ctx, accountID, pgx.ReadOnly, fn)
+}
+
+// FailCreatedTenant marks only an actor's own pending tenant as failed. Unlike
+// discovery, this compensation needs a writable signed actor transaction.
+func (s *Store) FailCreatedTenant(ctx context.Context, accountID string, tenantID amsonia.TenantID) error {
+	if tenantID.Validate() != nil {
+		return amsonia.ErrInvalidInput
+	}
+	return s.runActor(ctx, accountID, pgx.ReadWrite, func(tx pgx.Tx) error {
+		var failed bool
+		if err := tx.QueryRow(ctx, "SELECT amsonia.fail_created_tenant($1)", string(tenantID)).Scan(&failed); err != nil {
+			return err
+		}
+		if !failed {
+			return amsonia.ErrConflict
+		}
+		return nil
+	})
+}
+
+func (s *Store) runActor(ctx context.Context, accountID string, mode pgx.TxAccessMode, fn func(pgx.Tx) error) error {
 	if accountID == "" || len(accountID) > 128 || strings.ContainsAny(accountID, "\r\n") || fn == nil {
 		return amsonia.ErrInvalidInput
 	}
-	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{AccessMode: mode})
 	if err != nil {
 		return fmtErr("begin", err)
 	}

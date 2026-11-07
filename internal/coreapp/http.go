@@ -30,14 +30,38 @@ type API struct {
 	logger     *slog.Logger
 	loginSlots chan struct{}
 	startedAt  time.Time
+	cookiePath string
 }
 
-func NewAPI(service *Service, manager *amsonia.Manager, authorizer *amsonia.Authorizer, catalog *amsonia.Catalog, logger *slog.Logger) (*API, error) {
+func NewAPI(service *Service, manager *amsonia.Manager, authorizer *amsonia.Authorizer, catalog *amsonia.Catalog, logger *slog.Logger, pathPrefix string) (*API, error) {
 	if service == nil || manager == nil || authorizer == nil || catalog == nil || logger == nil {
 		return nil, amsonia.ErrInvalidInput
 	}
+	if err := validateAPIPathPrefix(pathPrefix); err != nil {
+		return nil, err
+	}
 	loginConcurrency := min(4, max(1, runtime.GOMAXPROCS(0)/2))
-	return &API{service: service, manager: manager, authorizer: authorizer, catalog: catalog, logger: logger, loginSlots: make(chan struct{}, loginConcurrency), startedAt: time.Now().UTC()}, nil
+	return &API{service: service, manager: manager, authorizer: authorizer, catalog: catalog, logger: logger, loginSlots: make(chan struct{}, loginConcurrency), startedAt: time.Now().UTC(), cookiePath: pathPrefix + "/api/v1/auth"}, nil
+}
+
+func validateAPIPathPrefix(prefix string) error {
+	if prefix == "" {
+		return nil
+	}
+	for _, segment := range strings.Split(strings.TrimPrefix(prefix, "/"), "/") {
+		if segment == "" || segment == "." || segment == ".." {
+			return fmt.Errorf("AMSONIA_API_PREFIX must be an absolute path prefix without a trailing slash")
+		}
+		for _, c := range segment {
+			if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || strings.ContainsRune("-._~", c)) {
+				return fmt.Errorf("AMSONIA_API_PREFIX contains an unsupported path character")
+			}
+		}
+	}
+	if !strings.HasPrefix(prefix, "/") {
+		return fmt.Errorf("AMSONIA_API_PREFIX must start with / or be empty")
+	}
+	return nil
 }
 
 func (api *API) Handler() http.Handler {
@@ -96,7 +120,31 @@ func (api *API) Handler() http.Handler {
 	mux.Handle("POST /api/v1/tenants/{tenant_id}/roles", api.tenant(http.HandlerFunc(api.createRole)))
 	mux.Handle("GET /api/v1/tenants/{tenant_id}/audit-events", api.tenant(http.HandlerFunc(api.auditEvents)))
 	mux.Handle("GET /api/v1/tenants/{tenant_id}/audit-events/export", api.tenant(http.HandlerFunc(api.exportAudit)))
-	return api.securityHeaders(api.recover(api.requestLog(mux)))
+	return api.securityHeaders(api.requestLog(api.recover(mux)))
+}
+
+type loggedResponse struct {
+	http.ResponseWriter
+	status int
+	logger *slog.Logger
+}
+
+func (w *loggedResponse) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+func (w *loggedResponse) WriteHeader(status int) {
+	if w.status != 0 {
+		return
+	}
+	w.status = status
+	w.ResponseWriter.WriteHeader(status)
+}
+func (w *loggedResponse) Write(body []byte) (int, error) {
+	if w.status == 0 {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(body)
+}
+func (w *loggedResponse) logError(err error) {
+	w.logger.Error("http request failed", "error", err)
 }
 
 func (api *API) requestLog(next http.Handler) http.Handler {
@@ -109,8 +157,14 @@ func (api *API) requestLog(next http.Handler) http.Handler {
 		}
 		response.Header().Set("X-Request-ID", id)
 		request = request.WithContext(context.WithValue(request.Context(), requestIDKey{}, id))
-		next.ServeHTTP(response, request)
-		api.logger.Info("http request", "method", request.Method, "path", request.URL.Path, "request_id", id, "duration_ms", time.Since(started).Milliseconds())
+		logger := api.logger.With("method", request.Method, "path", request.URL.Path, "request_id", id)
+		logged := &loggedResponse{ResponseWriter: response, logger: logger}
+		next.ServeHTTP(logged, request)
+		status := logged.status
+		if status == 0 {
+			status = http.StatusOK
+		}
+		logger.Info("http request", "status", status, "duration_ms", time.Since(started).Milliseconds())
 	})
 }
 
@@ -118,7 +172,7 @@ func (api *API) recover(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				api.logger.Error("panic recovered", "path", request.URL.Path, "error", fmt.Sprint(recovered))
+				api.logger.Error("panic recovered", "path", request.URL.Path, "request_id", mutationMetadata(request.Context()).RequestID, "error", fmt.Sprint(recovered))
 				writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
 			}
 		}()
@@ -246,6 +300,9 @@ func writeDomainError(response http.ResponseWriter, err error) {
 	case errors.Is(err, amsonia.ErrConflict):
 		writeError(response, http.StatusConflict, "conflict", "The resource changed. Refresh and try again.")
 	default:
+		if logged, ok := response.(interface{ logError(error) }); ok {
+			logged.logError(err)
+		}
 		writeError(response, http.StatusInternalServerError, "internal_error", "The request could not be completed.")
 	}
 }
@@ -265,18 +322,18 @@ func (api *API) ready(response http.ResponseWriter, request *http.Request) {
 }
 
 func (api *API) login(response http.ResponseWriter, request *http.Request) {
-	select {
-	case api.loginSlots <- struct{}{}:
-		defer func() { <-api.loginSlots }()
-	default:
-		writeError(response, http.StatusTooManyRequests, "login_busy", "Sign-in is busy. Try again shortly.")
-		return
-	}
 	var input struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
 	if !decodeJSON(response, request, &input) {
+		return
+	}
+	select {
+	case api.loginSlots <- struct{}{}:
+		defer func() { <-api.loginSlots }()
+	default:
+		writeError(response, http.StatusTooManyRequests, "login_busy", "Sign-in is busy. Try again shortly.")
 		return
 	}
 	session, err := api.service.Login(request.Context(), LoginInput{Email: input.Email, Password: input.Password, RemoteAddress: request.RemoteAddr, UserAgent: request.UserAgent()})
@@ -360,7 +417,7 @@ func (api *API) setRefreshCookie(response http.ResponseWriter, request *http.Req
 	http.SetCookie(response, &http.Cookie{
 		Name:     "amsonia_refresh",
 		Value:    token,
-		Path:     "/api/v1/auth",
+		Path:     api.cookiePath,
 		MaxAge:   maxAge,
 		HttpOnly: true,
 		Secure:   request.TLS != nil || strings.EqualFold(request.Header.Get("X-Forwarded-Proto"), "https"),

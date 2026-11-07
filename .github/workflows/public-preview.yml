@@ -25,7 +25,7 @@ permissions:
 jobs:
   public-preview-install:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
         with:
@@ -59,6 +59,7 @@ jobs:
           case "$target" in
             v0.2.0-preview.2|v0.2.0-preview.3) contract=published-preview-2-3 ;;
             v0.2.0-preview.4) contract=published-preview-4 ;;
+            v0.2.0-preview.5) contract=published-preview-5 ;;
             *) contract=current ;;
           esac
           printf 'RELEASE_TAG=%s\nFROM_TAG=%s\nSMOKE_CONSOLE_CONTRACT=%s\n' \
@@ -76,8 +77,11 @@ jobs:
         with:
           node-version: "22.19.0"
       - name: Prepare Chromium for browser verification
+        timeout-minutes: 6
+        env:
+          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: "60000"
         run: |
-          npm install --prefix "$RUNNER_TEMP/preview-browser" --no-save --no-package-lock playwright@1.58.2
+          npm install --prefix "$RUNNER_TEMP/preview-browser" --no-save --no-package-lock --fetch-retries=2 --fetch-timeout=60000 playwright@1.58.2
           "$RUNNER_TEMP/preview-browser/node_modules/.bin/playwright" install --with-deps chromium
       - name: Install and sign in from a clean browser
         if: ${{ !env.FROM_TAG }}

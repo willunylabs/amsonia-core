@@ -104,6 +104,22 @@ func TestCoreAdministratorChecksStayBoundedAndFailClosed(t *testing.T) {
 	if !errors.Is(err, amsonia.ErrInvalidPolicy) {
 		t.Fatalf("invalid persisted control grant was hidden by a valid administrator: %v", err)
 	}
+	// Give the malformed candidate all four controls. Both member-removal
+	// entrypoints must apply the same validation as policy mutations.
+	if _, err := owner.Exec(ctx, `INSERT INTO amsonia.role_permission_grants(tenant_id,role_id,permission_key,scope,workspace_roles)
+		SELECT $1,'corrupt',permission,'tenant',ARRAY[]::text[] FROM unnest($2::text[]) permission
+		WHERE permission<>$3`, tenant.ID, administratorPermissions(), string(PermissionMemberManage)); err != nil {
+		t.Fatal(err)
+	}
+	for _, remove := range []bool{false, true} {
+		if err := s.ManageMember(ctx, tenant.ID, admin.ID, admin.ID, "suspended", remove); !errors.Is(err, amsonia.ErrInvalidPolicy) {
+			t.Fatalf("malformed candidate permitted administrator removal=%t: %v", remove, err)
+		}
+		status, err := s.MemberStatus(ctx, tenant.ID, admin.ID)
+		if err != nil || status != "active" {
+			t.Fatalf("administrator removal did not roll back: %s %v", status, err)
+		}
+	}
 	var exists bool
 	if err := owner.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM amsonia.roles WHERE tenant_id=$1 AND role_id='must_not_commit')`, tenant.ID).Scan(&exists); err != nil || exists {
 		t.Fatalf("invalid policy mutation committed: exists=%t error=%v", exists, err)

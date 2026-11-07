@@ -9,9 +9,10 @@ async function main() {
   // Published archives keep their original UI contract. Candidates always
   // exercise the current Console, including Unicode and pending dialog checks.
   const contract = process.env.SMOKE_CONSOLE_CONTRACT ?? "current";
-  assert.ok(["current", "published-preview-2-3", "published-preview-4"].includes(contract), "Unknown Console contract");
+  assert.ok(["current", "published-preview-2-3", "published-preview-4", "published-preview-5"].includes(contract), "Unknown Console contract");
   const historical = contract === "published-preview-2-3";
-  const current = contract === "current";
+  const current = contract === "current" || contract === "published-preview-5";
+  const deepReview = contract === "current";
   await fs.mkdir(screenshots, { recursive: true });
   const browser = await chromium.launch();
   try {
@@ -45,6 +46,56 @@ async function main() {
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         assert.deepEqual(failures, []);
         await page.screenshot({ path: path.join(screenshots, `first-login-${name}.png`) });
+        if (deepReview) {
+          await page.getByRole("button", {name: "Account settings", exact: true}).click();
+          const displayName = "🌿".repeat(80);
+          await page.getByLabel("Display name", {exact: true}).fill(displayName);
+          await page.getByRole("button", {name: "Save profile", exact: true}).click();
+          await page.getByText("Profile saved.", {exact: true}).waitFor();
+          assert.equal(await page.getByLabel("Display name", {exact: true}).inputValue(), displayName);
+          await page.getByLabel("Display name", {exact: true}).fill("🌿".repeat(81));
+          await page.getByRole("button", {name: "Save profile", exact: true}).click();
+          await page.getByRole("alert").filter({hasText: "Use at most 80 characters"}).waitFor();
+          await page.getByRole("button", {name: "Members", exact: true}).click();
+          await page.getByLabel("Find a member", {exact: true}).fill("🌿".repeat(128));
+          const searched = page.waitForResponse(response => new URL(response.url()).pathname.endsWith("/members") && new URL(response.url()).searchParams.has("q"));
+          await page.getByRole("button", {name: "Search", exact: true}).click();
+          assert.equal((await searched).status(), 200);
+          assert.equal(await page.getByLabel("Find a member", {exact: true}).inputValue(), "🌿".repeat(128));
+          await page.getByLabel("Find a member", {exact: true}).fill("🌿".repeat(129));
+          await page.getByRole("button", {name: "Search", exact: true}).click();
+          await page.getByRole("alert").filter({hasText: "Use at most 128 characters"}).waitFor();
+          await page.getByRole("button", {name: "Policy lab", exact: true}).click();
+          let releaseFirst;
+          let firstSeen;
+          const seen = new Promise(resolve => { firstSeen = resolve; });
+          const hold = new Promise(resolve => { releaseFirst = resolve; });
+          let checks = 0;
+          const route = async request => {
+            const index = ++checks;
+            if (index === 1) { firstSeen(); await hold; }
+            await request.fulfill({status: 200, contentType: "application/json", body: JSON.stringify(index === 1 ? {allowed: true, reason: "granted", effective_scope: "tenant"} : {allowed: false, reason: "not_granted"})});
+          };
+          await page.route("**/api/v1/authorization/check", route);
+          try {
+            await page.getByRole("button", {name: "Evaluate policy", exact: true}).click();
+            await seen;
+            const options = await page.getByLabel("Permission", {exact: true}).locator("option").allTextContents();
+            await page.getByLabel("Permission", {exact: true}).selectOption(options[1]);
+            await page.getByRole("button", {name: "Evaluate policy", exact: true}).click();
+            await page.getByRole("heading", {name: "Denied", exact: true}).waitFor();
+            const late = page.waitForResponse(response => new URL(response.url()).pathname.endsWith("/authorization/check"));
+            releaseFirst();
+            await late;
+            await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+            await page.getByRole("heading", {name: "Denied", exact: true}).waitFor();
+            assert.equal(await page.locator(".decision-card code").first().textContent(), options[1]);
+            await page.screenshot({path: path.join(screenshots, `policy-lab-${name}.png`)});
+          } finally {
+            releaseFirst();
+            await page.unroute("**/api/v1/authorization/check", route);
+          }
+        }
         if (!historical) {
           await page.getByRole("button", {name: "Invitations", exact: true}).click();
           await page.getByRole("link", {name: "Invite member", exact: true}).click();
@@ -99,6 +150,34 @@ async function main() {
                 await memberPage.getByRole("button", {name: "Set new password", exact: true}).click();
                 await memberPage.getByRole("alert").filter({hasText: "Use 12–128 characters"}).waitFor();
               }
+            }
+            if (deepReview) {
+              await memberPage.getByRole("link", {name: "Back to sign in", exact: true}).waitFor();
+              // Simulate a successful one-use mutation whose response is lost.
+              const lostResponse = async route => { await route.fetch(); await route.abort("failed"); };
+              await memberPage.route("**/api/v1/password-recovery/complete", lostResponse);
+              await memberPage.getByLabel("New password", {exact: true}).fill(newPassword);
+              await memberPage.getByLabel("Confirm new password", {exact: true}).fill(newPassword);
+              const expectedNetworkFailure = error => error.includes("net::ERR_FAILED");
+              const failureCount = failures.length;
+              await memberPage.getByRole("button", {name: "Set new password", exact: true}).click();
+              await memberPage.getByText(/If your password was updated but the response was lost/).waitFor();
+              const induced = failures.splice(failureCount);
+              assert.ok(induced.every(expectedNetworkFailure), JSON.stringify(induced));
+              await memberPage.unroute("**/api/v1/password-recovery/complete", lostResponse);
+              await memberPage.screenshot({path: path.join(screenshots, `recovery-response-lost-${name}.png`)});
+              await memberPage.getByRole("link", {name: "Back to sign in", exact: true}).click();
+              await memberPage.getByLabel("Email", {exact: true}).fill(memberEmail);
+              await memberPage.getByLabel("Password", {exact: true}).fill(newPassword);
+              await memberPage.getByRole("button", {name: "Enter the console", exact: true}).click();
+              await memberPage.getByRole("heading", {name: "Organization overview", exact: true}).waitFor();
+              // Issue a replacement link to retain the ordinary success flow.
+              await page.getByRole("button", {name: "Create a replacement link", exact: true}).click();
+              await page.getByLabel("Your administrator password", {exact: true}).fill(process.env.SMOKE_LOGIN_PASSWORD);
+              await page.getByRole("button", {name: "Create recovery link", exact: true}).click();
+              const replacementLink = await page.getByLabel("Private recovery link", {exact: true}).inputValue();
+              await memberPage.goto(replacementLink);
+              await memberPage.getByRole("heading", {name: "Choose a new password", exact: true}).waitFor();
             }
             await memberPage.getByLabel("New password", {exact: true}).fill(newPassword);
             await memberPage.getByLabel("Confirm new password", {exact: true}).fill(newPassword);

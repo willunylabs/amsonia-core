@@ -89,6 +89,10 @@ function ProfileForm() {
   async function save(event: FormEvent) {
     event.preventDefault();
     if (busy || !profile) return;
+    if (Array.from(name.trim()).length > 80) {
+      setError("Use at most 80 characters for your display name.");
+      return;
+    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -132,7 +136,6 @@ function ProfileForm() {
         Display name
         <input
           value={name}
-          maxLength={80}
           disabled={busy || loading || !profile}
           onChange={(e) => {
             setName(e.target.value);
@@ -140,6 +143,7 @@ function ProfileForm() {
           }}
         />
       </label>
+      <small>Up to 80 characters.</small>
       <div className="form-actions">
         <a className="secondary-button" href="#/overview">
           Cancel

@@ -99,7 +99,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	api, err := coreapp.NewAPI(service, manager, authorizer, catalog, slog.Default())
+	api, err := coreapp.NewAPI(service, manager, authorizer, catalog, slog.Default(), os.Getenv("AMSONIA_API_PREFIX"))
 	if err != nil {
 		return err
 	}

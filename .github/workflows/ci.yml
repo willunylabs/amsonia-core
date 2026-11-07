@@ -89,6 +89,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Verify shipped Nginx headers and API prefix routing
+        run: python3 -B scripts/check-web-proxy.py
       - name: Validate preview upgrade data checks
         run: python3 -B scripts/test_smoke_preview_upgrade.py
       - name: Validate Cloudflare Pages shadow contract

@@ -58,7 +58,7 @@ def main():
         assert json.loads(call("/readyz"))["status"] == "ready"
         assert b"Amsonia Core" in call("/")
         email = (b"Administrator email: ", "owner@example.test")
-        current_console = env.get("SMOKE_CONSOLE_CONTRACT", "current") == "current"
+        current_console = env.get("SMOKE_CONSOLE_CONTRACT", "current") in ("current", "published-preview-5")
         original = "🔐" * 128 if current_console else "preview-original-test-password"
         replacement = "preview-replacement-test-password"
         enter(
