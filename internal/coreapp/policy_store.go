@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/willunylabs/amsonia-core"
+	"github.com/willunylabs/amsonia-core/internal/adminpolicy"
 )
 
 type policyGuard struct {
@@ -130,7 +131,7 @@ func hasActiveAdministrator(ctx context.Context, query policyQueryer, tenant ams
 		return false, err
 	}
 	defer rows.Close()
-	coverage := make(map[amsonia.SubjectID]map[amsonia.PermissionKey]bool)
+	coverage := make(adminpolicy.Coverage)
 	for rows.Next() {
 		var subject amsonia.SubjectID
 		var grant amsonia.EffectiveGrant
@@ -139,25 +140,14 @@ func hasActiveAdministrator(ctx context.Context, query policyQueryer, tenant ams
 		}
 		// Validate every returned control grant before accepting any candidate.
 		// An invalid persisted row must not be hidden by a valid administrator.
-		if err := grant.Validate(grant.Permission); err != nil {
+		if err := coverage.Add(subject, grant); err != nil {
 			return false, err
-		}
-		if grant.Scope == amsonia.ScopeTenant {
-			if coverage[subject] == nil {
-				coverage[subject] = make(map[amsonia.PermissionKey]bool)
-			}
-			coverage[subject][grant.Permission] = true
 		}
 	}
 	if err := rows.Err(); err != nil {
 		return false, err
 	}
-	for _, grants := range coverage {
-		if len(grants) == len(permissions) {
-			return true, nil
-		}
-	}
-	return false, nil
+	return coverage.Complete(permissions), nil
 }
 
 // RecordSecurityEvent stores failed kernel mutations in their own transaction,

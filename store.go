@@ -45,6 +45,9 @@ type TenantReader interface {
 	ListSubjectRoleIDs(ctx context.Context, subjectID SubjectID) ([]RoleID, error)
 	ListRoleSubjectIDs(ctx context.Context, roleID RoleID) ([]SubjectID, error)
 	HasGrantPath(ctx context.Context, from SubjectID, to SubjectID) (bool, error)
+	// HasAdministrator checks whether one subject holds every control at tenant
+	// scope on live roles. A malformed control grant on an assigned live role
+	// returns ErrInvalidPolicy.
 	HasAdministrator(ctx context.Context, controls ControlPermissions) (bool, error)
 	IsBootstrapped(ctx context.Context) (bool, error)
 }
