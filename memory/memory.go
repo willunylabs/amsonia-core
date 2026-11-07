@@ -10,11 +10,13 @@ package memory
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/willunylabs/amsonia-core"
+	"github.com/willunylabs/amsonia-core/internal/adminpolicy"
 	"github.com/willunylabs/amsonia-core/internal/tenantexport"
 )
 
@@ -210,7 +212,10 @@ func (r *tenantReader) ListEffectiveGrants(ctx context.Context, subjectID amsoni
 	}
 	var out []amsonia.EffectiveGrant
 	for roleID := range roles {
-		for key, grant := range r.tenant.rolePerms[roleID] {
+		if role, exists := r.tenant.roles[roleID]; !exists || role.Deleted {
+			continue
+		}
+		for _, grant := range r.tenant.rolePerms[roleID] {
 			if grant.Permission != permission {
 				continue
 			}
@@ -220,7 +225,6 @@ func (r *tenantReader) ListEffectiveGrants(ctx context.Context, subjectID amsoni
 				Scope:          grant.Scope,
 				WorkspaceRoles: cloneStrings(grant.WorkspaceRoles),
 			})
-			_ = key
 		}
 	}
 	return out, nil
@@ -294,31 +298,24 @@ func (r *tenantReader) HasGrantPath(ctx context.Context, from amsonia.SubjectID,
 }
 
 func (r *tenantReader) HasAdministrator(ctx context.Context, controls amsonia.ControlPermissions) (bool, error) {
-	for _, roles := range r.tenant.subjectRoles {
-		hasAll := true
-		for _, control := range []amsonia.PermissionKey{controls.ManageRoles, controls.ManageGrants, controls.AssignRoles} {
-			found := false
-			for roleID := range roles {
-				for _, grant := range r.tenant.rolePerms[roleID] {
-					if grant.Permission == control && grant.Scope == amsonia.ScopeTenant {
-						found = true
-						break
-					}
+	permissions := []string{string(controls.ManageRoles), string(controls.ManageGrants), string(controls.AssignRoles)}
+	coverage := make(adminpolicy.Coverage)
+	for subject, roles := range r.tenant.subjectRoles {
+		for roleID := range roles {
+			if role, exists := r.tenant.roles[roleID]; !exists || role.Deleted {
+				continue
+			}
+			for _, grant := range r.tenant.rolePerms[roleID] {
+				if !slices.Contains(permissions, string(grant.Permission)) {
+					continue
 				}
-				if found {
-					break
+				if err := coverage.Add(subject, amsonia.EffectiveGrant(grant)); err != nil {
+					return false, err
 				}
 			}
-			if !found {
-				hasAll = false
-				break
-			}
-		}
-		if hasAll {
-			return true, nil
 		}
 	}
-	return false, nil
+	return coverage.Complete(permissions), nil
 }
 
 func (r *tenantReader) IsBootstrapped(ctx context.Context) (bool, error) {

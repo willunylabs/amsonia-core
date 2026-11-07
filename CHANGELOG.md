@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Reject malformed administrator grants when checking whether a tenant can
+  safely lose a role assignment or permission. Retired roles confer no
+  effective grants, including when stale assignment rows remain.
+
 ## 0.2.0-preview.7
 
 - Order password changes with sign-in and session rotation across Console tabs.

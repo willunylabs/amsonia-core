@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/willunylabs/amsonia-core"
+	"github.com/willunylabs/amsonia-core/internal/adminpolicy"
 	"github.com/willunylabs/amsonia-core/internal/tenantexport"
 )
 
@@ -20,9 +21,10 @@ func (r *tenantReader) ListEffectiveGrants(ctx context.Context, subjectID amsoni
 	sql := `
 		SELECT sr.role_id, rpg.permission_key, rpg.scope, rpg.workspace_roles
 		FROM amsonia.subject_roles sr
+		JOIN amsonia.roles r USING (tenant_id, role_id)
 		JOIN amsonia.role_permission_grants rpg
 		  ON rpg.tenant_id = sr.tenant_id AND rpg.role_id = sr.role_id
-		WHERE sr.tenant_id = $1 AND sr.subject_id = $2 AND rpg.permission_key = $3
+		WHERE sr.tenant_id = $1 AND sr.subject_id = $2 AND rpg.permission_key = $3 AND NOT r.deleted
 	`
 	rows, err := r.tx.Query(ctx, sql, string(r.tenantID), string(subjectID), string(permission))
 	if err != nil {
@@ -147,39 +149,33 @@ func (r *tenantReader) HasGrantPath(ctx context.Context, from amsonia.SubjectID,
 }
 
 func (r *tenantReader) HasAdministrator(ctx context.Context, controls amsonia.ControlPermissions) (bool, error) {
-	sql := `
-		SELECT EXISTS (
-			SELECT 1
-			FROM (
-				SELECT DISTINCT subject_id
-				FROM amsonia.subject_roles
-				WHERE tenant_id = $1
-			) subjects
-			WHERE NOT EXISTS (
-				SELECT 1 FROM unnest($2::text[]) AS control(key)
-				WHERE NOT EXISTS (
-					SELECT 1
-					FROM amsonia.subject_roles sr
-					JOIN amsonia.role_permission_grants rpg
-					  ON rpg.tenant_id = sr.tenant_id AND rpg.role_id = sr.role_id
-					WHERE sr.tenant_id = $1
-					  AND sr.subject_id = subjects.subject_id
-					  AND rpg.permission_key = control.key
-					  AND rpg.scope = 'tenant'
-				)
-			)
-		)
-	`
-	controlsArr := []string{
-		string(controls.ManageRoles),
-		string(controls.ManageGrants),
-		string(controls.AssignRoles),
-	}
-	var found bool
-	if err := r.tx.QueryRow(ctx, sql, string(r.tenantID), controlsArr).Scan(&found); err != nil {
+	permissions := []string{string(controls.ManageRoles), string(controls.ManageGrants), string(controls.AssignRoles)}
+	rows, err := r.tx.Query(ctx, `
+		SELECT s.subject_id,s.role_id,g.permission_key,g.scope,g.workspace_roles
+		FROM amsonia.subject_roles s
+		JOIN amsonia.roles r USING (tenant_id,role_id)
+		JOIN amsonia.role_permission_grants g USING (tenant_id,role_id)
+		WHERE s.tenant_id=$1 AND NOT r.deleted AND g.permission_key=ANY($2::text[])
+	`, string(r.tenantID), permissions)
+	if err != nil {
 		return false, wrapPgxErr(err)
 	}
-	return found, nil
+	defer rows.Close()
+	coverage := make(adminpolicy.Coverage)
+	for rows.Next() {
+		var subject amsonia.SubjectID
+		var grant amsonia.EffectiveGrant
+		if err := rows.Scan(&subject, &grant.RoleID, &grant.Permission, &grant.Scope, &grant.WorkspaceRoles); err != nil {
+			return false, wrapPgxErr(err)
+		}
+		if err := coverage.Add(subject, grant); err != nil {
+			return false, err
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return false, wrapPgxErr(err)
+	}
+	return coverage.Complete(permissions), nil
 }
 
 func (r *tenantReader) IsBootstrapped(ctx context.Context) (bool, error) {
