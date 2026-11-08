@@ -1,10 +1,21 @@
 # Changelog
 
-## Unreleased
+## 0.2.0-preview.8
 
 - Reject malformed administrator grants when checking whether a tenant can
   safely lose a role assignment or permission. Retired roles confer no
   effective grants, including when stale assignment rows remain.
+- Bind the source quickstart Console and PostgreSQL ports to loopback.
+- Share Web and site test configuration between local `make check` and CI.
+- Document the recommended preview, compatibility, and security maintenance.
+- Add a Go SDK quickstart for a standalone module and verify its allow and deny
+  decisions in CI.
+- Add bug and improvement forms with a separate private reporting route for
+  security issues.
+
+Preview.7 and preview.8 both use schema 12. Back up the database and upgrade
+the API, CLI and Console together using the
+[archive install guide](deploy/preview/README.md).
 
 ## 0.2.0-preview.7
 
