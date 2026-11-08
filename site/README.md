@@ -45,10 +45,8 @@ and botanical-specimen presentation is retired.
 
 ## Local checks
 
-```bash
-npm ci
-npm run check
-```
+From the repository root, run `make site-check`. It supplies the same test URLs
+as CI and works from a fresh checkout.
 
 `npm run check` validates configured public origins, verifies the shared logo
 geometry and visual tokens, builds the static site, checks canonical metadata

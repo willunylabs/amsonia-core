@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/willunylabs/amsonia-core/blob/main/SECURITY.md#reporting-a-vulnerability
+    about: Use the advisory or security email in the policy for sensitive reports.

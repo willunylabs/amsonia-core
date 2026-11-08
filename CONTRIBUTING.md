@@ -17,6 +17,11 @@ Thanks for your interest in Amsonia.
 
 ## Development
 
+From a fresh checkout with Go 1.26.10 or newer and Node.js 22.19 or newer,
+run `make check` to exercise the Go, web, site, and OpenAPI checks.
+The web and site targets supply the same test configuration used in CI.
+For Go-only changes, the following checks can run separately:
+
 ```bash
 go test ./...
 go test -race ./...
@@ -26,8 +31,8 @@ go vet ./...
 PostgreSQL integration tests run only with the `postgres` build tag:
 
 ```bash
-TEST_DATABASE_ADMIN_URL=postgres://... TEST_DATABASE_URL=postgres://... \
-  go test -tags postgres -count=1 -p 1 ./postgres/ ./internal/coreapp/
+TEST_DATABASE_ADMIN_URL='postgres://db_owner@127.0.0.1:5432/amsonia_test?sslmode=disable' \
+  make postgres-check
 ```
 
 The test applies the reference migration to the target database and truncates
@@ -35,8 +40,10 @@ all Amsonia tables. Use an isolated disposable database, never production.
 
 ## Reporting bugs
 
-Open an issue with a minimal reproduction, the Amsonia version, and the expected
-versus actual decision. Security issues follow [SECURITY.md](SECURITY.md).
+Use the [GitHub issue chooser](https://github.com/willunylabs/amsonia-core/issues/new/choose)
+to report a bug or discuss an improvement. Include the exact release or commit,
+your installation method, and steps that reproduce the behavior. Report security
+issues through the private channels listed in [SECURITY.md](SECURITY.md).
 
 ## Pull requests
 
