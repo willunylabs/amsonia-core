@@ -1,5 +1,12 @@
 # Security Policy
 
+## Supported versions
+
+Security fixes are maintained on `main` and released through the current
+preview line. Use the [recommended preview](docs/releases.md) when evaluating
+or upgrading an installation. Older preview tags and `v0.1.0` are historical
+releases. Upgrade to the current line to receive fixes.
+
 ## Reporting a vulnerability
 
 Do **not** open a public issue for security vulnerabilities. Report them

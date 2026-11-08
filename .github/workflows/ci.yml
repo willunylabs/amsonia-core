@@ -30,21 +30,38 @@ jobs:
         run: go vet ./...
       - name: Unit tests
         run: go test ./...
+      - name: Run the tagged Go SDK example from an external module
+        env:
+          GOWORK: "off"
+        run: |
+          set -o pipefail
+          workdir="$(mktemp -d "$RUNNER_TEMP/sdk-example.XXXXXX")"
+          trap 'rm -rf -- "$workdir"' EXIT
+          cd "$workdir"
+          go mod init example.com/amsonia-sdk-example
+          go get github.com/willunylabs/amsonia-core@v0.2.0-preview.7
+          sdk_dir="$(go list -m -f '{{.Dir}}' github.com/willunylabs/amsonia-core)"
+          cp "$sdk_dir/examples/saas/main.go" ./main.go
+          go mod tidy
+          go run . | tee result.txt
+          grep -Eq '^alice +billing:invoice:read +inv-1 +allowed=true ' result.txt
+          grep -Eq '^alice +billing:invoice:write +inv-1 +allowed=false ' result.txt
       - name: Race detector
         run: go test -race ./...
       - name: Reachable vulnerability scan
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
       - name: Compose quickstart configuration
-        run: docker compose --env-file .env.example --file compose.yaml --file compose.local.yaml config --quiet
+        run: |
+          docker compose --env-file .env.example --file compose.yaml --file compose.local.yaml config --format json |
+            jq -e '
+              .services.web.ports as $web |
+              .services.postgres.ports as $db |
+              ($web | length == 1 and .[0].host_ip == "127.0.0.1" and .[0].target == 8080)
+              and ($db | length == 1 and .[0].host_ip == "127.0.0.1" and .[0].target == 5432)
+            '
 
   web:
     runs-on: ubuntu-latest
-    env:
-      VITE_GITHUB_URL: https://source.example.test/project
-      VITE_COMMERCIAL_URL: https://company.example.test/product
-    defaults:
-      run:
-        working-directory: web
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -52,27 +69,10 @@ jobs:
           node-version: "22.19.0"
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - run: npm ci
-      - name: Dependency audit
-        run: npm audit --audit-level=moderate
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run test
-      - run: npm run build
-      - name: OpenAPI contract
-        working-directory: ${{ github.workspace }}
-        run: npx --yes @redocly/cli@2.46.1 lint openapi/openapi.yaml
+      - run: make web-check
 
   site:
     runs-on: ubuntu-latest
-    env:
-      PUBLIC_SITE_ORIGIN: https://product.example.test
-      PUBLIC_COMPANY_ORIGIN: https://company.example.test
-      PUBLIC_GITHUB_URL: https://source.example.test/project
-      PUBLIC_COMMERCIAL_URL: https://company.example.test/product
-    defaults:
-      run:
-        working-directory: site
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -80,10 +80,7 @@ jobs:
           node-version: "22.19.0"
           cache: npm
           cache-dependency-path: site/package-lock.json
-      - run: npm ci
-      - name: Dependency audit
-        run: npm audit --audit-level=moderate
-      - run: npm run check
+      - run: make site-check
 
   deployment-contract:
     runs-on: ubuntu-latest

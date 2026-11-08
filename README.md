@@ -95,17 +95,17 @@ An ambiguous deployment refuses to start. Apply all pending migrations and rerun
 [role provisioning script](ops/configure_database_roles.sql) before upgrading.
 See [the setup guide](docs/getting-started.md#organization-model) for configuration.
 
-## Install a tagged preview
+## Install the recommended preview
 
-For a release with a verified Linux amd64 preview asset, use the
-[install guide](deploy/preview/README.md) and the matching
-[GitHub Release](https://github.com/willunylabs/amsonia-core/releases).
-The archive includes prebuilt images and a checksum. To try an unreleased
-revision from source, use the workflow below.
+Start with [v0.2.0-preview.7](https://github.com/willunylabs/amsonia-core/releases/tag/v0.2.0-preview.7)
+for a verified Linux amd64 installation. Download the archive and its
+`SHA256SUMS`, then follow the [install guide](deploy/preview/README.md). See
+the [release guide](docs/releases.md) for compatibility, tested upgrade paths,
+and security maintenance.
 
 ## Verify it in five minutes
 
-Requirements: Docker with the Compose plugin and Go 1.26.10+.
+Requirements: Docker with Compose 2.24.4 or newer, and Go 1.26.10 or newer.
 
 ```bash
 git clone https://github.com/willunylabs/amsonia-core.git
@@ -116,8 +116,9 @@ make demo
 The command generates independent local infrastructure credentials in a
 Git-ignored, owner-readable file, builds the complete stack, and prompts once
 for an administrator password without echoing or storing it. Open
-`http://127.0.0.1:8080`. Re-running `make demo` is idempotent; `make demo-down`
-stops the stack without deleting its PostgreSQL volume.
+`http://127.0.0.1:8080`. The Console and database bind to loopback. Re-running
+`make demo` is idempotent. `make demo-down` stops the stack and preserves its
+PostgreSQL volume.
 
 Then run the host-table proof in
 [`examples/business-data-rls`](examples/business-data-rls): two tenants query
@@ -126,6 +127,9 @@ and a cross-tenant insert is rejected by PostgreSQL RLS. The same example
 can serve a local invoice list and creation form without changing the default
 console. The walkthrough is in
 [`docs/business-data-rls.md`](docs/business-data-rls.md).
+
+To embed the authorization kernel in an existing Go application, start with
+the [Go SDK quickstart](docs/go-sdk.md).
 
 ## Evidence, not feature claims
 
@@ -198,14 +202,15 @@ HttpOnly, `SameSite=Strict` cookies and are never returned in JSON.
 
 ## Development
 
-Run the local quality gate with:
+With Go 1.26.10 or newer and Node.js 22.19 or newer, run the local quality gate:
 
 ```bash
 make check
 ```
 
 It covers Go format/vet/unit/race checks, the reachable-vulnerability scan,
-web checks, and OpenAPI validation. Contribution rules are in
+web and site checks, and OpenAPI validation. The build checks use test URLs.
+Contribution rules are in
 [CONTRIBUTING.md](CONTRIBUTING.md), and the security model/reporting process is
 in [SECURITY.md](SECURITY.md) and [docs/security-model.md](docs/security-model.md).
 

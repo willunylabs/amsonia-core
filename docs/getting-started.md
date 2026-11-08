@@ -5,7 +5,7 @@ runtime, and maintenance roles. A fully manual PostgreSQL setup follows it.
 
 ## Five-minute local stack
 
-Requirements: Docker with the Compose plugin and Go 1.26.10 or newer.
+Requirements: Docker with Compose 2.24.4 or newer, and Go 1.26.10 or newer.
 
 ```bash
 git clone https://github.com/willunylabs/amsonia-core.git
@@ -27,8 +27,8 @@ make demo-down
 ```
 
 `make demo-down` preserves the PostgreSQL volume and generated credentials.
-The local override binds PostgreSQL to `127.0.0.1` only so host-side examples
-can connect; it does not expose the database on other network interfaces.
+The local override binds the Console and PostgreSQL to `127.0.0.1`. Host-side
+examples can connect to PostgreSQL on port 55432.
 
 Continue with [the business-data RLS proof](business-data-rls.md) to verify the
 tenant boundary against an application-owned invoice table.

@@ -1,0 +1,63 @@
+name: Bug report
+description: Report a reproducible problem with Amsonia Core.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a vulnerability or suspected tenant isolation issue, use the
+        [private reporting channels](https://github.com/willunylabs/amsonia-core/blob/main/SECURITY.md#reporting-a-vulnerability).
+        Redact credentials, tokens, database URLs, and personal data before posting.
+  - type: input
+    id: version
+    attributes:
+      label: Core release or commit
+      description: Use VERSION and REVISION from the archive, the Git commit, or the Go module version.
+      placeholder: v0.2.0-preview.7
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - Preview archive
+        - Source Compose or make demo
+        - Manual API and Console setup
+        - Embedded Go SDK
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Operating system and architecture
+      description: Include the Docker Compose, PostgreSQL, Go, or browser version relevant to the issue.
+      placeholder: Ubuntu amd64, Compose 2.24.4, PostgreSQL 16
+    validations:
+      required: true
+  - type: input
+    id: schema
+    attributes:
+      label: Amsonia schema version
+      description: Report the latest migration from migration-status if a database is involved.
+      placeholder: "12"
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include a minimal command sequence or example with synthetic data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the error or authorization decision and any relevant redacted logs.
+    validations:
+      required: true

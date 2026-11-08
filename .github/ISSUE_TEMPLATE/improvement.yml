@@ -1,0 +1,20 @@
+name: Improvement or question
+description: Suggest an improvement or ask about using Core.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use the [private reporting channels](https://github.com/willunylabs/amsonia-core/blob/main/SECURITY.md#reporting-a-vulnerability)
+        for vulnerabilities or suspected tenant isolation issues.
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+      description: Describe your use case and where you need help.
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: What have you tried or what change would help?
+      description: Add any relevant documentation links, examples, or constraints.
