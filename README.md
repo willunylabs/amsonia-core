@@ -97,7 +97,7 @@ See [the setup guide](docs/getting-started.md#organization-model) for configurat
 
 ## Install the recommended preview
 
-Start with [v0.2.0-preview.7](https://github.com/willunylabs/amsonia-core/releases/tag/v0.2.0-preview.7)
+Start with [v0.2.0-preview.8](https://github.com/willunylabs/amsonia-core/releases/tag/v0.2.0-preview.8)
 for a verified Linux amd64 installation. Download the archive and its
 `SHA256SUMS`, then follow the [install guide](deploy/preview/README.md). See
 the [release guide](docs/releases.md) for compatibility, tested upgrade paths,
