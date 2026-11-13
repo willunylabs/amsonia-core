@@ -120,7 +120,11 @@ func (api *API) Handler() http.Handler {
 	mux.Handle("POST /api/v1/tenants/{tenant_id}/roles", api.tenant(http.HandlerFunc(api.createRole)))
 	mux.Handle("GET /api/v1/tenants/{tenant_id}/audit-events", api.tenant(http.HandlerFunc(api.auditEvents)))
 	mux.Handle("GET /api/v1/tenants/{tenant_id}/audit-events/export", api.tenant(http.HandlerFunc(api.exportAudit)))
-	return api.securityHeaders(api.requestLog(api.recover(mux)))
+	originProtection := http.NewCrossOriginProtection()
+	originProtection.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeError(w, http.StatusForbidden, "forbidden", "Cross-origin requests are not allowed.")
+	}))
+	return api.securityHeaders(api.requestLog(api.recover(originProtection.Handler(mux))))
 }
 
 type loggedResponse struct {

@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/willunylabs/amsonia-core"
@@ -209,8 +210,9 @@ func wrapPgxErr(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return amsonia.ErrNotFound
 	}
-	if strings.Contains(err.Error(), "duplicate key") {
-		return amsonia.ErrConflict
+	var pgError *pgconn.PgError
+	if errors.As(err, &pgError) && pgError.Code == "23505" {
+		return fmt.Errorf("%w: %w", amsonia.ErrConflict, err)
 	}
 	return err
 }

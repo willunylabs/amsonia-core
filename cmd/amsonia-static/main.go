@@ -193,8 +193,12 @@ func serveAsset(w http.ResponseWriter, r *http.Request, asset staticAsset) {
 		w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 	} else if extension == ".xml" || extension == ".txt" {
 		w.Header().Set("Cache-Control", "public, max-age=3600")
-	} else {
+	} else if strings.HasPrefix(asset.name, "_astro/") {
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		// Public assets keep their URL across releases; only Astro's bundled
+		// assets include a content hash and can be cached as immutable.
+		w.Header().Set("Cache-Control", "public, max-age=0, must-revalidate")
 	}
 	if contentType := mime.TypeByExtension(extension); contentType != "" {
 		w.Header().Set("Content-Type", contentType)

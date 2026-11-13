@@ -96,7 +96,7 @@ func (b *Bootstrapper) BootstrapTenant(ctx context.Context, input BootstrapInput
 		if err != nil {
 			return Role{}, err
 		}
-		key := string(g.Permission) + ":" + string(g.Scope)
+		key := string(g.Permission) + ":" + string(g.Scope) + ":" + strings.Join(roles, ",")
 		grantMap[key] = RolePermissionGrant{
 			RoleID:         g.RoleID,
 			Permission:     g.Permission,

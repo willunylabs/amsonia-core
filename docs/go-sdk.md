@@ -6,7 +6,7 @@ the kernel without a database or running Console.
 
 ## Run from your own module
 
-With Go 1.26.10 or newer, run these commands from a directory where you want to
+With Go 1.26.11 or newer, run these commands from a directory where you want to
 create a disposable example. They use the published preview.7 module and the
 example included in that version.
 
