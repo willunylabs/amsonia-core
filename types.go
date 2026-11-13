@@ -262,7 +262,7 @@ type MutationMetadata struct {
 // Role is validated with a trimmed name between 1 and 64 code points.
 func validateRoleName(name string) error {
 	trimmed := strings.TrimSpace(name)
-	if trimmed == "" {
+	if trimmed == "" || !utf8.ValidString(trimmed) {
 		return ErrInvalidInput
 	}
 	if len([]rune(trimmed)) > 64 {

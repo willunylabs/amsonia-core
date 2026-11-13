@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -156,5 +157,77 @@ func writeTestFile(t *testing.T, fileName, content string) {
 	}
 	if err := os.WriteFile(fileName, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestDeploymentRouteProbesMatchStaticHandler(t *testing.T) {
+	for _, command := range []string{"bash", "curl"} {
+		if _, err := exec.LookPath(command); err != nil {
+			t.Skipf("deployment probe test requires %s: %v", command, err)
+		}
+	}
+	data, err := os.ReadFile("../../deploy/site/deploy-amsonia-site.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, probes, ok := strings.Cut(string(data), "# Keep these probes aligned with the static server's public route contract.\n")
+	if !ok {
+		t.Fatal("deployment route probes are missing")
+	}
+	probes, _, ok = strings.Cut(probes, "\nsucceeded=1")
+	if !ok {
+		t.Fatal("deployment route probes have no end marker")
+	}
+	root := t.TempDir()
+	for _, name := range []string{"index.html", "robots.txt", "sitemap.xml", "404.html"} {
+		writeTestFile(t, filepath.Join(root, name), "fixture")
+	}
+	handler := newStaticHandler(root, false)
+	defer handler.Close()
+	for _, broken := range []string{"", "/core", "/api/example", "/"} {
+		t.Run("broken="+broken, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if broken != "" && r.URL.Path == broken {
+					if broken == "/" {
+						w.WriteHeader(http.StatusServiceUnavailable)
+					}
+					return
+				}
+				handler.ServeHTTP(w, r)
+			}))
+			defer server.Close()
+			command := exec.CommandContext(t.Context(), "bash", "-euo", "pipefail", "-c", strings.ReplaceAll(probes, "http://127.0.0.1:8084", server.URL))
+			output, err := command.CombinedOutput()
+			if (err != nil) != (broken != "") {
+				t.Fatalf("deployment probes: broken=%q error=%v output=%s", broken, err, output)
+			}
+		})
+	}
+}
+
+func TestStaticAssetCachingDistinguishesBundledAndPublicFiles(t *testing.T) {
+	root := t.TempDir()
+	for _, test := range []struct {
+		name, cache string
+	}{
+		{"index.html", "public, max-age=0, must-revalidate"},
+		{"og-amsonia.svg", "public, max-age=0, must-revalidate"},
+		{"favicon.png", "public, max-age=0, must-revalidate"},
+		{"styles.css", "public, max-age=0, must-revalidate"},
+		{"robots.txt", "public, max-age=3600"},
+		{"sitemap.xml", "public, max-age=3600"},
+		{"_astro/index.D9cP3mZq.css", "public, max-age=31536000, immutable"},
+		{"_astro/client.B7eW2nXk.js", "public, max-age=31536000, immutable"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			writeTestFile(t, filepath.Join(root, test.name), "asset")
+			handler := newStaticHandler(root, false)
+			defer handler.Close()
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/"+test.name, nil))
+			if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != test.cache {
+				t.Fatalf("%s: status=%d cache=%q; want %q", test.name, response.Code, response.Header().Get("Cache-Control"), test.cache)
+			}
+		})
 	}
 }

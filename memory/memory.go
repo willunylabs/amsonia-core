@@ -457,6 +457,9 @@ func (tx *tenantTx) DeleteGrantEdge(ctx context.Context, edge amsonia.GrantEdge)
 }
 
 func (tx *tenantTx) InsertRoleVersion(ctx context.Context, snapshot amsonia.RoleVersion) error {
+	if _, exists := tx.tenant.roleVersions[snapshot.RoleID][snapshot.Version]; exists {
+		return amsonia.ErrConflict
+	}
 	if tx.tenant.roleVersions[snapshot.RoleID] == nil {
 		tx.tenant.roleVersions[snapshot.RoleID] = map[int64]amsonia.RoleVersion{}
 	}

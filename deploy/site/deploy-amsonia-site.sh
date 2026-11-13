@@ -131,9 +131,18 @@ systemctl is-active --quiet "${service_name}"
 curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 \
   http://127.0.0.1:8084/healthz >/dev/null
 
-for route in / /core /core/docs/getting-started /robots.txt /sitemap.xml; do
+# Keep these probes aligned with the static server's public route contract.
+for route in / /robots.txt /sitemap.xml; do
   status="$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:8084${route}")"
   if [[ "${status}" != 200 ]]; then
+    echo "unexpected local status for ${route}: ${status}" >&2
+    exit 1
+  fi
+done
+
+for route in /core /core/docs/getting-started /releases; do
+  status="$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:8084${route}")"
+  if [[ "${status}" != 301 ]]; then
     echo "unexpected local status for ${route}: ${status}" >&2
     exit 1
   fi

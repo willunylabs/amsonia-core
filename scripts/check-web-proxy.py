@@ -15,7 +15,7 @@ import urllib.request
 
 class Backend(BaseHTTPRequestHandler):
     def do_GET(self):
-        body = json.dumps({"path": self.path}).encode()
+        body = json.dumps({"path": self.path, "host": self.headers.get("Host")}).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
@@ -90,7 +90,9 @@ def main():
                             if path in ("/", "/spa/route"):
                                 assert headers["Cache-Control"] == "no-cache", path
                     with urllib.request.urlopen(base + prefix + "/api/v1/proxy-check?q=one", timeout=5) as response:
-                        assert json.load(response)["path"] == "/api/v1/proxy-check?q=one"
+                        proxied = json.load(response)
+                        assert proxied["path"] == "/api/v1/proxy-check?q=one"
+                        assert proxied["host"] == base.removeprefix("http://"), proxied
                 print(f"Shipped Nginx: security headers, cache policy, SPA, 404 and API prefix {prefix!r} passed.")
             for prefix in ("/", "backend", "/backend/", "/a/../b", "/a?x", "/a;", "//host", "/a\n"):
                 result = subprocess.run(["node", str(root / "scripts/configure-web-proxy.mjs"), str(config)],

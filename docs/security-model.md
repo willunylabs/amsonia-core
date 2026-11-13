@@ -19,6 +19,11 @@ boundaries, not only application conventions.
   runtime database credentials remain high-value secrets.
 - The React console is an administrative interface and should be protected by
   HTTPS, network controls, monitoring, and backups.
+- Unsafe browser requests must originate from the API's own origin, including
+  sign-in and cookie rotation. The API checks Fetch Metadata or the Origin/Host
+  pair before processing them. Reverse proxies must preserve the original Host
+  header, including its port. Non-browser clients without these browser headers
+  remain supported.
 
 Maintenance exports retain the `amsonia.tenant.v1` payload: roles, scoped grants,
 role-version snapshots, grant edges, and mutation audit. Both adapters serialize

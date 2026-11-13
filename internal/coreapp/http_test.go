@@ -159,3 +159,38 @@ func TestAPIPathPrefixValidation(t *testing.T) {
 		}
 	}
 }
+
+func TestAPIRejectsCrossOriginMutationsBeforeSessionChanges(t *testing.T) {
+	api := &API{service: &Service{}, logger: slog.New(slog.NewTextHandler(io.Discard, nil)), loginSlots: make(chan struct{}, 1)}
+	handler := api.Handler()
+	for _, test := range []struct {
+		name, method, path, site, origin string
+		status                           int
+	}{
+		{"cross-site login", "POST", "/api/v1/auth/login", "cross-site", "https://attacker.example", 403},
+		{"same-site other origin", "POST", "/api/v1/auth/login", "same-site", "https://other.example", 403},
+		{"legacy cross-origin login", "POST", "/api/v1/auth/login", "", "https://attacker.example", 403},
+		{"cross-site restore", "POST", "/api/v1/auth/restore", "cross-site", "https://attacker.example", 403},
+		{"cross-site logout", "POST", "/api/v1/auth/logout", "cross-site", "https://attacker.example", 403},
+		{"cross-site password recovery", "POST", "/api/v1/password-recovery/complete", "cross-site", "https://attacker.example", 403},
+		{"same-origin browser", "POST", "/api/v1/auth/login", "same-origin", "http://example.com", 401},
+		{"legacy same-origin browser", "POST", "/api/v1/auth/login", "", "http://example.com", 401},
+		{"command-line client", "POST", "/api/v1/auth/login", "", "", 401},
+		{"safe cross-origin read", "GET", "/health", "cross-site", "https://attacker.example", 200},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(test.method, "http://example.com"+test.path, strings.NewReader(`{"email":"invalid","password":"unchanged"}`))
+			request.Header.Set("Content-Type", "text/plain")
+			request.Header.Set("Sec-Fetch-Site", test.site)
+			request.Header.Set("Origin", test.origin)
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != test.status || len(response.Result().Cookies()) != 0 {
+				t.Fatalf("status=%d cookies=%v body=%s", response.Code, response.Result().Cookies(), response.Body.String())
+			}
+			if response.Header().Get("X-Request-ID") == "" || response.Header().Get("Cache-Control") != "no-store" || !json.Valid(response.Body.Bytes()) {
+				t.Fatal("origin protection lost the API response or logging contract")
+			}
+		})
+	}
+}
