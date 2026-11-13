@@ -105,7 +105,7 @@ and security maintenance.
 
 ## Verify it in five minutes
 
-Requirements: Docker with Compose 2.24.4 or newer, and Go 1.26.10 or newer.
+Requirements: Docker with Compose 2.24.4 or newer, and Go 1.26.11 or newer.
 
 ```bash
 git clone https://github.com/willunylabs/amsonia-core.git
@@ -157,7 +157,7 @@ the [Go SDK quickstart](docs/go-sdk.md).
 
 ## Manual development setup
 
-Requirements: Go 1.26.10+, PostgreSQL 16+, Node.js 22.15+, and npm 10.
+Requirements: Go 1.26.11+, PostgreSQL 16+, Node.js 22.15+, and npm 10.
 Docker is optional. The complete local setup, role provisioning, environment
 variables, and PostgreSQL checks are in
 [docs/getting-started.md](docs/getting-started.md).
@@ -202,7 +202,7 @@ HttpOnly, `SameSite=Strict` cookies and are never returned in JSON.
 
 ## Development
 
-With Go 1.26.10 or newer and Node.js 22.19 or newer, run the local quality gate:
+With Go 1.26.11 or newer and Node.js 22.19 or newer, run the local quality gate:
 
 ```bash
 make check
