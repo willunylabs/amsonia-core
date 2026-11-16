@@ -31,4 +31,5 @@ test('Pages deployment retains real 404s and security headers', () => {
   assert.match(headers, /X-Frame-Options: DENY/);
   assert.match(headers, /\/_astro\/\*/);
   assert.match(headers, /Cache-Control: public, max-age=31536000, immutable/);
+  assert.match(headers, /\/og-amsonia\.svg\n  Cache-Control: public, max-age=0, must-revalidate/);
 });

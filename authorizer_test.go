@@ -296,37 +296,17 @@ func TestScopePrecedenceTenantWins(t *testing.T) {
 }
 
 func TestDeniedReasonPrecedence(t *testing.T) {
-	// Grants in different scopes all fail with different reasons; the reason
-	// precedence must be deterministic regardless of row order.
-	a := mustAuthorizer(t, []EffectiveGrant{
-		{RoleID: "r1", Permission: testPerm, Scope: ScopeOwn},       // owner mismatch
-		{RoleID: "r2", Permission: testPerm, Scope: ScopeTenant},    // would pass tenant but Resource.TenantID mismatched? keep tenant valid
-		{RoleID: "r3", Permission: testPerm, Scope: ScopeWorkspace}, // workspace missing
-	}, nil)
-	req := tenantRequest("u1", ResourceExisting, ResourceContext{
-		TenantID: "tenant-a", ResourceID: "inv-1", OwnerSubjectID: "u2",
-	})
-	_ = a
-	_ = req
-	// Covered by the other tests; this test asserts workspace membership
-	// beats owner mismatch when both fail.
-	a2 := mustAuthorizer(t, []EffectiveGrant{
-		{RoleID: "r1", Permission: testPerm, Scope: ScopeOwn},
-		{RoleID: "r3", Permission: testPerm, Scope: ScopeWorkspace},
-	}, nil)
-	d, err := a2.Check(context.Background(), tenantRequest("u1", ResourceExisting, ResourceContext{
-		TenantID: "tenant-a", ResourceID: "inv-1", OwnerSubjectID: "u2", WorkspaceID: "ws-1",
-	}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if d.Allowed {
-		t.Fatal("expected denied")
-	}
-	// owner_mismatch ranks above workspace_membership_missing in the
-	// normative precedence.
-	if d.Reason != ReasonOwnerMismatch {
-		t.Fatalf("reason = %q, want owner_mismatch", d.Reason)
+	// Owner mismatch takes precedence even when workspace membership is missing.
+	own := EffectiveGrant{RoleID: "r1", Permission: testPerm, Scope: ScopeOwn}
+	workspace := EffectiveGrant{RoleID: "r3", Permission: testPerm, Scope: ScopeWorkspace}
+	for _, grants := range [][]EffectiveGrant{{own, workspace}, {workspace, own}} {
+		a := mustAuthorizer(t, grants, nil)
+		d, err := a.Check(t.Context(), tenantRequest("u1", ResourceExisting, ResourceContext{
+			TenantID: "tenant-a", ResourceID: "inv-1", OwnerSubjectID: "u2", WorkspaceID: "ws-1",
+		}))
+		if err != nil || d != (Decision{Reason: ReasonOwnerMismatch}) {
+			t.Fatalf("grants %+v: decision = %+v, err = %v; want owner_mismatch", grants, d, err)
+		}
 	}
 }
 
@@ -393,38 +373,18 @@ func TestTenantActionMode(t *testing.T) {
 }
 
 func TestUnknownPermissionDenied(t *testing.T) {
-	a, err := NewAuthorizer(
-		testCatalog(t),
-		&stubPolicies{grants: []EffectiveGrant{
-			{RoleID: "r", Permission: "billing:invoice:write", Scope: ScopeTenant},
-		}},
-		&stubMembership{},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The requested permission (testPerm) is not in the catalog.
-	d, err := a.Check(context.Background(), CheckRequest{
+	const unknown = PermissionKey("billing:invoice:destroy")
+	a := mustAuthorizer(t, []EffectiveGrant{
+		{RoleID: "r", Permission: unknown, Scope: ScopeTenant},
+	}, nil)
+	d, err := a.Check(t.Context(), CheckRequest{
 		Principal:  Principal{TenantID: "tenant-a", SubjectID: "u1"},
-		Permission: "billing:invoice:read", // matches testPerm but catalog only has testPerm? catalog HAS testPerm
+		Permission: unknown,
 		Mode:       ResourceExisting,
 		Resource:   ResourceContext{TenantID: "tenant-a", ResourceID: "x"},
 	})
-	_ = d
-	_ = err
-	// Use a permission absent from the catalog.
-	req := CheckRequest{
-		Principal:  Principal{TenantID: "tenant-a", SubjectID: "u1"},
-		Permission: "billing:invoice:destroy",
-		Mode:       ResourceExisting,
-		Resource:   ResourceContext{TenantID: "tenant-a", ResourceID: "x"},
-	}
-	d, err = a.Check(context.Background(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if d.Allowed || d.Reason != ReasonInvalidRequest {
-		t.Fatalf("expected invalid_request for unknown permission, got %+v", d)
+	if err != nil || d != (Decision{Reason: ReasonInvalidRequest}) {
+		t.Fatalf("decision = %+v, err = %v; want invalid_request for unknown permission", d, err)
 	}
 }
 
@@ -457,29 +417,22 @@ func TestEmptyGrantsPermissionNotGranted(t *testing.T) {
 }
 
 func TestMissingTenantOrSubjectInvalid(t *testing.T) {
-	a := mustAuthorizer(t, nil, nil)
-	_, err := a.Check(context.Background(), CheckRequest{
-		Principal:  Principal{SubjectID: "u1"},
-		Permission: testPerm,
-		Mode:       ResourceExisting,
-		Resource:   ResourceContext{TenantID: "tenant-a", ResourceID: "x"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	// validateRequest returns an invalid_request decision, not an error.
-	// Assert denied + invalid_request.
-	a2 := mustAuthorizer(t, nil, nil)
-	d, err := a2.Check(context.Background(), CheckRequest{
-		Principal:  Principal{SubjectID: "u1"},
-		Permission: testPerm,
-		Mode:       ResourceExisting,
-		Resource:   ResourceContext{TenantID: "tenant-a", ResourceID: "x"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if d.Allowed || d.Reason != ReasonInvalidRequest {
-		t.Fatalf("expected invalid_request, got %+v", d)
+	for _, principal := range []Principal{
+		{SubjectID: "u1"},
+		{TenantID: "tenant-a"},
+		{},
+	} {
+		a := mustAuthorizer(t, []EffectiveGrant{
+			{RoleID: "r", Permission: testPerm, Scope: ScopeTenant},
+		}, nil)
+		d, err := a.Check(t.Context(), CheckRequest{
+			Principal:  principal,
+			Permission: testPerm,
+			Mode:       ResourceExisting,
+			Resource:   ResourceContext{TenantID: "tenant-a", ResourceID: "x"},
+		})
+		if err != nil || d != (Decision{Reason: ReasonInvalidRequest}) {
+			t.Fatalf("principal %+v: decision = %+v, err = %v; want invalid_request", principal, d, err)
+		}
 	}
 }

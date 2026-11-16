@@ -3,7 +3,7 @@
 The Astro site in this directory is the canonical public product surface for
 Amsonia. It is deployed to `amsonia.dev`. The Next product page links to the
 separate public Amsonia Next demonstration after anonymous-access acceptance.
-The demo and Platform transactions run outside this indexable static site;
+The demo and commercial transactions run outside this indexable static site;
 the static build does not call them or depend on their runtime availability.
 
 The reviewed public demo destination lives in `config/public-links.json`, separate
@@ -31,11 +31,12 @@ and botanical-specimen presentation is retired.
 
 ## Information boundary
 
-- `/` introduces the Amsonia product family and its Platform and Next products.
-- `/platform` owns the commercial Go + Next.js, multi-tenant product narrative.
+- `/` introduces the Amsonia product family with Next as its commercial product.
+- `/platform` and its retired descendants redirect to `/next/`.
 - `/next` owns the private-source Next.js starter narrative; source availability and
   license terms are confirmed by Willuny inquiry.
 - `/docs` is the product-family documentation entry point.
+- `/open-source` links the independently useful Core repository and examples.
 - product positioning, pricing, and purchase explanations remain indexable on
   `amsonia.dev`; transaction CTAs enter the non-indexable Willuny transaction surface;
 - company, publisher, blog, legal, and support content remain on `willuny.com`.
@@ -54,10 +55,11 @@ and internal links, and rejects broken routes. Keep the shared logo, Open Graph
 image, global tokens, header, and footer changes in the same pull request so the
 production system cannot drift between surfaces.
 
-Public static assets are served with a one-year immutable cache policy. Never
-overwrite a published logo filename in place; increment the versioned filename
-and update every HTML, favicon, and structured-data reference in the same pull
-request.
+Hashed build assets and the versioned logo use a one-year immutable cache
+policy on Pages. Stable filenames such as `og-amsonia.svg` revalidate so later
+releases can update them. Never overwrite a published versioned logo filename;
+increment it and update every HTML, favicon, and structured-data reference in
+the same pull request.
 
 `site/public/_headers` carries the matching Cloudflare Pages edge policy. Keep
 it aligned with the current origin security and immutable-asset contract.

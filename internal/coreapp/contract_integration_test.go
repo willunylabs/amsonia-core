@@ -98,6 +98,18 @@ func TestAuthenticationAPIContract(t *testing.T) {
 		t.Fatal("refresh cookie contract")
 	}
 	base := "/api/v1/tenants/" + tenant.ID
+	// Exercise the previously undocumented responses returned by authentication
+	// before request dispatch, with otherwise valid inputs.
+	savedCookie := cookie
+	token, cookie = "", nil
+	for _, path := range []string{"/api/v1/permissions", base + "/members", base + "/roles", base + "/capabilities", base + "/roles/role_owner/members"} {
+		call("GET", path, nil, 401, true)
+	}
+	call("POST", "/api/v1/tenants", map[string]string{"name": "Unauthenticated"}, 401, true)
+	call("POST", base+"/roles", map[string]any{"id": "unauthenticated", "name": "Unauthenticated", "description": "", "permissions": []string{}}, 401, true)
+	call("POST", "/api/v1/authorization/check", map[string]any{"tenant_id": tenant.ID, "permission": "iam:member:read", "mode": "tenant_action", "resource": map[string]string{"tenant_id": tenant.ID}}, 401, true)
+	token = session.AccessToken
+	cookie = savedCookie
 	for _, path := range []string{"/api/v1/auth/me", "/api/v1/auth/profile", "/api/v1/auth/sessions", "/api/v1/application", "/api/v1/tenants", "/api/v1/permissions", base + "/settings", base + "/members", base + "/roles", base + "/invitations", base + "/audit-events", base + "/capabilities", base + "/members/" + account.ID, base + "/members/" + account.ID + "/roles"} {
 		call("GET", path, nil, 200, true)
 	}

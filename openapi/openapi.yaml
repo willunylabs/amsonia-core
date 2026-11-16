@@ -284,6 +284,7 @@ paths:
               properties:
                 name: { type: string, minLength: 1, maxLength: 80 }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
         "201":
           description: Active tenant with the current account as owner.
           content:
@@ -298,6 +299,7 @@ paths:
       operationId: listPermissions
       security: [{ bearerAuth: [] }]
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
         "200":
           description: Developer-owned immutable permission catalog.
           content:
@@ -330,6 +332,7 @@ paths:
               - active
               - suspended
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
         "200":
           description: A bounded collection page.
           content:
@@ -378,6 +381,7 @@ paths:
         - $ref: "#/components/parameters/DirectoryLimit"
         - $ref: "#/components/parameters/DirectoryAfter"
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
         "200":
           description: A bounded collection page.
           content:
@@ -455,6 +459,7 @@ paths:
                   items:
                     type: string
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
         "201":
           description: Role at immutable version one.
           content:
@@ -477,6 +482,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/TenantId"
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
         "200":
           description: Effective tenant-action permissions used by the Console.
           content:
@@ -653,6 +659,7 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/AuthorizationCheck" }
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
         "200":
           description: Explainable authorization decision.
           content:
@@ -1982,6 +1989,7 @@ paths:
               - active
               - suspended
       responses:
+        '401': { $ref: '#/components/responses/Unauthorized' }
         "200":
           description: A bounded collection page.
           content:
