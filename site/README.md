@@ -46,6 +46,7 @@ and botanical-specimen presentation is retired.
 
 ## Local checks
 
+Use Node.js 22.23.4 or newer, matching Astro’s engine requirement and CI.
 From the repository root, run `make site-check`. It supplies the same test URLs
 as CI and works from a fresh checkout.
 

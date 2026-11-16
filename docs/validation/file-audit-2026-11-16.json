@@ -35,33 +35,33 @@
     },
     {
       "path": ".github/workflows/ci.yml",
-      "status": "reviewed",
+      "status": "reviewed_and_fixed",
       "baseline_sha256": "ce35bc24200074d1b95abf7cae44d2deff47e37e04d29a7011709630872886f5",
-      "reviewed_sha256": "ce35bc24200074d1b95abf7cae44d2deff47e37e04d29a7011709630872886f5"
+      "reviewed_sha256": "e973c163872a483a37e7ff5840c6df49145bfd6d9c0b0c66e937b439aaf7b63f"
     },
     {
       "path": ".github/workflows/deploy-site-pages.yml",
-      "status": "reviewed",
+      "status": "reviewed_and_fixed",
       "baseline_sha256": "8448ab845f6fe7ad122ee22446e68578d43675d5d3c167ca8b9a3baa02e45bbc",
-      "reviewed_sha256": "8448ab845f6fe7ad122ee22446e68578d43675d5d3c167ca8b9a3baa02e45bbc"
+      "reviewed_sha256": "81d6208f538e10e159dcbffe5220d9a7b5d801e385419e538b34d6116606a0ce"
     },
     {
       "path": ".github/workflows/deploy-site.yml",
-      "status": "reviewed",
+      "status": "reviewed_and_fixed",
       "baseline_sha256": "2f3fec7d90fcd5d8c9edb306ba44f1823af88764f1babc63cd1a2d3ff452c1d8",
-      "reviewed_sha256": "2f3fec7d90fcd5d8c9edb306ba44f1823af88764f1babc63cd1a2d3ff452c1d8"
+      "reviewed_sha256": "55c0f40314428b19e8850464e2a255ed895d007529cb9abea8dd6f242ff186ec"
     },
     {
       "path": ".github/workflows/preview.yml",
-      "status": "reviewed",
+      "status": "reviewed_and_fixed",
       "baseline_sha256": "096ae9ad5df1ed5a32b74c7c4e0326abff058638e29e696f996ef80938f59f4c",
-      "reviewed_sha256": "096ae9ad5df1ed5a32b74c7c4e0326abff058638e29e696f996ef80938f59f4c"
+      "reviewed_sha256": "a8cabe13f0e8c881e316a779db7749dd633d514852d2cfefa030cd90955766c8"
     },
     {
       "path": ".github/workflows/public-preview.yml",
-      "status": "reviewed",
+      "status": "reviewed_and_fixed",
       "baseline_sha256": "a3b363442b58bc82343a7a59b1788909e6b72d6249ebf51bb9534755bf2ec58a",
-      "reviewed_sha256": "a3b363442b58bc82343a7a59b1788909e6b72d6249ebf51bb9534755bf2ec58a"
+      "reviewed_sha256": "e74f8b779b31869d90f74b984a44c7adde6e4fffb918186b0050b1faf88520a3"
     },
     {
       "path": ".github/workflows/stage-preview.yml",
@@ -91,7 +91,7 @@
       "path": "CONTRIBUTING.md",
       "status": "reviewed_and_fixed",
       "baseline_sha256": "b8b105effebb75ed89b3bffff411b2a1911955c200d4aa1871a3f75842d5f997",
-      "reviewed_sha256": "c34568e3f422bca299e5994efbe051b4572efbdd7a1e0f0504c327731c904b55"
+      "reviewed_sha256": "50272c99b9cd74ff1f53a7b846b6ca14254c133e1a723b9893f89a5c5a689956"
     },
     {
       "path": "Dockerfile.api",
@@ -101,9 +101,9 @@
     },
     {
       "path": "Dockerfile.web",
-      "status": "reviewed",
+      "status": "reviewed_and_fixed",
       "baseline_sha256": "e789502878853e15db9deafd1f76a440dec681db89cd19677071760bb074e57e",
-      "reviewed_sha256": "e789502878853e15db9deafd1f76a440dec681db89cd19677071760bb074e57e"
+      "reviewed_sha256": "1566b9d922892c4cfb150d51cebb6357badc0fab30148adb0612623c9c0e2da6"
     },
     {
       "path": "LICENSE",
@@ -119,9 +119,9 @@
     },
     {
       "path": "README.md",
-      "status": "reviewed",
+      "status": "reviewed_and_fixed",
       "baseline_sha256": "97b4f1e9a9a51bd8e56234662fad9e39fe8811d03bff8811a3caee2426e3f6e1",
-      "reviewed_sha256": "97b4f1e9a9a51bd8e56234662fad9e39fe8811d03bff8811a3caee2426e3f6e1"
+      "reviewed_sha256": "fb6251798cee8cba84a4c39e0078b1398c1ea38bb2ae6dd9bd9719bb0b1a52b4"
     },
     {
       "path": "SECURITY.md",
@@ -415,7 +415,7 @@
       "path": "docs/getting-started.md",
       "status": "reviewed_and_fixed",
       "baseline_sha256": "a645261d23ee92f20979616b0377f356bd0228f174878a1043e5333c27569a88",
-      "reviewed_sha256": "0fda1861cd561fd46a2c81ff2865b14398027261f9fbf449d55a762eb07746bf"
+      "reviewed_sha256": "9e20b955366c4204c99f2d68ee4d6a82479e9f10d0a5064640c45ea34257bbd6"
     },
     {
       "path": "docs/go-sdk.md",
@@ -1309,7 +1309,7 @@
       "path": "site/README.md",
       "status": "reviewed_and_fixed",
       "baseline_sha256": "fd876a363b950c9721c2dc7d3dda9f7492a75606e8d43e674765a8e0b084f8d9",
-      "reviewed_sha256": "2030aab973cf6811cc52f44ce0fa05b92a087480b8904104b79cfc3a50787a13"
+      "reviewed_sha256": "873fc63e1e248bb32cf89531fc4ea4a9e299f2aa47e95a4ed9978eafd67fea8b"
     },
     {
       "path": "site/astro.config.mjs",
@@ -1355,15 +1355,15 @@
     },
     {
       "path": "site/package-lock.json",
-      "status": "dependency_lock_integrity_review",
+      "status": "reviewed_and_fixed",
       "baseline_sha256": "77bf43040510e70fadc5f4cfd4cb304ad8785b4689b4e07781de4cb35396df7d",
-      "reviewed_sha256": "77bf43040510e70fadc5f4cfd4cb304ad8785b4689b4e07781de4cb35396df7d"
+      "reviewed_sha256": "8ec1509c0c1ed1ed86383bd20feb0dfff25a2d6f0588d9fd7efb814e06d8c852"
     },
     {
       "path": "site/package.json",
       "status": "reviewed_and_fixed",
       "baseline_sha256": "6093dc42ad13d812e18b1c2eb1b942c4ec56aee0dce3eb41aade23ceed52f6eb",
-      "reviewed_sha256": "400c9598c925ef1700defcba88f117dcbe340b9c4187c60f0229c93afc407eda"
+      "reviewed_sha256": "123a3d26a784680314cd76dd6c6a7f9656f29fe27ba282b95a289482c6ed0cb9"
     },
     {
       "path": "site/public/_headers",
@@ -2016,17 +2016,44 @@
       ],
       "problem": "Current-looking documentation describes a stopped AWS origin as active, retired Platform pages as current, and all public assets as immutable.",
       "resolution": "Point releases to the existing Pages runbook, align live route/cache documentation with shipped configuration, and label historical artwork validation."
+    },
+    {
+      "id": "F8",
+      "kind": "dependency_security",
+      "files": [
+        "site/package.json",
+        "site/package-lock.json",
+        "Dockerfile.web",
+        ".github/workflows/ci.yml",
+        ".github/workflows/deploy-site-pages.yml",
+        ".github/workflows/deploy-site.yml",
+        ".github/workflows/preview.yml",
+        ".github/workflows/public-preview.yml",
+        "CONTRIBUTING.md",
+        "README.md",
+        "docs/getting-started.md",
+        "site/README.md"
+      ],
+      "problem": "Current-commit npm audit rejects Astro 7.3.6 after November 9 disclosures GHSA-mh32-jxcr-mh9f and GHSA-r3h5-4585-7x3w. Patched Astro requires a newer Node baseline.",
+      "resolution": "Pin Astro 7.4.12 and regenerate only the site lockfile; align Node 22.23.4 in build images, existing workflows, engines and current development documentation. No local dependency installation/build or audit exception.",
+      "verification": "Official advisory/release metadata and Node release verified. Updated lockfile audit reports zero vulnerabilities; full compatibility checks run on the new PR head.",
+      "sources": [
+        "https://github.com/advisories/GHSA-mh32-jxcr-mh9f",
+        "https://github.com/advisories/GHSA-r3h5-4585-7x3w",
+        "https://github.com/withastro/astro/releases/tag/astro%407.4.12",
+        "https://nodejs.org/en/blog/release/v22.23.4"
+      ]
     }
   ],
   "added_files": [
     {
       "path": "site/scripts/analytics-consent.test.mjs",
       "status": "reviewed",
-      "sha256": "8f477e7788a63c70aeef5208c3acc2d6340a8f5c3293df9d1985b8eddc314546"
+      "sha256": "d9b2fc652c429b1502c298cee868ef6e9f71de9baa131c1ca316f8a6cec0d655"
     }
   ],
   "validation": {
-    "local": "gofmt, diff whitespace, source-script Node tests, Pages contract test, dependency/provenance integrity, SVG checksums and PNG inspection; no dependency installation or full local build/test suite.",
+    "local": "gofmt, diff whitespace, source-script Node tests, Pages contract test, dependency/provenance integrity, SVG checksums and PNG inspection; no dependency installation or full local build/test suite. Site lock-only npm audit reports zero vulnerabilities; manifest/lock engines and dependency metadata match.",
     "browser": "Exact consent markup/script and current CSS in a routed component fixture; synthetic GA responses prevent external tracking. All created contexts closed in finally. This is component verification, not a full Astro-site browser acceptance.",
     "ci": "Required full checks run on the resulting PR head; links and exact commit are recorded in the PR and task delivery.",
     "evidence": [
@@ -2038,7 +2065,8 @@
         "path": "output/file-audit-20261116/consent-390.png",
         "bytes": 22017
       }
-    ]
+    ],
+    "iteration": "Initial head 138453a passed Go, web, PostgreSQL/API contract, deployment-contract and archive/browser checks. Site failed on newly disclosed Astro advisories; these are fixed in the follow-up. CodeQL identified a case-sensitive HTML extraction expression in the new test; extraction now matches case-insensitively. Final acceptance must use the resulting head, not the initial green subsets."
   },
   "separate_checkout": {
     "path": "/Users/will/Codes/amsonia-core",

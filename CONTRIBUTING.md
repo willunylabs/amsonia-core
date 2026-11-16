@@ -17,7 +17,7 @@ Thanks for your interest in Amsonia.
 
 ## Development
 
-From a fresh checkout with Go 1.26.11 or newer and Node.js 22.19 or newer,
+From a fresh checkout with Go 1.26.11 or newer and Node.js 22.23.4 or newer,
 run `make check` to exercise the Go, web, site, and OpenAPI checks.
 The web and site targets supply the same test configuration used in CI.
 For Go-only changes, the following checks can run separately:

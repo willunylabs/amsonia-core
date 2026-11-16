@@ -41,7 +41,7 @@ Docker is not required for the manual path.
 
 - Go 1.26.11 or newer within the supported release line
 - PostgreSQL 16 or newer
-- Node.js 22.15 or newer and npm 10
+- Node.js 22.23.4 or newer and npm 10
 
 ## Create a local database
 
