@@ -2049,7 +2049,7 @@
     {
       "path": "site/scripts/analytics-consent.test.mjs",
       "status": "reviewed",
-      "sha256": "d9b2fc652c429b1502c298cee868ef6e9f71de9baa131c1ca316f8a6cec0d655"
+      "sha256": "4780cf643961acda73c311b8a2ddb68371a4bda4f82a1e702c527c8dbbb3600e"
     }
   ],
   "validation": {
@@ -2066,7 +2066,7 @@
         "bytes": 22017
       }
     ],
-    "iteration": "Initial head 138453a passed Go, web, PostgreSQL/API contract, deployment-contract and archive/browser checks. Site failed on newly disclosed Astro advisories; these are fixed in the follow-up. CodeQL identified a case-sensitive HTML extraction expression in the new test; extraction now matches case-insensitively. Final acceptance must use the resulting head, not the initial green subsets."
+    "iteration": "Initial head 138453a passed Go, web, PostgreSQL/API contract, deployment-contract and archive/browser checks. Site failed on newly disclosed Astro advisories; the updated dependency passes audit and full site checks at 21a0934. CodeQL flagged incomplete HTML matching in the new test extractor. The final test explicitly reads the component’s single known repository script block rather than treating a regular expression as an HTML filter. Final acceptance uses the resulting head, not earlier green subsets."
   },
   "separate_checkout": {
     "path": "/Users/will/Codes/amsonia-core",

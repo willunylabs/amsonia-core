@@ -5,8 +5,13 @@ import { runInNewContext } from 'node:vm';
 
 // Execute the shipped inline script, so regressions in the Astro component fail CI.
 const component = readFileSync(new URL('../src/components/AnalyticsConsent.astro', import.meta.url), 'utf8');
-const script = component.match(/<script\b[^>]*>([\s\S]*?)<\/script>/i)?.[1];
-assert.ok(script, 'consent component must contain its inline script');
+// Read the single known repository source block, rather than filtering HTML.
+const tagStart = component.indexOf('<script is:inline');
+const bodyStart = component.indexOf('>', tagStart);
+const bodyEnd = component.indexOf('</script>', bodyStart);
+assert.ok(tagStart >= 0 && bodyStart > tagStart && bodyEnd > bodyStart, 'consent component must contain its inline script');
+assert.equal(component.indexOf('<script', bodyEnd), -1, 'consent component must contain only one script');
+const script = component.slice(bodyStart + 1, bodyEnd);
 
 function render({ stored = null, readFails = false, writeFails = false } = {}) {
   const card = { hidden: true };
