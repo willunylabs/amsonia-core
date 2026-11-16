@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/willunylabs/amsonia-core"
@@ -679,7 +680,7 @@ func TestPostgresSignedActorDiscoversOnlyOwnTenants(t *testing.T) {
 	}
 }
 
-func TestPostgresConcurrentReciprocalGrantCycle(t *testing.T) {
+func TestPostgresReciprocalGrantCycle(t *testing.T) {
 	store := setupPostgres(t)
 	cat := testCatalog(t)
 	clock := fixedTime()
@@ -711,5 +712,76 @@ func TestPostgresConcurrentReciprocalGrantCycle(t *testing.T) {
 		SubjectID: "owner-1", RoleID: "role-owner", ExpectedRoleVersion: 1,
 	}); !errors.Is(err, amsonia.ErrGrantCycle) {
 		t.Fatalf("expected ErrGrantCycle, got %v", err)
+	}
+}
+
+func TestPostgresConcurrentReciprocalGrantCycle(t *testing.T) {
+	store := setupPostgres(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	catalog := testCatalog(t)
+	manager, err := amsonia.NewManager(catalog, store, noMemberships{}, testControls, nullAudit{}, fixedTime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	bootstrapper, err := amsonia.NewBootstrapper(catalog, store, testControls, hostAuthorizer{}, fixedTime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner := amsonia.Principal{TenantID: "concurrent-cycle", SubjectID: "owner"}
+	if _, err := bootstrapper.BootstrapTenant(ctx, bootstrapInput(owner.TenantID, owner.SubjectID, "owner-role")); err != nil {
+		t.Fatal(err)
+	}
+	metadata := amsonia.MutationMetadata{ReasonCode: "concurrent_cycle"}
+	for _, subject := range []amsonia.SubjectID{"alice", "bob"} {
+		if _, err := manager.AssignRole(ctx, owner, metadata, amsonia.AssignRoleInput{
+			SubjectID: subject, RoleID: "owner-role", ExpectedRoleVersion: 1,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, _, err := manager.CreateRoleWithPermissions(ctx, owner, metadata, amsonia.CreateRoleWithPermissionsInput{
+		RoleID: "reader", Name: "Reader", Permissions: []amsonia.PermissionKey{permInvoiceRead},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	for _, pair := range [][2]amsonia.SubjectID{{"alice", "bob"}, {"bob", "alice"}} {
+		go func() {
+			<-start
+			_, err := manager.AssignRole(ctx, amsonia.Principal{TenantID: owner.TenantID, SubjectID: pair[0]}, metadata,
+				amsonia.AssignRoleInput{SubjectID: pair[1], RoleID: "reader", ExpectedRoleVersion: 1})
+			results <- err
+		}()
+	}
+	close(start)
+	succeeded := 0
+	for range 2 {
+		err := <-results
+		if err == nil {
+			succeeded++
+			continue
+		}
+		var databaseError *pgconn.PgError
+		if !errors.Is(err, amsonia.ErrGrantCycle) && !(errors.As(err, &databaseError) && databaseError.Code == "40001") {
+			t.Fatalf("unexpected concurrent grant error: %v", err)
+		}
+	}
+	if succeeded != 1 {
+		t.Fatalf("concurrent reciprocal grants committed %d times; want exactly one", succeeded)
+	}
+	if err := store.ReadTenant(ctx, owner.TenantID, func(reader amsonia.TenantReader) error {
+		forward, err := reader.HasGrantPath(ctx, "alice", "bob")
+		if err != nil {
+			return err
+		}
+		backward, err := reader.HasGrantPath(ctx, "bob", "alice")
+		if err == nil && forward == backward {
+			t.Errorf("persisted reciprocal paths = %t/%t; want one direction only", forward, backward)
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
 	}
 }

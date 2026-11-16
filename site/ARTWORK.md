@@ -1,5 +1,9 @@
 # Affinity website artwork
 
+This is a historical artwork and validation record from October 2026. Current
+page scope and caching rules are described in [README.md](README.md); retired
+Platform illustrations remain as versioned assets and evidence.
+
 The family and Next pages now use the approved source-layer illustration; the
 Platform page uses the connected-capabilities illustration. New feature icons
 replace the former ornamental labels. Existing product claims, links, schema,

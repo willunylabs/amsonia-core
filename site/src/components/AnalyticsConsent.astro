@@ -42,7 +42,8 @@ const analyticsDomains = [new URL(COMPANY_ORIGIN).hostname, new URL(SITE_ORIGIN)
         };
 
         const updateConsent = (value) => {
-          localStorage.setItem(consentKey, value);
+          // Storage may be unavailable; the current page must still honor the choice.
+          try { localStorage.setItem(consentKey, value); } catch {}
           window.gtag('consent', 'update', {
             analytics_storage: value,
             ad_storage: 'denied',
@@ -53,7 +54,8 @@ const analyticsDomains = [new URL(COMPANY_ORIGIN).hostname, new URL(SITE_ORIGIN)
           if (card) card.hidden = true;
         };
 
-        const stored = localStorage.getItem(consentKey);
+        let stored;
+        try { stored = localStorage.getItem(consentKey); } catch {}
         if (stored === 'granted') updateConsent('granted');
         else if (stored === 'denied') updateConsent('denied');
         else if (card) card.hidden = false;

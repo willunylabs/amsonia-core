@@ -1,0 +1,2123 @@
+{
+  "baseline_sha": "ac40c87ba47a4dc8d552e57d5cdfe7bd100a1bde",
+  "date": "2026-11-16",
+  "scope": "All 323 tracked files at baseline ac40c87ba47a4dc8d552e57d5cdfe7bd100a1bde in the active audit checkout. 127 prior reviews were reused only after exact-content verification; changed files were re-reviewed. Lock files received dependency/integrity checks, SVGs XML/reference/checksum checks, and PNGs visual inspection. This records file coverage, not a guarantee that every defect has been found.",
+  "files": [
+    {
+      "path": ".dockerignore",
+      "status": "reviewed",
+      "baseline_sha256": "811fd00d4da6d6f2d5a06aa0d7babf9434ef0254d889f279a31970fff2193226",
+      "reviewed_sha256": "811fd00d4da6d6f2d5a06aa0d7babf9434ef0254d889f279a31970fff2193226"
+    },
+    {
+      "path": ".env.example",
+      "status": "reviewed",
+      "baseline_sha256": "5069145b0064aa45d8bcc3a8f0223f5e58022eba88d22ee045eeadbc93e05f15",
+      "reviewed_sha256": "5069145b0064aa45d8bcc3a8f0223f5e58022eba88d22ee045eeadbc93e05f15"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug.yml",
+      "status": "reviewed",
+      "baseline_sha256": "a34e251e8d41f98d3f3f01eef3505864c98be4dc74267e43cb20d3db026caff9",
+      "reviewed_sha256": "a34e251e8d41f98d3f3f01eef3505864c98be4dc74267e43cb20d3db026caff9"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "status": "reviewed",
+      "baseline_sha256": "0a864a32e47ae58477f7eeaa4f6fe42408bd99924afae0025869a1e276647dfd",
+      "reviewed_sha256": "0a864a32e47ae58477f7eeaa4f6fe42408bd99924afae0025869a1e276647dfd"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/improvement.yml",
+      "status": "reviewed",
+      "baseline_sha256": "983eac306c044d12793ce381806ba3ecd16cebe2061088e0a9ab3e6ddf3c6895",
+      "reviewed_sha256": "983eac306c044d12793ce381806ba3ecd16cebe2061088e0a9ab3e6ddf3c6895"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "ce35bc24200074d1b95abf7cae44d2deff47e37e04d29a7011709630872886f5",
+      "reviewed_sha256": "e973c163872a483a37e7ff5840c6df49145bfd6d9c0b0c66e937b439aaf7b63f"
+    },
+    {
+      "path": ".github/workflows/deploy-site-pages.yml",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "8448ab845f6fe7ad122ee22446e68578d43675d5d3c167ca8b9a3baa02e45bbc",
+      "reviewed_sha256": "81d6208f538e10e159dcbffe5220d9a7b5d801e385419e538b34d6116606a0ce"
+    },
+    {
+      "path": ".github/workflows/deploy-site.yml",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "2f3fec7d90fcd5d8c9edb306ba44f1823af88764f1babc63cd1a2d3ff452c1d8",
+      "reviewed_sha256": "55c0f40314428b19e8850464e2a255ed895d007529cb9abea8dd6f242ff186ec"
+    },
+    {
+      "path": ".github/workflows/preview.yml",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "096ae9ad5df1ed5a32b74c7c4e0326abff058638e29e696f996ef80938f59f4c",
+      "reviewed_sha256": "a8cabe13f0e8c881e316a779db7749dd633d514852d2cfefa030cd90955766c8"
+    },
+    {
+      "path": ".github/workflows/public-preview.yml",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "a3b363442b58bc82343a7a59b1788909e6b72d6249ebf51bb9534755bf2ec58a",
+      "reviewed_sha256": "e74f8b779b31869d90f74b984a44c7adde6e4fffb918186b0050b1faf88520a3"
+    },
+    {
+      "path": ".github/workflows/stage-preview.yml",
+      "status": "reviewed",
+      "baseline_sha256": "1d2a5cd4977fd70e74b36bc8550eabcf92ecdc89b39ae8b5d348ff1258b7971c",
+      "reviewed_sha256": "1d2a5cd4977fd70e74b36bc8550eabcf92ecdc89b39ae8b5d348ff1258b7971c"
+    },
+    {
+      "path": ".gitignore",
+      "status": "reviewed",
+      "baseline_sha256": "53de2cc2fda9ae14aa75b5e452787ad92f3784aca55e0386f630d19c4f39caa0",
+      "reviewed_sha256": "53de2cc2fda9ae14aa75b5e452787ad92f3784aca55e0386f630d19c4f39caa0"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "status": "reviewed",
+      "baseline_sha256": "823129fdee214b6acc7cbd5e9c5a16905173c7924e2a686a80e680e953bfa7e4",
+      "reviewed_sha256": "823129fdee214b6acc7cbd5e9c5a16905173c7924e2a686a80e680e953bfa7e4"
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "status": "reviewed",
+      "baseline_sha256": "db6358f5938a9b8988ea413e046e0fe07f9e7dd5a5dc1eb19e031c5685ce25c9",
+      "reviewed_sha256": "db6358f5938a9b8988ea413e046e0fe07f9e7dd5a5dc1eb19e031c5685ce25c9"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "b8b105effebb75ed89b3bffff411b2a1911955c200d4aa1871a3f75842d5f997",
+      "reviewed_sha256": "50272c99b9cd74ff1f53a7b846b6ca14254c133e1a723b9893f89a5c5a689956"
+    },
+    {
+      "path": "Dockerfile.api",
+      "status": "reviewed",
+      "baseline_sha256": "c126fd2b92aa68387c4a8b4b738ef0cb2d37aaea717d134e227a7ee0c8952679",
+      "reviewed_sha256": "c126fd2b92aa68387c4a8b4b738ef0cb2d37aaea717d134e227a7ee0c8952679"
+    },
+    {
+      "path": "Dockerfile.web",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "e789502878853e15db9deafd1f76a440dec681db89cd19677071760bb074e57e",
+      "reviewed_sha256": "1566b9d922892c4cfb150d51cebb6357badc0fab30148adb0612623c9c0e2da6"
+    },
+    {
+      "path": "LICENSE",
+      "status": "reviewed",
+      "baseline_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "reviewed_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "Makefile",
+      "status": "reviewed",
+      "baseline_sha256": "13bbfc6e1c8cdce8ce914d9b9f0ee0b4af604c5d200c2d3e3414bc811487cdb6",
+      "reviewed_sha256": "13bbfc6e1c8cdce8ce914d9b9f0ee0b4af604c5d200c2d3e3414bc811487cdb6"
+    },
+    {
+      "path": "README.md",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "97b4f1e9a9a51bd8e56234662fad9e39fe8811d03bff8811a3caee2426e3f6e1",
+      "reviewed_sha256": "fb6251798cee8cba84a4c39e0078b1398c1ea38bb2ae6dd9bd9719bb0b1a52b4"
+    },
+    {
+      "path": "SECURITY.md",
+      "status": "reviewed",
+      "baseline_sha256": "4e1dea844a129c07d634d49b94373ee64aefe083c45bb43c4df6450afe5c8d3d",
+      "reviewed_sha256": "4e1dea844a129c07d634d49b94373ee64aefe083c45bb43c4df6450afe5c8d3d"
+    },
+    {
+      "path": "authorizer.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "e8b4fdc4c16903e86556c17a771a8f215ff7d4bf8c6744e60c36b5a76b08e67c",
+      "reviewed_sha256": "e8b4fdc4c16903e86556c17a771a8f215ff7d4bf8c6744e60c36b5a76b08e67c"
+    },
+    {
+      "path": "authorizer_identifiers_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "ec0f39ec0e30e3f98fba29004578ec6df6f786056678f6edb21f71f117c4ca3e",
+      "reviewed_sha256": "ec0f39ec0e30e3f98fba29004578ec6df6f786056678f6edb21f71f117c4ca3e"
+    },
+    {
+      "path": "authorizer_test.go",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "fb60c18b466df5a0ebc5d2b6f8d682d69219328aa870f5f78612d09fef375b9a",
+      "reviewed_sha256": "3e512be47ab6356ceaedccc65385faf69ae636c34d36a440cc4f15a3345de8bd"
+    },
+    {
+      "path": "authorizer_workspace_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "ccfb1c2ea07e9a416d5cd0efbc5594f22fa913624745edc39ca8033724a9d832",
+      "reviewed_sha256": "ccfb1c2ea07e9a416d5cd0efbc5594f22fa913624745edc39ca8033724a9d832"
+    },
+    {
+      "path": "bootstrap.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "ea699d21e9ae7db9e97ff5e3edae5510a67a3ff766b33ec3a6531c82a137a115",
+      "reviewed_sha256": "ea699d21e9ae7db9e97ff5e3edae5510a67a3ff766b33ec3a6531c82a137a115"
+    },
+    {
+      "path": "bootstrap_validation_test.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "877e288b4bacc3827e834537a8a5d60c438abbe6ae1a71ee7bbd5954342127c2",
+      "reviewed_sha256": "877e288b4bacc3827e834537a8a5d60c438abbe6ae1a71ee7bbd5954342127c2"
+    },
+    {
+      "path": "catalog.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "8bb4b6164d4fa05e44bd16e9ae9fbcfb38f23e377eb7185dccbb0d3386644495",
+      "reviewed_sha256": "8bb4b6164d4fa05e44bd16e9ae9fbcfb38f23e377eb7185dccbb0d3386644495"
+    },
+    {
+      "path": "catalog_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "358f73f293c1425f125b614cb069ac41568110a88bf6ccf18fea1d31fffb0d81",
+      "reviewed_sha256": "358f73f293c1425f125b614cb069ac41568110a88bf6ccf18fea1d31fffb0d81"
+    },
+    {
+      "path": "cmd/amsonia-local/main.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "54a482427cab7062dc6ca4172038ba842b4b02da66e1ba177ec798d26c721a88",
+      "reviewed_sha256": "54a482427cab7062dc6ca4172038ba842b4b02da66e1ba177ec798d26c721a88"
+    },
+    {
+      "path": "cmd/amsonia-local/main_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "e29729df2918e9deff32d8399d4018b5ab3cc6f7970ce3590a5500f02d1c18c3",
+      "reviewed_sha256": "e29729df2918e9deff32d8399d4018b5ab3cc6f7970ce3590a5500f02d1c18c3"
+    },
+    {
+      "path": "cmd/amsonia-static/main.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "1f4c1135ad6f9ba0a62a7d6102167617c970ac3a43a5ea051caf3efbfa4109bf",
+      "reviewed_sha256": "1f4c1135ad6f9ba0a62a7d6102167617c970ac3a43a5ea051caf3efbfa4109bf"
+    },
+    {
+      "path": "cmd/amsonia-static/main_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "243cf559f7d48cd4a421f75aaa74e1ce3eb69a5dcfa36c5a38a73458372a1fd1",
+      "reviewed_sha256": "243cf559f7d48cd4a421f75aaa74e1ce3eb69a5dcfa36c5a38a73458372a1fd1"
+    },
+    {
+      "path": "cmd/amsonia/main.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "77f018429c3ae857be9033d02ee2eba5cba9ccf424c0e1560bfea83e28b2dce6",
+      "reviewed_sha256": "77f018429c3ae857be9033d02ee2eba5cba9ccf424c0e1560bfea83e28b2dce6"
+    },
+    {
+      "path": "cmd/amsonia/prune.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "5371a34bf7ec25ae9f8391a3ead08c26fc5ffa37353742dadc34b0cde64410e3",
+      "reviewed_sha256": "5371a34bf7ec25ae9f8391a3ead08c26fc5ffa37353742dadc34b0cde64410e3"
+    },
+    {
+      "path": "cmd/amsonia/prune_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "97cb2e7c0939fd5cd94295c598a62338ca373d611c3ab16a3a6d434d3eeb5cfb",
+      "reviewed_sha256": "97cb2e7c0939fd5cd94295c598a62338ca373d611c3ab16a3a6d434d3eeb5cfb"
+    },
+    {
+      "path": "cmd/amsonia/recover.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "a0f6a16ab0e56b36a7ec8ff88e28ef31feb9d15567f69169b67ef51883a729bc",
+      "reviewed_sha256": "a0f6a16ab0e56b36a7ec8ff88e28ef31feb9d15567f69169b67ef51883a729bc"
+    },
+    {
+      "path": "cmd/api/main.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "f9d8cfe969dda03c987ed17b7feb95c7710bb8c85b2b5891e5fca278038957eb",
+      "reviewed_sha256": "f9d8cfe969dda03c987ed17b7feb95c7710bb8c85b2b5891e5fca278038957eb"
+    },
+    {
+      "path": "cmd/core-sync/main.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "2510ea685455ec203639487c7eed5b50177739a6692f8cdbf350acdd648c43fd",
+      "reviewed_sha256": "2510ea685455ec203639487c7eed5b50177739a6692f8cdbf350acdd648c43fd"
+    },
+    {
+      "path": "cmd/core-sync/main_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "48224d8d431744527f37db809fd3a5a08de1bdd6d7d7d67036d19ebf21cce75e",
+      "reviewed_sha256": "48224d8d431744527f37db809fd3a5a08de1bdd6d7d7d67036d19ebf21cce75e"
+    },
+    {
+      "path": "compose.local.yaml",
+      "status": "reviewed",
+      "baseline_sha256": "3ae548c28603555fb3d203c8ef14dd6dd7e67332a0b328e141acbecd56821820",
+      "reviewed_sha256": "3ae548c28603555fb3d203c8ef14dd6dd7e67332a0b328e141acbecd56821820"
+    },
+    {
+      "path": "compose.yaml",
+      "status": "reviewed",
+      "baseline_sha256": "dc1bf428f9fbbbc2e842978d4ee294fc338f3bea3a6faf7b1058710b00827cbd",
+      "reviewed_sha256": "dc1bf428f9fbbbc2e842978d4ee294fc338f3bea3a6faf7b1058710b00827cbd"
+    },
+    {
+      "path": "context_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "ef1eb1ec811a41886006cf4d42027a3ff95623fcda6e57a139f67fa4a5250544",
+      "reviewed_sha256": "ef1eb1ec811a41886006cf4d42027a3ff95623fcda6e57a139f67fa4a5250544"
+    },
+    {
+      "path": "deploy/aws/README.md",
+      "status": "reviewed",
+      "baseline_sha256": "95de135e61a707223a117216b19ff6fa739881f4506ed1ff47a410c3ee0bcde5",
+      "reviewed_sha256": "95de135e61a707223a117216b19ff6fa739881f4506ed1ff47a410c3ee0bcde5"
+    },
+    {
+      "path": "deploy/aws/amsonia-deploy-site-document.json",
+      "status": "reviewed",
+      "baseline_sha256": "93f60bee3563b62ef4e6fdb6697f14a9a79108892d727f0f65ce3dc2ded2d589",
+      "reviewed_sha256": "93f60bee3563b62ef4e6fdb6697f14a9a79108892d727f0f65ce3dc2ded2d589"
+    },
+    {
+      "path": "deploy/aws/amsonia-github-deploy-policy.json",
+      "status": "reviewed",
+      "baseline_sha256": "129ad31eff094efab8ed7a36ae094a065c0b7afd5fd2e6a56f6db9351f2b18af",
+      "reviewed_sha256": "129ad31eff094efab8ed7a36ae094a065c0b7afd5fd2e6a56f6db9351f2b18af"
+    },
+    {
+      "path": "deploy/aws/amsonia-github-deploy-trust.json",
+      "status": "reviewed",
+      "baseline_sha256": "55157f5b87d7f71fbb14b1a1845b9833847444ce77e8eaa1cf244e1d343ad0a6",
+      "reviewed_sha256": "55157f5b87d7f71fbb14b1a1845b9833847444ce77e8eaa1cf244e1d343ad0a6"
+    },
+    {
+      "path": "deploy/aws/amsonia-prod-read-policy.json",
+      "status": "reviewed",
+      "baseline_sha256": "c9d167242ac237142c323b03207251fd5ceb5e211ade944dd01e788bddaa3a59",
+      "reviewed_sha256": "c9d167242ac237142c323b03207251fd5ceb5e211ade944dd01e788bddaa3a59"
+    },
+    {
+      "path": "deploy/aws/amsonia-prod-trust.json",
+      "status": "reviewed",
+      "baseline_sha256": "6b881673758e4e1824199df5f0e9b80bdedf1694414919ff8d1220c131ae5902",
+      "reviewed_sha256": "6b881673758e4e1824199df5f0e9b80bdedf1694414919ff8d1220c131ae5902"
+    },
+    {
+      "path": "deploy/cloudflare/README.md",
+      "status": "reviewed",
+      "baseline_sha256": "39a29e37e4e0f0db968c43497b4cfce6a49d3bd27542e1491a06313cb992d2bc",
+      "reviewed_sha256": "39a29e37e4e0f0db968c43497b4cfce6a49d3bd27542e1491a06313cb992d2bc"
+    },
+    {
+      "path": "deploy/cloudflare/pages-deployment-contract.test.mjs",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "3e360a301b7835711763ae1ce470e445c4cc57658a31298e699f195706cc237f",
+      "reviewed_sha256": "21664f502f1662151456735d52914b1451b23f99d0bdf14e4e78b15e4d53ce9f"
+    },
+    {
+      "path": "deploy/preview/README.md",
+      "status": "reviewed",
+      "baseline_sha256": "2503c32c440f6030da1c8467d1a2849c2926aff3e8807b7a2f2657bf340a9c20",
+      "reviewed_sha256": "2503c32c440f6030da1c8467d1a2849c2926aff3e8807b7a2f2657bf340a9c20"
+    },
+    {
+      "path": "deploy/preview/amsonia-compose",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "7741ffb5ed28e3bcc4851e3b235166be568caac36b57a0268873ed687b561025",
+      "reviewed_sha256": "7741ffb5ed28e3bcc4851e3b235166be568caac36b57a0268873ed687b561025"
+    },
+    {
+      "path": "deploy/preview/compose.preview.yaml",
+      "status": "reviewed",
+      "baseline_sha256": "b199c3d1c7aa9ba87e29a4cfb4fce6cda195105752d252fa1ef7c96b5ff3dc79",
+      "reviewed_sha256": "b199c3d1c7aa9ba87e29a4cfb4fce6cda195105752d252fa1ef7c96b5ff3dc79"
+    },
+    {
+      "path": "deploy/preview/init-env",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "a2d2aec31981ad8f027813caad239a1290cd02e1ed24013f0c184faf0f550697",
+      "reviewed_sha256": "a2d2aec31981ad8f027813caad239a1290cd02e1ed24013f0c184faf0f550697"
+    },
+    {
+      "path": "deploy/site/README.md",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "ff7c463202d495932f3040bc01e24933fbe5c61464320603e1e17390e1a7e112",
+      "reviewed_sha256": "3d1cac4fbd2d4ee3d77a5367fe7873c74ae0633f4bb4f6f8e4399ee069994bb0"
+    },
+    {
+      "path": "deploy/site/amsonia-site.service",
+      "status": "reviewed",
+      "baseline_sha256": "545c76ace51a2a1d65bfeda8e1fa83701051314c364560f01a77e344ebfbca55",
+      "reviewed_sha256": "545c76ace51a2a1d65bfeda8e1fa83701051314c364560f01a77e344ebfbca55"
+    },
+    {
+      "path": "deploy/site/deploy-amsonia-site.sh",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "9034895dc579c68d47c8fc2593c10652b26247ea49f41981a39ebf276b2b21f8",
+      "reviewed_sha256": "9034895dc579c68d47c8fc2593c10652b26247ea49f41981a39ebf276b2b21f8"
+    },
+    {
+      "path": "deploy/site/traefik-dynamic.yml",
+      "status": "reviewed",
+      "baseline_sha256": "06675c416173bb1349290f02558d83018dcdc9e1605ac6d01d124d0a0af1f15e",
+      "reviewed_sha256": "06675c416173bb1349290f02558d83018dcdc9e1605ac6d01d124d0a0af1f15e"
+    },
+    {
+      "path": "deploy/site/traefik-static.yml",
+      "status": "reviewed",
+      "baseline_sha256": "073c03802fec381db2b91e0be45e15aa8f5fc89fef867f5b6b67348ab0aa3975",
+      "reviewed_sha256": "073c03802fec381db2b91e0be45e15aa8f5fc89fef867f5b6b67348ab0aa3975"
+    },
+    {
+      "path": "deploy/site/traefik.service",
+      "status": "reviewed",
+      "baseline_sha256": "0b6231e383cbbbd47c46729c5f9d4b28438d3547fb0de8ab7e93a2f6369a1667",
+      "reviewed_sha256": "0b6231e383cbbbd47c46729c5f9d4b28438d3547fb0de8ab7e93a2f6369a1667"
+    },
+    {
+      "path": "docs/authorization.md",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "2244668c4cb6b319eb935e43f0a82cfba585c3f0ab250676e56f837780189fed",
+      "reviewed_sha256": "2244668c4cb6b319eb935e43f0a82cfba585c3f0ab250676e56f837780189fed"
+    },
+    {
+      "path": "docs/brand-and-product-boundaries.md",
+      "status": "reviewed",
+      "baseline_sha256": "0313532fb57b13b7f8540e69a096953f63d81eb4357b0c491f5181599f0defca",
+      "reviewed_sha256": "0313532fb57b13b7f8540e69a096953f63d81eb4357b0c491f5181599f0defca"
+    },
+    {
+      "path": "docs/business-data-rls.md",
+      "status": "reviewed",
+      "baseline_sha256": "4b82fa5dc79e971827510cae5b743e0ebbfd8db9609f0002b6105b6bff0b46c6",
+      "reviewed_sha256": "4b82fa5dc79e971827510cae5b743e0ebbfd8db9609f0002b6105b6bff0b46c6"
+    },
+    {
+      "path": "docs/casbin-authorization.md",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "839e85a9118ccd6e351a6c4623c4172d1b848c91534ffb638c4d3b829651eafd",
+      "reviewed_sha256": "839e85a9118ccd6e351a6c4623c4172d1b848c91534ffb638c4d3b829651eafd"
+    },
+    {
+      "path": "docs/core-administration.md",
+      "status": "reviewed",
+      "baseline_sha256": "bebf43983600a6af7727b39a4940f1c4e1d297ec3ddbc38bff67a9b0cea05fbf",
+      "reviewed_sha256": "bebf43983600a6af7727b39a4940f1c4e1d297ec3ddbc38bff67a9b0cea05fbf"
+    },
+    {
+      "path": "docs/design/organization-settings.md",
+      "status": "reviewed",
+      "baseline_sha256": "7b65fbd1a17432049b136562b3a991bace41116d96baa6a69ba8e208f3a47e45",
+      "reviewed_sha256": "7b65fbd1a17432049b136562b3a991bace41116d96baa6a69ba8e208f3a47e45"
+    },
+    {
+      "path": "docs/design/single-organization-default.md",
+      "status": "reviewed",
+      "baseline_sha256": "358f57866af8ce7ec294167295283a3a08770adef4f106bd07e1a49116022b96",
+      "reviewed_sha256": "358f57866af8ce7ec294167295283a3a08770adef4f106bd07e1a49116022b96"
+    },
+    {
+      "path": "docs/getting-started.md",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "a645261d23ee92f20979616b0377f356bd0228f174878a1043e5333c27569a88",
+      "reviewed_sha256": "9e20b955366c4204c99f2d68ee4d6a82479e9f10d0a5064640c45ea34257bbd6"
+    },
+    {
+      "path": "docs/go-sdk.md",
+      "status": "reviewed",
+      "baseline_sha256": "111649c4044bfec10eff061e4aa067b82da9d378dad13e8cd0c7426a240d82af",
+      "reviewed_sha256": "111649c4044bfec10eff061e4aa067b82da9d378dad13e8cd0c7426a240d82af"
+    },
+    {
+      "path": "docs/launch/launch-kit.md",
+      "status": "reviewed",
+      "baseline_sha256": "4cb88371b2efabdb5e610e836b526789e4625ec914ceef477e4e6ca7dc88c3da",
+      "reviewed_sha256": "4cb88371b2efabdb5e610e836b526789e4625ec914ceef477e4e6ca7dc88c3da"
+    },
+    {
+      "path": "docs/member-recovery-and-session-retention.md",
+      "status": "reviewed",
+      "baseline_sha256": "82e7de88be914c7603d76a6bdcd988be7783908ff065e8218e1a6e9523ebcb5b",
+      "reviewed_sha256": "82e7de88be914c7603d76a6bdcd988be7783908ff065e8218e1a6e9523ebcb5b"
+    },
+    {
+      "path": "docs/releases.md",
+      "status": "reviewed",
+      "baseline_sha256": "50585194108d2da3a50fcc8050a5598038a2aede3c39b0395a66c6e25027ed65",
+      "reviewed_sha256": "50585194108d2da3a50fcc8050a5598038a2aede3c39b0395a66c6e25027ed65"
+    },
+    {
+      "path": "docs/scaffold-comparison.md",
+      "status": "reviewed",
+      "baseline_sha256": "52203b6857e73e203beefd18df4bcce4fb424395437f5dab9252d501444f1510",
+      "reviewed_sha256": "52203b6857e73e203beefd18df4bcce4fb424395437f5dab9252d501444f1510"
+    },
+    {
+      "path": "docs/security-model.md",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "f4dc4f591d0baf031532aaed900d6142d0f1d8c9f3f98af4cbba1a754b9cbc3c",
+      "reviewed_sha256": "f4dc4f591d0baf031532aaed900d6142d0f1d8c9f3f98af4cbba1a754b9cbc3c"
+    },
+    {
+      "path": "docs/self-hosting.md",
+      "status": "reviewed",
+      "baseline_sha256": "de6e20b305c74da24bcb654c7cf19dc1affee728a23c91dd80d5b116ae5bdcba",
+      "reviewed_sha256": "de6e20b305c74da24bcb654c7cf19dc1affee728a23c91dd80d5b116ae5bdcba"
+    },
+    {
+      "path": "docs/source-sync.md",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "e4e5bba70492d1d7532183c1bddd5090c5f0d3475475600016dd5bd606c1ebec",
+      "reviewed_sha256": "e4e5bba70492d1d7532183c1bddd5090c5f0d3475475600016dd5bd606c1ebec"
+    },
+    {
+      "path": "docs/validation/admin-recovery-2026-11-03.md",
+      "status": "reviewed",
+      "baseline_sha256": "311d7db3ce8dbad6c8046f0566c22a69926299ce133cac901bae258d9c6c520a",
+      "reviewed_sha256": "311d7db3ce8dbad6c8046f0566c22a69926299ce133cac901bae258d9c6c520a"
+    },
+    {
+      "path": "docs/validation/core-administration-2026-11-03.md",
+      "status": "reviewed",
+      "baseline_sha256": "9d4f3ba33d1127d46bbcbfb20b9b491e8c9d944d09d7c2ba21f37e4313e32f91",
+      "reviewed_sha256": "9d4f3ba33d1127d46bbcbfb20b9b491e8c9d944d09d7c2ba21f37e4313e32f91"
+    },
+    {
+      "path": "docs/validation/core-audit-export-2026-11-03.md",
+      "status": "reviewed",
+      "baseline_sha256": "1b0b01aa2372fbe7f29c0e7733ab5770a33821f42efbbb89bc8632bd4e71b97d",
+      "reviewed_sha256": "1b0b01aa2372fbe7f29c0e7733ab5770a33821f42efbbb89bc8632bd4e71b97d"
+    },
+    {
+      "path": "docs/validation/core-directories-2026-11-03.md",
+      "status": "reviewed",
+      "baseline_sha256": "9031ab4373bf8ca145fa14445d565a75e9a5494cdbd625e9b1fa6613f4f540e1",
+      "reviewed_sha256": "9031ab4373bf8ca145fa14445d565a75e9a5494cdbd625e9b1fa6613f4f540e1"
+    },
+    {
+      "path": "docs/validation/core-pages-forms-2026-11-03.md",
+      "status": "reviewed",
+      "baseline_sha256": "3252faa41cc530fd146f781da4c8da7a5cb93b4b6d34cc7f1babb81d095fcd1a",
+      "reviewed_sha256": "3252faa41cc530fd146f781da4c8da7a5cb93b4b6d34cc7f1babb81d095fcd1a"
+    },
+    {
+      "path": "docs/validation/core-role-members-2026-11-03.md",
+      "status": "reviewed",
+      "baseline_sha256": "3517061300e7af2740cd6ce09c802d8f55ef9ed9d581cefe841152e59930a105",
+      "reviewed_sha256": "3517061300e7af2740cd6ce09c802d8f55ef9ed9d581cefe841152e59930a105"
+    },
+    {
+      "path": "docs/validation/invoice-example-2026-11-03.md",
+      "status": "reviewed",
+      "baseline_sha256": "038c37b9f68039268c2b3732df85c8f75fd7ff1951c905007174bda6fa1c100c",
+      "reviewed_sha256": "038c37b9f68039268c2b3732df85c8f75fd7ff1951c905007174bda6fa1c100c"
+    },
+    {
+      "path": "docs/validation/organization-settings-2026-11-03.md",
+      "status": "reviewed",
+      "baseline_sha256": "2c7a6363d48f6f4e626911a1c6425abf7c9799d7bdd97c929ebcef8f8a872894",
+      "reviewed_sha256": "2c7a6363d48f6f4e626911a1c6425abf7c9799d7bdd97c929ebcef8f8a872894"
+    },
+    {
+      "path": "docs/validation/session-recovery-2026-11-03.md",
+      "status": "reviewed",
+      "baseline_sha256": "f4087c28f8a84b8823bbd8181e08644b8f4e365c418e933c839d5e001096255b",
+      "reviewed_sha256": "f4087c28f8a84b8823bbd8181e08644b8f4e365c418e933c839d5e001096255b"
+    },
+    {
+      "path": "docs/validation/single-organization-2026-11-03.md",
+      "status": "reviewed",
+      "baseline_sha256": "9edb409f1051d2790f4de6215acb2d51645e5f4ca074c11eb0c6c1be0951e447",
+      "reviewed_sha256": "9edb409f1051d2790f4de6215acb2d51645e5f4ca074c11eb0c6c1be0951e447"
+    },
+    {
+      "path": "examples/business-data-rls/invoices.html",
+      "status": "reviewed",
+      "baseline_sha256": "5a6cfa9350cd24c1c677cd7eb03af73ebde4c15a7c2c5b1917a4512b68a0a1f0",
+      "reviewed_sha256": "5a6cfa9350cd24c1c677cd7eb03af73ebde4c15a7c2c5b1917a4512b68a0a1f0"
+    },
+    {
+      "path": "examples/business-data-rls/main.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "f05e421063d5bee19edc207f000b8db107f4b33d64c978f706df4ead2dd5eb01",
+      "reviewed_sha256": "f05e421063d5bee19edc207f000b8db107f4b33d64c978f706df4ead2dd5eb01"
+    },
+    {
+      "path": "examples/business-data-rls/schema.sql",
+      "status": "reviewed",
+      "baseline_sha256": "e76b4701faae9184eb0b86bc1892b1b77f8126146ac4fb44a57a52554b4de075",
+      "reviewed_sha256": "e76b4701faae9184eb0b86bc1892b1b77f8126146ac4fb44a57a52554b4de075"
+    },
+    {
+      "path": "examples/business-data-rls/web.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "efb59add9623d3a9ac527091cc3bd375ef8fa2a9ccd6a7b66c86eac265d84a9b",
+      "reviewed_sha256": "efb59add9623d3a9ac527091cc3bd375ef8fa2a9ccd6a7b66c86eac265d84a9b"
+    },
+    {
+      "path": "examples/business-data-rls/web_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "eca8ae689bf52d2748c94cc2449cbb6052a882da6f0fa26836eb491dd38df989",
+      "reviewed_sha256": "eca8ae689bf52d2748c94cc2449cbb6052a882da6f0fa26836eb491dd38df989"
+    },
+    {
+      "path": "examples/saas/main.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "87f387afbb16a0b5cc971b07da6c53fc52bb3adb58d47eec644d904cf4eed594",
+      "reviewed_sha256": "87f387afbb16a0b5cc971b07da6c53fc52bb3adb58d47eec644d904cf4eed594"
+    },
+    {
+      "path": "go.mod",
+      "status": "reviewed",
+      "baseline_sha256": "00bbd4892978201634cf8353e278d2fabcb5cee8ffea893b5d55215a3ffb5fb3",
+      "reviewed_sha256": "00bbd4892978201634cf8353e278d2fabcb5cee8ffea893b5d55215a3ffb5fb3"
+    },
+    {
+      "path": "go.sum",
+      "status": "reviewed",
+      "baseline_sha256": "178fc4ecc7c8ea6e029aefbf7e628da86b83bd1d7901da15e6e76a54cb8c1105",
+      "reviewed_sha256": "178fc4ecc7c8ea6e029aefbf7e628da86b83bd1d7901da15e6e76a54cb8c1105"
+    },
+    {
+      "path": "integration_test.go",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "f7436b94cb574434f92cf980a28096d79c1905bdc6a0ac4f6674fc1bd9060b32",
+      "reviewed_sha256": "71b9a3e286bace7908b1633feb4f5c03096b0f6aa0d5c7cbbd73289ea1c326a5"
+    },
+    {
+      "path": "internal/adminpolicy/coverage.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "027a0050ce8576969d249423cd2c293826b05e549c0b9cf81ce7656c04d7f594",
+      "reviewed_sha256": "027a0050ce8576969d249423cd2c293826b05e549c0b9cf81ce7656c04d7f594"
+    },
+    {
+      "path": "internal/coreapp/accounts.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "42ceda648f49296a78fd1ac46e04b12f7c619c5490104f97d46054f840c68287",
+      "reviewed_sha256": "42ceda648f49296a78fd1ac46e04b12f7c619c5490104f97d46054f840c68287"
+    },
+    {
+      "path": "internal/coreapp/admin_http.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "61d3913fe0d018ee2f3eeaeac73c3ac6e31ebbf906f41ca258caf7d4c2cf1dd0",
+      "reviewed_sha256": "61d3913fe0d018ee2f3eeaeac73c3ac6e31ebbf906f41ca258caf7d4c2cf1dd0"
+    },
+    {
+      "path": "internal/coreapp/admin_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "58b4281a44a6845b69816ffb964757eceb77190884ee2d8ef1cc0c765e57e6d6",
+      "reviewed_sha256": "58b4281a44a6845b69816ffb964757eceb77190884ee2d8ef1cc0c765e57e6d6"
+    },
+    {
+      "path": "internal/coreapp/application.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "3ce8f99871c933cd39866910f66f70985467d9690008cbd2717edc9986525c9b",
+      "reviewed_sha256": "3ce8f99871c933cd39866910f66f70985467d9690008cbd2717edc9986525c9b"
+    },
+    {
+      "path": "internal/coreapp/application_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "f7e2c66e13aa1086e46bd7e8acd229863368892177970aa40e2993f4f5f648d8",
+      "reviewed_sha256": "f7e2c66e13aa1086e46bd7e8acd229863368892177970aa40e2993f4f5f648d8"
+    },
+    {
+      "path": "internal/coreapp/application_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "770a611662eca66ff3c44c88fdecfb9d945004cebc900403b98c2f0e04873e15",
+      "reviewed_sha256": "770a611662eca66ff3c44c88fdecfb9d945004cebc900403b98c2f0e04873e15"
+    },
+    {
+      "path": "internal/coreapp/audit.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "4abd4c2f8ac4dc17107ff7d252fdac7cef3f6640a1faaa2895a2ea570f4460fa",
+      "reviewed_sha256": "4abd4c2f8ac4dc17107ff7d252fdac7cef3f6640a1faaa2895a2ea570f4460fa"
+    },
+    {
+      "path": "internal/coreapp/audit_export.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "4fbf339fc84d4ead3ede677ba052a1a363ae1917886c39a4b458d4c7731b21e8",
+      "reviewed_sha256": "4fbf339fc84d4ead3ede677ba052a1a363ae1917886c39a4b458d4c7731b21e8"
+    },
+    {
+      "path": "internal/coreapp/audit_http.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "d2f92d45cca78c53e9c2b62a114f7a434efbf13ec84127fcbcadc75529302932",
+      "reviewed_sha256": "d2f92d45cca78c53e9c2b62a114f7a434efbf13ec84127fcbcadc75529302932"
+    },
+    {
+      "path": "internal/coreapp/audit_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "add137dfa90993b91dabb0e245db43c0e28468de2828407620ce58cad3ddc777",
+      "reviewed_sha256": "add137dfa90993b91dabb0e245db43c0e28468de2828407620ce58cad3ddc777"
+    },
+    {
+      "path": "internal/coreapp/audit_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "caae1063197f116e9d91336a3367bd28318ae880ec39b473c99dd822e81b1473",
+      "reviewed_sha256": "caae1063197f116e9d91336a3367bd28318ae880ec39b473c99dd822e81b1473"
+    },
+    {
+      "path": "internal/coreapp/binding_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "44bab2ba89ab0f44a7cd17de9d356b0413382c54b373c7a8d775d489f05a5f44",
+      "reviewed_sha256": "44bab2ba89ab0f44a7cd17de9d356b0413382c54b373c7a8d775d489f05a5f44"
+    },
+    {
+      "path": "internal/coreapp/catalog.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "11259fe38a98b30727301db4b25ad6cc5b4ffa747fe377c440131fe02521b428",
+      "reviewed_sha256": "11259fe38a98b30727301db4b25ad6cc5b4ffa747fe377c440131fe02521b428"
+    },
+    {
+      "path": "internal/coreapp/catalog_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "5f33d131b95a559a4895f7f92f6b677a4e961c5b00bf1f1e1be20cf8435c0d5b",
+      "reviewed_sha256": "5f33d131b95a559a4895f7f92f6b677a4e961c5b00bf1f1e1be20cf8435c0d5b"
+    },
+    {
+      "path": "internal/coreapp/contract_integration_test.go",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "c5440826d790b3023794741fad02091271909cdee54e736c04286bdb59adeb73",
+      "reviewed_sha256": "f9277c8c603db0654fa0d950c7eba20bc8ebd0aa667f84f0c103cdc0f6966282"
+    },
+    {
+      "path": "internal/coreapp/credential_sessions_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "e9e3c950509a2f7a2bb62bda49a2f741fc28f6810a4dd4e7a9eaf0f6ff5adc25",
+      "reviewed_sha256": "e9e3c950509a2f7a2bb62bda49a2f741fc28f6810a4dd4e7a9eaf0f6ff5adc25"
+    },
+    {
+      "path": "internal/coreapp/device_sessions_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "5cd8e676e42d4eafdd0747b57ee2325ef5f7fe1888168a2fd8c48f35f50741df",
+      "reviewed_sha256": "5cd8e676e42d4eafdd0747b57ee2325ef5f7fe1888168a2fd8c48f35f50741df"
+    },
+    {
+      "path": "internal/coreapp/directories.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "c3a6b11a30d79cb6af3dc9cbafe291b78b5ab8f575fbb5f08a9e8873124ee09b",
+      "reviewed_sha256": "c3a6b11a30d79cb6af3dc9cbafe291b78b5ab8f575fbb5f08a9e8873124ee09b"
+    },
+    {
+      "path": "internal/coreapp/directories_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "f06060a5d1f79c79edfe0acea86263184aedf3d2306ab887e504e84c9812801c",
+      "reviewed_sha256": "f06060a5d1f79c79edfe0acea86263184aedf3d2306ab887e504e84c9812801c"
+    },
+    {
+      "path": "internal/coreapp/directories_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "4f288ea1a11eb36d0251ac2d03c9616357ae53da1016492c64f437153a5f712f",
+      "reviewed_sha256": "4f288ea1a11eb36d0251ac2d03c9616357ae53da1016492c64f437153a5f712f"
+    },
+    {
+      "path": "internal/coreapp/http.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "162bf756c8a277dbb9eb658363bbb1c42cff89db9dc6414f121062ce92aacbde",
+      "reviewed_sha256": "162bf756c8a277dbb9eb658363bbb1c42cff89db9dc6414f121062ce92aacbde"
+    },
+    {
+      "path": "internal/coreapp/http_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "8f257cb455c655b10c7e2f4aa716a69ef712d04d11c3d619bfe44341f23ce763",
+      "reviewed_sha256": "8f257cb455c655b10c7e2f4aa716a69ef712d04d11c3d619bfe44341f23ce763"
+    },
+    {
+      "path": "internal/coreapp/login_concurrency_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "09b5d32dd7d80cab97614cbfa01b997049140c27bce860642ee257b07d79b315",
+      "reviewed_sha256": "09b5d32dd7d80cab97614cbfa01b997049140c27bce860642ee257b07d79b315"
+    },
+    {
+      "path": "internal/coreapp/member_details.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "504e4c69d47cacd8f74dd51dd6926d94e0d56c7c54318411fc947bf71b2eadc9",
+      "reviewed_sha256": "504e4c69d47cacd8f74dd51dd6926d94e0d56c7c54318411fc947bf71b2eadc9"
+    },
+    {
+      "path": "internal/coreapp/member_details_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "930208efad844aff962fdce2e86e8fb3d1e63bb5309305a645aea7015216fd8b",
+      "reviewed_sha256": "930208efad844aff962fdce2e86e8fb3d1e63bb5309305a645aea7015216fd8b"
+    },
+    {
+      "path": "internal/coreapp/member_recovery.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "eefe21cdd1a5b360f8e2d5b529544ca97159b13f7be61ce1df8bb29d715c7d36",
+      "reviewed_sha256": "eefe21cdd1a5b360f8e2d5b529544ca97159b13f7be61ce1df8bb29d715c7d36"
+    },
+    {
+      "path": "internal/coreapp/member_recovery_http.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "ec1b84b19ff34be21d7d41b52242d18e43ad0496740046f4e74f0e0270701940",
+      "reviewed_sha256": "ec1b84b19ff34be21d7d41b52242d18e43ad0496740046f4e74f0e0270701940"
+    },
+    {
+      "path": "internal/coreapp/member_recovery_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "70f04fb78f36b3f1901817cb0d0d27a819813676e4d004e201ea2741498298b2",
+      "reviewed_sha256": "70f04fb78f36b3f1901817cb0d0d27a819813676e4d004e201ea2741498298b2"
+    },
+    {
+      "path": "internal/coreapp/organization.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "8d6e5e9db757c21c8dd0a7a07ce2088532c1d6e76a17fc6ddcc3db8fa0cfa3b9",
+      "reviewed_sha256": "8d6e5e9db757c21c8dd0a7a07ce2088532c1d6e76a17fc6ddcc3db8fa0cfa3b9"
+    },
+    {
+      "path": "internal/coreapp/organization_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "e43729d8ebbdab65c341f37b5062dd7091f988849dc947584bc5c247a5667f71",
+      "reviewed_sha256": "e43729d8ebbdab65c341f37b5062dd7091f988849dc947584bc5c247a5667f71"
+    },
+    {
+      "path": "internal/coreapp/organization_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "163e0ab47186af51d34a39a3847d0a966b3cbd2c03cc18b23fec2486a57c4b3d",
+      "reviewed_sha256": "163e0ab47186af51d34a39a3847d0a966b3cbd2c03cc18b23fec2486a57c4b3d"
+    },
+    {
+      "path": "internal/coreapp/policy_store.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "cd5567b2fe642d1f0cc9cff3c31fa9c63cbb6b29841a805ad8648da0fc37e266",
+      "reviewed_sha256": "cd5567b2fe642d1f0cc9cff3c31fa9c63cbb6b29841a805ad8648da0fc37e266"
+    },
+    {
+      "path": "internal/coreapp/policy_store_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "45574bb19bf6805a865c64667b87a62824c469482ef48c095648aa8a85776308",
+      "reviewed_sha256": "45574bb19bf6805a865c64667b87a62824c469482ef48c095648aa8a85776308"
+    },
+    {
+      "path": "internal/coreapp/prefix_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "ba5d79dec654a1b4428fdf562d6944701898f3edc1f8b24febde6bb44778796e",
+      "reviewed_sha256": "ba5d79dec654a1b4428fdf562d6944701898f3edc1f8b24febde6bb44778796e"
+    },
+    {
+      "path": "internal/coreapp/recovery.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "4fc74407638543e2b6c48be32b49ce41dfdb1b26b87031b419d769974e5a771a",
+      "reviewed_sha256": "4fc74407638543e2b6c48be32b49ce41dfdb1b26b87031b419d769974e5a771a"
+    },
+    {
+      "path": "internal/coreapp/recovery_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "519d98179dcc22902e66671f3860557ef7aefaf3ff14bd2243a2e632271077ab",
+      "reviewed_sha256": "519d98179dcc22902e66671f3860557ef7aefaf3ff14bd2243a2e632271077ab"
+    },
+    {
+      "path": "internal/coreapp/role_audit.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "65d4b5248308c1178ceb18663c8fe355b604170ef42cc4adf99e5c01639dc1e1",
+      "reviewed_sha256": "65d4b5248308c1178ceb18663c8fe355b604170ef42cc4adf99e5c01639dc1e1"
+    },
+    {
+      "path": "internal/coreapp/role_members_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "d0e99753e1f3259387cfca0302a82a4eb3d35c7029ea5d17d3eb48f1027d55bf",
+      "reviewed_sha256": "d0e99753e1f3259387cfca0302a82a4eb3d35c7029ea5d17d3eb48f1027d55bf"
+    },
+    {
+      "path": "internal/coreapp/service.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "95ac3d0d884aa1f83979cceef73e59ca0b997597bba33cb0b0fa30bf401167d7",
+      "reviewed_sha256": "95ac3d0d884aa1f83979cceef73e59ca0b997597bba33cb0b0fa30bf401167d7"
+    },
+    {
+      "path": "internal/coreapp/service_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "986ef9f69fbf45a035a38dbb7122001b92aa39d46ae411bc417f51e02f6b5563",
+      "reviewed_sha256": "986ef9f69fbf45a035a38dbb7122001b92aa39d46ae411bc417f51e02f6b5563"
+    },
+    {
+      "path": "internal/coreapp/session_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "04f7c9ae581c0117fcb33b13d0c1cb191589d121a31fd21878585d3adcf7371d",
+      "reviewed_sha256": "04f7c9ae581c0117fcb33b13d0c1cb191589d121a31fd21878585d3adcf7371d"
+    },
+    {
+      "path": "internal/coreapp/session_retention.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "9f84bff0ee95882b00606ec914f8b94f6ee147bf4be9f071be73b55d970fa50c",
+      "reviewed_sha256": "9f84bff0ee95882b00606ec914f8b94f6ee147bf4be9f071be73b55d970fa50c"
+    },
+    {
+      "path": "internal/coreapp/session_retention_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "195bec8cec3bae63b6832fe49005089fa2813eda08b10766935514fc3e6c8446",
+      "reviewed_sha256": "195bec8cec3bae63b6832fe49005089fa2813eda08b10766935514fc3e6c8446"
+    },
+    {
+      "path": "internal/coreapp/tenant_admin.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "a4fbe4c6d4515e2a93d1d41e08ff361a1360cc0dd7d169f62c6af436a71e5959",
+      "reviewed_sha256": "a4fbe4c6d4515e2a93d1d41e08ff361a1360cc0dd7d169f62c6af436a71e5959"
+    },
+    {
+      "path": "internal/coreapp/tenant_failure_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "a7fdb2c817ad4d352a529ce886036e3ff8c2a3af11493261f6982173e3d98aef",
+      "reviewed_sha256": "a7fdb2c817ad4d352a529ce886036e3ff8c2a3af11493261f6982173e3d98aef"
+    },
+    {
+      "path": "internal/coresync/sync.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "4aa856a14eec0f88be684ef9201b281e3b9ccd7fdd38c1c3c2afe832c8b89a0b",
+      "reviewed_sha256": "4aa856a14eec0f88be684ef9201b281e3b9ccd7fdd38c1c3c2afe832c8b89a0b"
+    },
+    {
+      "path": "internal/coresync/sync_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "5406e67e5e29d0831e134bd7175fbc862f0465679d033056d218dfe7bf5cdb0a",
+      "reviewed_sha256": "5406e67e5e29d0831e134bd7175fbc862f0465679d033056d218dfe7bf5cdb0a"
+    },
+    {
+      "path": "internal/security/password.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "b1dad08b34999c796d875ffbebc832dd5bd375fa9cab39cd50b387cf7146e491",
+      "reviewed_sha256": "b1dad08b34999c796d875ffbebc832dd5bd375fa9cab39cd50b387cf7146e491"
+    },
+    {
+      "path": "internal/security/password_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "d7b53c9f2d8ff94ef2bd7020c03bb0cb104137808d030213e31e3598dc0a7255",
+      "reviewed_sha256": "d7b53c9f2d8ff94ef2bd7020c03bb0cb104137808d030213e31e3598dc0a7255"
+    },
+    {
+      "path": "internal/tenantexport/snapshot.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "2edc519f303cd45e76a5b872c467b0a57b7e5432acf9faed1139ba6ed73b5358",
+      "reviewed_sha256": "2edc519f303cd45e76a5b872c467b0a57b7e5432acf9faed1139ba6ed73b5358"
+    },
+    {
+      "path": "internal/tenantexport/snapshot_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "f99781f323550013381ae4fb320ffb6a031f6d4bbe98adb1966ad5d1f3d2a680",
+      "reviewed_sha256": "f99781f323550013381ae4fb320ffb6a031f6d4bbe98adb1966ad5d1f3d2a680"
+    },
+    {
+      "path": "maintenance.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "8cc2819b015c539f39b88636acf6f91ed3237f16be7569ebb1fb1c1ce8eca84f",
+      "reviewed_sha256": "8cc2819b015c539f39b88636acf6f91ed3237f16be7569ebb1fb1c1ce8eca84f"
+    },
+    {
+      "path": "maintenance_export_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "1b1d5d87fd5040e8eb1eb4ddee14ea1892dc2e8ec47dfbe095a4e88ed0b067cc",
+      "reviewed_sha256": "1b1d5d87fd5040e8eb1eb4ddee14ea1892dc2e8ec47dfbe095a4e88ed0b067cc"
+    },
+    {
+      "path": "manager.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "c44c46aa6f081ad9e4200e5c6d633f306cebfe4c07c5d774ee1c437db1e18094",
+      "reviewed_sha256": "c44c46aa6f081ad9e4200e5c6d633f306cebfe4c07c5d774ee1c437db1e18094"
+    },
+    {
+      "path": "manager_assignment_test.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "470fcc37bd21818888fcfd2c515f60e266c6cf24746897fc3897b6a678bb02e9",
+      "reviewed_sha256": "470fcc37bd21818888fcfd2c515f60e266c6cf24746897fc3897b6a678bb02e9"
+    },
+    {
+      "path": "manager_audit_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "8b6931174c79f91f1ef437e71d466352a359d2c970dc6320aab8d228c38a67cd",
+      "reviewed_sha256": "8b6931174c79f91f1ef437e71d466352a359d2c970dc6320aab8d228c38a67cd"
+    },
+    {
+      "path": "manager_role_policy_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "03f35993374fa9883df4ca765b7378eed7274edf1c41a0cce7602317230aced3",
+      "reviewed_sha256": "03f35993374fa9883df4ca765b7378eed7274edf1c41a0cce7602317230aced3"
+    },
+    {
+      "path": "manager_validation_test.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "b6c45e4bb1ef85e75d5cba853ee06fd27d2b7b747d9cae3a80b2afd9e891fdc9",
+      "reviewed_sha256": "b6c45e4bb1ef85e75d5cba853ee06fd27d2b7b747d9cae3a80b2afd9e891fdc9"
+    },
+    {
+      "path": "memory/context_test.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "b475123fe5d99ab2aaf9f3274187131fb2d2898878a0cb8e73b287fc85a86f18",
+      "reviewed_sha256": "b475123fe5d99ab2aaf9f3274187131fb2d2898878a0cb8e73b287fc85a86f18"
+    },
+    {
+      "path": "memory/memory.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "520dd110ab857d21a4c3d09cb6e13783422f842d2af67cef7e18f1c67161d0cc",
+      "reviewed_sha256": "520dd110ab857d21a4c3d09cb6e13783422f842d2af67cef7e18f1c67161d0cc"
+    },
+    {
+      "path": "memory/versions_test.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "5471b7f0846d91f36a91fdb7c3beb739b1285e0cbe2cdcd68c00ded3630210e6",
+      "reviewed_sha256": "5471b7f0846d91f36a91fdb7c3beb739b1285e0cbe2cdcd68c00ded3630210e6"
+    },
+    {
+      "path": "openapi/openapi.yaml",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "e30c69afc3806f9a32d333a592dd3d3adf67ef09b6452afffd226c651a3f544f",
+      "reviewed_sha256": "ee47df1aa7de5cd316ab8197c76705a162b17bf8c6f7e77c2f30812c18f02fc2"
+    },
+    {
+      "path": "ops/compose_configure_roles.sql",
+      "status": "reviewed",
+      "baseline_sha256": "8a96a5743ae860a9833c5eea133df2b9e50582d5948a880c2ad04003879cf5e4",
+      "reviewed_sha256": "8a96a5743ae860a9833c5eea133df2b9e50582d5948a880c2ad04003879cf5e4"
+    },
+    {
+      "path": "ops/configure_database_roles.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "8553bf231f3ed2be03687a57bc63fee82186bd0d263dfea23ecb01cf9fd6668a",
+      "reviewed_sha256": "8553bf231f3ed2be03687a57bc63fee82186bd0d263dfea23ecb01cf9fd6668a"
+    },
+    {
+      "path": "ops/nginx-security-headers.conf",
+      "status": "reviewed",
+      "baseline_sha256": "7d23653570d0b8a5febeaf3054825d94c9eeac7ab51efaa92344f0592b585297",
+      "reviewed_sha256": "7d23653570d0b8a5febeaf3054825d94c9eeac7ab51efaa92344f0592b585297"
+    },
+    {
+      "path": "ops/nginx.conf",
+      "status": "reviewed",
+      "baseline_sha256": "88b20d6adb8a9b94ef848eb058b0beea9bc2147bb4a79250f3a46115f054138f",
+      "reviewed_sha256": "88b20d6adb8a9b94ef848eb058b0beea9bc2147bb4a79250f3a46115f054138f"
+    },
+    {
+      "path": "policy.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "88a9b5ba9e7c2da1df878952c813f65a37bf3b18fcb9abf698c962b65511c987",
+      "reviewed_sha256": "88a9b5ba9e7c2da1df878952c813f65a37bf3b18fcb9abf698c962b65511c987"
+    },
+    {
+      "path": "policy_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "57aa81a333e0cd41df18c4d00d064f3087fdc53d48c1c5eeae79e5149875f976",
+      "reviewed_sha256": "57aa81a333e0cd41df18c4d00d064f3087fdc53d48c1c5eeae79e5149875f976"
+    },
+    {
+      "path": "postgres/administrator_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "18a37356d8b95f43bace4dd2574b22c2a83c7d768949fbe7ca526bb637455413",
+      "reviewed_sha256": "18a37356d8b95f43bace4dd2574b22c2a83c7d768949fbe7ca526bb637455413"
+    },
+    {
+      "path": "postgres/errors_test.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "73b5b5d4657855d25f0f5d58a00e1ba7e5504290b1ce310c1e1d7e502c5e4582",
+      "reviewed_sha256": "73b5b5d4657855d25f0f5d58a00e1ba7e5504290b1ce310c1e1d7e502c5e4582"
+    },
+    {
+      "path": "postgres/host_table_integration_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "e57ccce94cd6d080d30da36cc74bda7f13fd6c25c427723a3307cd6979add8f2",
+      "reviewed_sha256": "e57ccce94cd6d080d30da36cc74bda7f13fd6c25c427723a3307cd6979add8f2"
+    },
+    {
+      "path": "postgres/migrate.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "d8649efca3c9b4ea8b96cfc4383b163aa288f1032d3ff0bcdfb775f964534bb6",
+      "reviewed_sha256": "d8649efca3c9b4ea8b96cfc4383b163aa288f1032d3ff0bcdfb775f964534bb6"
+    },
+    {
+      "path": "postgres/migrate_test.go",
+      "status": "reviewed",
+      "baseline_sha256": "669cbf905674f3a5c18d22964ef5c2dd9ac259f2dd017cdd273f4b615347532e",
+      "reviewed_sha256": "669cbf905674f3a5c18d22964ef5c2dd9ac259f2dd017cdd273f4b615347532e"
+    },
+    {
+      "path": "postgres/migrations/000001_amsonia_base.down.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "14c28a964c3817bac53b2c5ebb359507bacd185003f15d19257d88a4f397b346",
+      "reviewed_sha256": "14c28a964c3817bac53b2c5ebb359507bacd185003f15d19257d88a4f397b346"
+    },
+    {
+      "path": "postgres/migrations/000001_amsonia_base.up.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "ca47d5f73e7144c5406f46caad4666694047142aca8c889e52bdb2152f23fc2d",
+      "reviewed_sha256": "ca47d5f73e7144c5406f46caad4666694047142aca8c889e52bdb2152f23fc2d"
+    },
+    {
+      "path": "postgres/migrations/000002_security_hardening.down.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "56093b79ef323f6fad78bf7f97e3226fe8a95a773e2b45008660a39693616787",
+      "reviewed_sha256": "56093b79ef323f6fad78bf7f97e3226fe8a95a773e2b45008660a39693616787"
+    },
+    {
+      "path": "postgres/migrations/000002_security_hardening.up.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "dc272f523017e4551dfdd0ce3c317fbf09f273211b6793fdd7ba529b54119193",
+      "reviewed_sha256": "dc272f523017e4551dfdd0ce3c317fbf09f273211b6793fdd7ba529b54119193"
+    },
+    {
+      "path": "postgres/migrations/000003_core_identity_and_tenants.down.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "bea5e7e8adbe0a5812d12817fe0e0fae54ec541c71dc9769c42b3c3365ce41bf",
+      "reviewed_sha256": "bea5e7e8adbe0a5812d12817fe0e0fae54ec541c71dc9769c42b3c3365ce41bf"
+    },
+    {
+      "path": "postgres/migrations/000003_core_identity_and_tenants.up.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "25f52d49ff0c9510fceab48dca04cf584079eb028ea50debb59da5a282c0b86b",
+      "reviewed_sha256": "25f52d49ff0c9510fceab48dca04cf584079eb028ea50debb59da5a282c0b86b"
+    },
+    {
+      "path": "postgres/migrations/000004_tenant_activation.down.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "36c4f95f6099beb153d92f2ba62dc90fa0bb96098234ffd9af6ae7f4f6764039",
+      "reviewed_sha256": "36c4f95f6099beb153d92f2ba62dc90fa0bb96098234ffd9af6ae7f4f6764039"
+    },
+    {
+      "path": "postgres/migrations/000004_tenant_activation.up.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "d0baeae7dc4e2c179c7446f0c9f96726cfef33991d7eb6d69a163c48256a418e",
+      "reviewed_sha256": "d0baeae7dc4e2c179c7446f0c9f96726cfef33991d7eb6d69a163c48256a418e"
+    },
+    {
+      "path": "postgres/migrations/000005_actor_membership_discovery.down.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "f26724200f83d4b956f5568788b8206c3e1fcdcd016e1e70f35d8f45717eb6ea",
+      "reviewed_sha256": "f26724200f83d4b956f5568788b8206c3e1fcdcd016e1e70f35d8f45717eb6ea"
+    },
+    {
+      "path": "postgres/migrations/000005_actor_membership_discovery.up.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "8540dd32f067a6d6136ffdade2225918b65ac42a598193896558aa29a4df5819",
+      "reviewed_sha256": "8540dd32f067a6d6136ffdade2225918b65ac42a598193896558aa29a4df5819"
+    },
+    {
+      "path": "postgres/migrations/000006_core_administration.down.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "cbcf28315d8db264370a3cb36d0e9b35855c34cb47752bc53f4c64c9f4384191",
+      "reviewed_sha256": "cbcf28315d8db264370a3cb36d0e9b35855c34cb47752bc53f4c64c9f4384191"
+    },
+    {
+      "path": "postgres/migrations/000006_core_administration.up.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "3a0dc43a6bc4c4e1273a563d9494f0f4f81d9a074cf8b9198a3cc26075d9a79e",
+      "reviewed_sha256": "3a0dc43a6bc4c4e1273a563d9494f0f4f81d9a074cf8b9198a3cc26075d9a79e"
+    },
+    {
+      "path": "postgres/migrations/000007_context_transaction_errors.down.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "0c4170511de2d86b6209452a9797a89330b132da7127680efa17d49e7b2ec769",
+      "reviewed_sha256": "0c4170511de2d86b6209452a9797a89330b132da7127680efa17d49e7b2ec769"
+    },
+    {
+      "path": "postgres/migrations/000007_context_transaction_errors.up.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "04dbc4a1abac2cca375021b27d312f22597fbd4bbc9e9db56e2bb9602cf66734",
+      "reviewed_sha256": "04dbc4a1abac2cca375021b27d312f22597fbd4bbc9e9db56e2bb9602cf66734"
+    },
+    {
+      "path": "postgres/migrations/000008_single_organization.down.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "be7f91342d3f03e90f3caddb657edfcf23a4ac664640ffdb80d93dbf8b4de9e1",
+      "reviewed_sha256": "be7f91342d3f03e90f3caddb657edfcf23a4ac664640ffdb80d93dbf8b4de9e1"
+    },
+    {
+      "path": "postgres/migrations/000008_single_organization.up.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "8ff6e5f21139fc9cac9a56686585a8c93d17ab99b1bbbc2a3e9a2dfe3f94c636",
+      "reviewed_sha256": "8ff6e5f21139fc9cac9a56686585a8c93d17ab99b1bbbc2a3e9a2dfe3f94c636"
+    },
+    {
+      "path": "postgres/migrations/000009_organization_settings.down.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "98f89fab69b997af4919d6dda6a703108180bb84a388637ddd96c170d1ee1752",
+      "reviewed_sha256": "98f89fab69b997af4919d6dda6a703108180bb84a388637ddd96c170d1ee1752"
+    },
+    {
+      "path": "postgres/migrations/000009_organization_settings.up.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "35403c8f32eba880e61bbbeb087d3b88b8c74f39e9f9352f68adf673d84ec7e3",
+      "reviewed_sha256": "35403c8f32eba880e61bbbeb087d3b88b8c74f39e9f9352f68adf673d84ec7e3"
+    },
+    {
+      "path": "postgres/migrations/000010_administrator_recovery.down.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "ac8e107b75802dc5250b3171fa208fd1c17e69ded2b8c9c919c4cd9fe526058f",
+      "reviewed_sha256": "ac8e107b75802dc5250b3171fa208fd1c17e69ded2b8c9c919c4cd9fe526058f"
+    },
+    {
+      "path": "postgres/migrations/000010_administrator_recovery.up.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "219475e8617feb809a65084aa9358df21d889e32f4b61358dc43ddd50f10315b",
+      "reviewed_sha256": "219475e8617feb809a65084aa9358df21d889e32f4b61358dc43ddd50f10315b"
+    },
+    {
+      "path": "postgres/migrations/000011_member_recovery_and_session_retention.down.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "9a89b4abdb05bf407c69c4233b4b8cf8edd20b787d2879d4b3c71bd7fcdbc83d",
+      "reviewed_sha256": "9a89b4abdb05bf407c69c4233b4b8cf8edd20b787d2879d4b3c71bd7fcdbc83d"
+    },
+    {
+      "path": "postgres/migrations/000011_member_recovery_and_session_retention.up.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "b15300103b47cb30892772cf8f6ef4da3d990850530e8590192c2065c76c96b9",
+      "reviewed_sha256": "b15300103b47cb30892772cf8f6ef4da3d990850530e8590192c2065c76c96b9"
+    },
+    {
+      "path": "postgres/migrations/000012_session_start.down.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "df96f0d3cf5859b8e9399c6df29e041d0d8edc21cb7ef3c66c42a91278ce2a68",
+      "reviewed_sha256": "df96f0d3cf5859b8e9399c6df29e041d0d8edc21cb7ef3c66c42a91278ce2a68"
+    },
+    {
+      "path": "postgres/migrations/000012_session_start.up.sql",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "d360d1fd4347b38b3312ec6cc257c218fff0e6f70986e08a293598d7cbd9b055",
+      "reviewed_sha256": "d360d1fd4347b38b3312ec6cc257c218fff0e6f70986e08a293598d7cbd9b055"
+    },
+    {
+      "path": "postgres/store.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "362cca3f5f93abebe00f16492f005c50b940a8f5cad5608a7a115c927f18e67e",
+      "reviewed_sha256": "362cca3f5f93abebe00f16492f005c50b940a8f5cad5608a7a115c927f18e67e"
+    },
+    {
+      "path": "postgres/store_integration_test.go",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "d29ee45c5230c33542bf7e17736d2fe0bf056e27dd3e8c49fd8bffd79e711799",
+      "reviewed_sha256": "97a5bf206f13f0c20cf47e1a1c1ec7a30fe4f446aca774d4d0ab7c26514a8b5c"
+    },
+    {
+      "path": "postgres/tx.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "2572c5647824486822ae7b97a6a11c32bd7cd18744999f6e4786bcb90520940f",
+      "reviewed_sha256": "2572c5647824486822ae7b97a6a11c32bd7cd18744999f6e4786bcb90520940f"
+    },
+    {
+      "path": "provenance/amsonia-server.json",
+      "status": "reviewed",
+      "baseline_sha256": "a30716f58c0b5d74e929b19ead2c797bb3c652ffc04bf5f79d7a8b3280302360",
+      "reviewed_sha256": "a30716f58c0b5d74e929b19ead2c797bb3c652ffc04bf5f79d7a8b3280302360"
+    },
+    {
+      "path": "provenance/amsonia-web.json",
+      "status": "reviewed",
+      "baseline_sha256": "c70995b43a3dfff501c319330607281ad6f5c316191f5e792b183fb9197a9a33",
+      "reviewed_sha256": "c70995b43a3dfff501c319330607281ad6f5c316191f5e792b183fb9197a9a33"
+    },
+    {
+      "path": "redocly.yaml",
+      "status": "reviewed",
+      "baseline_sha256": "9fa12e0ce9ee711c973c6b2e286e1ba9ee4d0bde8475d01262b530f1a458e14f",
+      "reviewed_sha256": "9fa12e0ce9ee711c973c6b2e286e1ba9ee4d0bde8475d01262b530f1a458e14f"
+    },
+    {
+      "path": "scripts/api-contract-requirements.txt",
+      "status": "reviewed",
+      "baseline_sha256": "7d8502cbf1a42ec866abfb59329ac699e77fa880332ece858ebe8f59ac9196ee",
+      "reviewed_sha256": "7d8502cbf1a42ec866abfb59329ac699e77fa880332ece858ebe8f59ac9196ee"
+    },
+    {
+      "path": "scripts/build-preview.sh",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "0a40639db3605d2cd031bc6687d23ac06b0284669d7df844f327d640acc2cefe",
+      "reviewed_sha256": "0a40639db3605d2cd031bc6687d23ac06b0284669d7df844f327d640acc2cefe"
+    },
+    {
+      "path": "scripts/check-product-identifiers.sh",
+      "status": "reviewed",
+      "baseline_sha256": "6854bbb3cdd265a75a1070232c1e56e1a0d1078cae7cc43db54f0c161b2584cf",
+      "reviewed_sha256": "6854bbb3cdd265a75a1070232c1e56e1a0d1078cae7cc43db54f0c161b2584cf"
+    },
+    {
+      "path": "scripts/check-web-proxy.py",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "e6306fead1624911fc8aa9caceff0464699e276db0c7c1eeb368a263e44cddbe",
+      "reviewed_sha256": "e6306fead1624911fc8aa9caceff0464699e276db0c7c1eeb368a263e44cddbe"
+    },
+    {
+      "path": "scripts/configure-web-proxy.mjs",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "d9c16a564716736965b0660bdd98f2ae4a8366ec933b08b81e26964f0bb41952",
+      "reviewed_sha256": "d9c16a564716736965b0660bdd98f2ae4a8366ec933b08b81e26964f0bb41952"
+    },
+    {
+      "path": "scripts/download-public-preview.sh",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "a9ffc74cac1c82d8fde4f00504d5ed92700e24771f95a5a64e4befc0a840fd9d",
+      "reviewed_sha256": "a9ffc74cac1c82d8fde4f00504d5ed92700e24771f95a5a64e4befc0a840fd9d"
+    },
+    {
+      "path": "scripts/smoke-first-login.cjs",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "23b6b75d836b423d71253e956c814d40fa613c1f3ee29dbe5849d768abf0727f",
+      "reviewed_sha256": "23b6b75d836b423d71253e956c814d40fa613c1f3ee29dbe5849d768abf0727f"
+    },
+    {
+      "path": "scripts/smoke-preview-upgrade.py",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "5d854730184ddb38433d158cd98e35874df7fbeedf23b3f95fdc92f704e1fa5a",
+      "reviewed_sha256": "5d854730184ddb38433d158cd98e35874df7fbeedf23b3f95fdc92f704e1fa5a"
+    },
+    {
+      "path": "scripts/smoke-preview.py",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "3e4228df2f7c2605660e902bfdd6e694e777968fb69e321c90b0a856a97319ad",
+      "reviewed_sha256": "3e4228df2f7c2605660e902bfdd6e694e777968fb69e321c90b0a856a97319ad"
+    },
+    {
+      "path": "scripts/smoke-upgrade.py",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "8f871347d28a3f19ad053b616f194c91f54f7b10b9b2f4f39b71eae62e0a710f",
+      "reviewed_sha256": "8f871347d28a3f19ad053b616f194c91f54f7b10b9b2f4f39b71eae62e0a710f"
+    },
+    {
+      "path": "scripts/smoke_support.py",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "e1d712f94fd44130b2e05ba97d94228502a056513846800271b3af3d9aab89e1",
+      "reviewed_sha256": "e1d712f94fd44130b2e05ba97d94228502a056513846800271b3af3d9aab89e1"
+    },
+    {
+      "path": "scripts/stage-preview.sh",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "6a95b93d066baa3683f0979abf7529fb33bf5f0ec81748c29fb3f34bf1907097",
+      "reviewed_sha256": "6a95b93d066baa3683f0979abf7529fb33bf5f0ec81748c29fb3f34bf1907097"
+    },
+    {
+      "path": "scripts/test_smoke_preview_upgrade.py",
+      "status": "reviewed",
+      "baseline_sha256": "6ad4add4f4f08c0cbb8a5811da15a32bd99022875e184718504d6551f3dc05e6",
+      "reviewed_sha256": "6ad4add4f4f08c0cbb8a5811da15a32bd99022875e184718504d6551f3dc05e6"
+    },
+    {
+      "path": "scripts/validate-api-contract.py",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "038b6453ee64a604a0321461bd43bdb0edf938faa78a28e5cc0c862bdb6dcd36",
+      "reviewed_sha256": "038b6453ee64a604a0321461bd43bdb0edf938faa78a28e5cc0c862bdb6dcd36"
+    },
+    {
+      "path": "site/.env.example",
+      "status": "reviewed",
+      "baseline_sha256": "c85b329a2a2fb61c95276b2811a0d5fbdc5933a0e50452924874982fe7153d55",
+      "reviewed_sha256": "c85b329a2a2fb61c95276b2811a0d5fbdc5933a0e50452924874982fe7153d55"
+    },
+    {
+      "path": "site/ARTWORK.md",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "01776af33503acb556c3ff122a248bc5b24a69047cbaeea58a6eb7ee9a7561f3",
+      "reviewed_sha256": "5abdaf18bee39023572827db8a327ed5cf2429ae1d5fc3175bfb12d028351137"
+    },
+    {
+      "path": "site/ARTWORK.sha256",
+      "status": "reviewed",
+      "baseline_sha256": "650a80a1718bb3eda960132a9abd3e7f83510174c3a057cb80799fe6d7bb2b50",
+      "reviewed_sha256": "650a80a1718bb3eda960132a9abd3e7f83510174c3a057cb80799fe6d7bb2b50"
+    },
+    {
+      "path": "site/README.md",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "fd876a363b950c9721c2dc7d3dda9f7492a75606e8d43e674765a8e0b084f8d9",
+      "reviewed_sha256": "873fc63e1e248bb32cf89531fc4ea4a9e299f2aa47e95a4ed9978eafd67fea8b"
+    },
+    {
+      "path": "site/astro.config.mjs",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "82440a5241fd1e2480fa56a45ee3147d037fdf5d3d4c3a1040238d3de636cdeb",
+      "reviewed_sha256": "82440a5241fd1e2480fa56a45ee3147d037fdf5d3d4c3a1040238d3de636cdeb"
+    },
+    {
+      "path": "site/config/public-links.json",
+      "status": "reviewed",
+      "baseline_sha256": "5fde2177eee59cb2df53c58982ea34af717f17ad26fbb1226c588080da724c01",
+      "reviewed_sha256": "5fde2177eee59cb2df53c58982ea34af717f17ad26fbb1226c588080da724c01"
+    },
+    {
+      "path": "site/evidence/affinity-web-assets-20261028/amsonia-next-desktop.png",
+      "status": "visual_asset_review",
+      "baseline_sha256": "fb0a7b6cf84ed00377cea662e707013b426d87f0050398de57514654aafb39c9",
+      "reviewed_sha256": "fb0a7b6cf84ed00377cea662e707013b426d87f0050398de57514654aafb39c9"
+    },
+    {
+      "path": "site/evidence/affinity-web-assets-20261028/amsonia-platform-mobile.png",
+      "status": "visual_asset_review",
+      "baseline_sha256": "83611314b92bc1925e609702990fe68d468e877cb49065e32f77e1e116da3ba9",
+      "reviewed_sha256": "83611314b92bc1925e609702990fe68d468e877cb49065e32f77e1e116da3ba9"
+    },
+    {
+      "path": "site/evidence/domain-copy-20261101/result.md",
+      "status": "reviewed",
+      "baseline_sha256": "43cefcce1e9751ef44d32f0515bdb694eb8dab7af9dbaf468de7819fbaaadd90",
+      "reviewed_sha256": "43cefcce1e9751ef44d32f0515bdb694eb8dab7af9dbaf468de7819fbaaadd90"
+    },
+    {
+      "path": "site/evidence/next-demo-entry-20261101/result.md",
+      "status": "reviewed",
+      "baseline_sha256": "c0a68da01d777e16facdddcf0459a6dd9cc3bb19a309d7d637397fa40f3a817c",
+      "reviewed_sha256": "c0a68da01d777e16facdddcf0459a6dd9cc3bb19a309d7d637397fa40f3a817c"
+    },
+    {
+      "path": "site/evidence/seo-followup-20261103/result.md",
+      "status": "reviewed",
+      "baseline_sha256": "ef54cb9bf558657266c7fac19dc6fdfb9de28d8f97d1738e148fd472f49e5e9b",
+      "reviewed_sha256": "ef54cb9bf558657266c7fac19dc6fdfb9de28d8f97d1738e148fd472f49e5e9b"
+    },
+    {
+      "path": "site/package-lock.json",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "77bf43040510e70fadc5f4cfd4cb304ad8785b4689b4e07781de4cb35396df7d",
+      "reviewed_sha256": "8ec1509c0c1ed1ed86383bd20feb0dfff25a2d6f0588d9fd7efb814e06d8c852"
+    },
+    {
+      "path": "site/package.json",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "6093dc42ad13d812e18b1c2eb1b942c4ec56aee0dce3eb41aade23ceed52f6eb",
+      "reviewed_sha256": "123a3d26a784680314cd76dd6c6a7f9656f29fe27ba282b95a289482c6ed0cb9"
+    },
+    {
+      "path": "site/public/_headers",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "c8cda4ced74718f9f3c6683e3a3d87c257a8e2c03222d9bade353779e90d7414",
+      "reviewed_sha256": "6989733147b7efd619c21f8a47c5ca94eefe160387aa4baacb1e36d8d4720735"
+    },
+    {
+      "path": "site/public/_redirects",
+      "status": "reviewed",
+      "baseline_sha256": "9aa1cd39b6a81b0b930a5b715868cb7cbbe58dae6574d8d3dd34c81f6c1986ce",
+      "reviewed_sha256": "9aa1cd39b6a81b0b930a5b715868cb7cbbe58dae6574d8d3dd34c81f6c1986ce"
+    },
+    {
+      "path": "site/public/amsonia-mark-v2.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "1a8080801cf06e100d157ffa6597a101055f4f74f332ee1150ce4fd559cc2dcc",
+      "reviewed_sha256": "1a8080801cf06e100d157ffa6597a101055f4f74f332ee1150ce4fd559cc2dcc"
+    },
+    {
+      "path": "site/public/artwork/affinity-web-v1/amsonia-platform-hero.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "185237f79507da3d00b623e0087ea5feb914c3d6d4e336a21d8568d5af0d6c31",
+      "reviewed_sha256": "185237f79507da3d00b623e0087ea5feb914c3d6d4e336a21d8568d5af0d6c31"
+    },
+    {
+      "path": "site/public/artwork/affinity-web-v1/icons/billing.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "a60c1262d7102672a65638d95fa7acf39c57d942b36408091b917009b7c622b1",
+      "reviewed_sha256": "a60c1262d7102672a65638d95fa7acf39c57d942b36408091b917009b7c622b1"
+    },
+    {
+      "path": "site/public/artwork/affinity-web-v1/icons/database.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "b4392a169b6230cca8575822ff9fdbaa0949d23946cbb74f0207ccc8a08b4c25",
+      "reviewed_sha256": "b4392a169b6230cca8575822ff9fdbaa0949d23946cbb74f0207ccc8a08b4c25"
+    },
+    {
+      "path": "site/public/artwork/affinity-web-v1/icons/deploy.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "442621f23d8ee9ee186dc45ca4ed44341ffbd2b95a10fa3a4acd498fe0d4f2b1",
+      "reviewed_sha256": "442621f23d8ee9ee186dc45ca4ed44341ffbd2b95a10fa3a4acd498fe0d4f2b1"
+    },
+    {
+      "path": "site/public/artwork/affinity-web-v1/icons/docs.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "65999843794c641de3464199696afbf7a5efb8951e0a6b1e8910b7887e5ab614",
+      "reviewed_sha256": "65999843794c641de3464199696afbf7a5efb8951e0a6b1e8910b7887e5ab614"
+    },
+    {
+      "path": "site/public/artwork/affinity-web-v1/icons/identity.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "4b2e95c8d5d96c6c493abee0aa227d9c0c0c2cc4596313b4319989b9d4787c29",
+      "reviewed_sha256": "4b2e95c8d5d96c6c493abee0aa227d9c0c0c2cc4596313b4319989b9d4787c29"
+    },
+    {
+      "path": "site/public/artwork/affinity-web-v1/icons/operations.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "01f8d8d3b319a1883f6dd80f2b513c889d7901bfb4b831244afe5ff841cac7c0",
+      "reviewed_sha256": "01f8d8d3b319a1883f6dd80f2b513c889d7901bfb4b831244afe5ff841cac7c0"
+    },
+    {
+      "path": "site/public/artwork/affinity-web-v1/icons/source.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "4e246681584cd508292fb50e7f68538f4e36bfd1c8bf506d4a4cbc0af17c9ea4",
+      "reviewed_sha256": "4e246681584cd508292fb50e7f68538f4e36bfd1c8bf506d4a4cbc0af17c9ea4"
+    },
+    {
+      "path": "site/public/artwork/affinity-web-v1/icons/tenancy.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "d2f3b1e9f8918dcf6b385d12d4408e5de6cb88f3a16d943f98983921accf11dc",
+      "reviewed_sha256": "d2f3b1e9f8918dcf6b385d12d4408e5de6cb88f3a16d943f98983921accf11dc"
+    },
+    {
+      "path": "site/public/artwork/affinity-web-v1/willuny-source-hero.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "40a0a120fca42fa2cdff20151534bdefe35d587f3ed811b039cbdc1a53901260",
+      "reviewed_sha256": "40a0a120fca42fa2cdff20151534bdefe35d587f3ed811b039cbdc1a53901260"
+    },
+    {
+      "path": "site/public/og-amsonia.png",
+      "status": "visual_asset_review",
+      "baseline_sha256": "5019087d7d1f59e0e1a2a65151fd3ff25ff0c5a6c7af99d2910c2417552f118f",
+      "reviewed_sha256": "5019087d7d1f59e0e1a2a65151fd3ff25ff0c5a6c7af99d2910c2417552f118f"
+    },
+    {
+      "path": "site/public/og-amsonia.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "60ae9bccecc0c5521e720d36fee93b8d94dd8ff7075a0bf67817e80fa92b9e24",
+      "reviewed_sha256": "60ae9bccecc0c5521e720d36fee93b8d94dd8ff7075a0bf67817e80fa92b9e24"
+    },
+    {
+      "path": "site/scripts/check-built-site.mjs",
+      "status": "reviewed",
+      "baseline_sha256": "859855e57ac37c76098a821c8cc042c2af8e1bf467c430d87123cad4a140eac2",
+      "reviewed_sha256": "859855e57ac37c76098a821c8cc042c2af8e1bf467c430d87123cad4a140eac2"
+    },
+    {
+      "path": "site/scripts/check-domain-config.mjs",
+      "status": "reviewed",
+      "baseline_sha256": "72947b44760a4c3311442d59df4917dc1ae06ed50cbde82d360a1843bb58caac",
+      "reviewed_sha256": "72947b44760a4c3311442d59df4917dc1ae06ed50cbde82d360a1843bb58caac"
+    },
+    {
+      "path": "site/scripts/check-visual-system.mjs",
+      "status": "reviewed",
+      "baseline_sha256": "d900f31c64e47561df26d301ca3cc7ff3b8d6255f1938eeb8d06e03e68e65ede",
+      "reviewed_sha256": "d900f31c64e47561df26d301ca3cc7ff3b8d6255f1938eeb8d06e03e68e65ede"
+    },
+    {
+      "path": "site/src/components/AnalyticsConsent.astro",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "c655796b13357ff95b0749b14e3c633e0a1d54558ddad48b62b9a72134dc1eb2",
+      "reviewed_sha256": "37192dbb1f5373f3d2531a50643b9b63cf68dec26463587797db8cb28a7dd488"
+    },
+    {
+      "path": "site/src/components/FeatureArtwork.astro",
+      "status": "reviewed",
+      "baseline_sha256": "bef7148753cd963ab5151b28ebfc360f1ac9ca1368cac935578936b8eff6121d",
+      "reviewed_sha256": "bef7148753cd963ab5151b28ebfc360f1ac9ca1368cac935578936b8eff6121d"
+    },
+    {
+      "path": "site/src/components/PageIntro.astro",
+      "status": "reviewed",
+      "baseline_sha256": "83168e385b72ea28d9f5d60d3a442e2945ca8fa79effa0854e36b3b5d072664d",
+      "reviewed_sha256": "83168e385b72ea28d9f5d60d3a442e2945ca8fa79effa0854e36b3b5d072664d"
+    },
+    {
+      "path": "site/src/components/SiteFooter.astro",
+      "status": "reviewed",
+      "baseline_sha256": "80375fc42a54bca2b4fe3fb74bcf44a29500265bded9ba3cd57d77608483df3e",
+      "reviewed_sha256": "80375fc42a54bca2b4fe3fb74bcf44a29500265bded9ba3cd57d77608483df3e"
+    },
+    {
+      "path": "site/src/components/SiteHeader.astro",
+      "status": "reviewed",
+      "baseline_sha256": "eba2660ef7566e8e871c1cca76f2f702d269387f654e0f75432cda84aa004046",
+      "reviewed_sha256": "eba2660ef7566e8e871c1cca76f2f702d269387f654e0f75432cda84aa004046"
+    },
+    {
+      "path": "site/src/components/TopicPage.astro",
+      "status": "reviewed",
+      "baseline_sha256": "1b2ec2bec766e6b39e3b34a70a9b92b2222d8a95fe2fc8f0507e6531aecf0bc9",
+      "reviewed_sha256": "1b2ec2bec766e6b39e3b34a70a9b92b2222d8a95fe2fc8f0507e6531aecf0bc9"
+    },
+    {
+      "path": "site/src/components/WebsiteArtwork.astro",
+      "status": "reviewed",
+      "baseline_sha256": "fc06764329c5a51976d20679684ca521029c28a8adf1127c82ffd0f257f545fa",
+      "reviewed_sha256": "fc06764329c5a51976d20679684ca521029c28a8adf1127c82ffd0f257f545fa"
+    },
+    {
+      "path": "site/src/layouts/BaseLayout.astro",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "ec3a234faaf35386fc4fb448ffe9156c1df00b99eec1d5c5d9099822fbef28d5",
+      "reviewed_sha256": "ec3a234faaf35386fc4fb448ffe9156c1df00b99eec1d5c5d9099822fbef28d5"
+    },
+    {
+      "path": "site/src/lib/site.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "c7f4b23e53aec52e0c20289b800afeefcf74609a1e9de4907a26fdfaf4f0b01f",
+      "reviewed_sha256": "c7f4b23e53aec52e0c20289b800afeefcf74609a1e9de4907a26fdfaf4f0b01f"
+    },
+    {
+      "path": "site/src/pages/404.astro",
+      "status": "reviewed",
+      "baseline_sha256": "853d87f6eecefc3de43cfff8e89e37c39d81eab465720980cd0fb29839a24b5b",
+      "reviewed_sha256": "853d87f6eecefc3de43cfff8e89e37c39d81eab465720980cd0fb29839a24b5b"
+    },
+    {
+      "path": "site/src/pages/about.astro",
+      "status": "reviewed",
+      "baseline_sha256": "6e9c283ebb06700ae2e2746c1dc4f699849358ecafaaf0ff5693d196995a7f78",
+      "reviewed_sha256": "6e9c283ebb06700ae2e2746c1dc4f699849358ecafaaf0ff5693d196995a7f78"
+    },
+    {
+      "path": "site/src/pages/compare/shipfast-vs-amsonia-next.astro",
+      "status": "reviewed",
+      "baseline_sha256": "14d6a6f943d22282e5b15c521ea7166be8cf9e1fe4d78bba5ae7ee77c5f34ded",
+      "reviewed_sha256": "14d6a6f943d22282e5b15c521ea7166be8cf9e1fe4d78bba5ae7ee77c5f34ded"
+    },
+    {
+      "path": "site/src/pages/docs/index.astro",
+      "status": "reviewed",
+      "baseline_sha256": "76b9c109699554e6014e09249cacd9f44caf1d56d292eb9769f01c4e7afcd70f",
+      "reviewed_sha256": "76b9c109699554e6014e09249cacd9f44caf1d56d292eb9769f01c4e7afcd70f"
+    },
+    {
+      "path": "site/src/pages/index.astro",
+      "status": "reviewed",
+      "baseline_sha256": "6f5f428b836e0ccec49d9b157f18b5c079a5ecdd2feb720a7309edd75db05118",
+      "reviewed_sha256": "6f5f428b836e0ccec49d9b157f18b5c079a5ecdd2feb720a7309edd75db05118"
+    },
+    {
+      "path": "site/src/pages/license.astro",
+      "status": "reviewed",
+      "baseline_sha256": "039a2c0e52ab1f9df8e9c8e7b514b3b8fe596678f04b7f071a9782d768af0932",
+      "reviewed_sha256": "039a2c0e52ab1f9df8e9c8e7b514b3b8fe596678f04b7f071a9782d768af0932"
+    },
+    {
+      "path": "site/src/pages/llms.txt.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "5ebba0926662fd32d904a8f82b33bf48ad0edad0c98ef6abc84aa817ae12b0ec",
+      "reviewed_sha256": "5ebba0926662fd32d904a8f82b33bf48ad0edad0c98ef6abc84aa817ae12b0ec"
+    },
+    {
+      "path": "site/src/pages/next.astro",
+      "status": "reviewed",
+      "baseline_sha256": "c991fb6e5dca766ab2bea740152a97b04848cf8d8b7e5a4a1ff100db24aa689d",
+      "reviewed_sha256": "c991fb6e5dca766ab2bea740152a97b04848cf8d8b7e5a4a1ff100db24aa689d"
+    },
+    {
+      "path": "site/src/pages/open-source.astro",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "3a025d7656655faecca44812a5b15f8562f8617c6f2166d78f537c9f5dbe4ac0",
+      "reviewed_sha256": "edcbaaad2779c805a09ee8a4bf6409b74862df3442ade07702ea481cbc9c32df"
+    },
+    {
+      "path": "site/src/pages/pricing.astro",
+      "status": "reviewed",
+      "baseline_sha256": "53e204b85c44a770808dd55b21c1d199e9d7ea6d74e2faff76631b43d9e17a94",
+      "reviewed_sha256": "53e204b85c44a770808dd55b21c1d199e9d7ea6d74e2faff76631b43d9e17a94"
+    },
+    {
+      "path": "site/src/pages/products.astro",
+      "status": "reviewed",
+      "baseline_sha256": "9847c3d27d10c0ad8087953b2ac540ea08afae308e73e7af9f312aa3792022c6",
+      "reviewed_sha256": "9847c3d27d10c0ad8087953b2ac540ea08afae308e73e7af9f312aa3792022c6"
+    },
+    {
+      "path": "site/src/pages/robots.txt.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "35937f15085f33d65e7b5c4b0fe2ffc41aa9e448519542b080cb829037180a83",
+      "reviewed_sha256": "35937f15085f33d65e7b5c4b0fe2ffc41aa9e448519542b080cb829037180a83"
+    },
+    {
+      "path": "site/src/pages/sitemap.xml.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "e3e2d481eb7b4223d12c36b4c5493344bb10f36113a923ea4438f50a1b27b528",
+      "reviewed_sha256": "e3e2d481eb7b4223d12c36b4c5493344bb10f36113a923ea4438f50a1b27b528"
+    },
+    {
+      "path": "site/src/styles/global.css",
+      "status": "reviewed",
+      "baseline_sha256": "96f985ef28428feea0608f5ed6b9e4c2041b6683d5f0c7a3d8c73d46bb5d286f",
+      "reviewed_sha256": "96f985ef28428feea0608f5ed6b9e4c2041b6683d5f0c7a3d8c73d46bb5d286f"
+    },
+    {
+      "path": "site/tsconfig.json",
+      "status": "reviewed",
+      "baseline_sha256": "974b0a3b37e52f3649d9df63e72e374794e9e797c8ae61eca4812f844406f7ef",
+      "reviewed_sha256": "974b0a3b37e52f3649d9df63e72e374794e9e797c8ae61eca4812f844406f7ef"
+    },
+    {
+      "path": "store.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "819c74e84bcedbfb255a2e8510327c313f695ead282eed4473e8f94818c621cd",
+      "reviewed_sha256": "819c74e84bcedbfb255a2e8510327c313f695ead282eed4473e8f94818c621cd"
+    },
+    {
+      "path": "types.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "965443182d8df871a4967ff1a80ff05f91f0f88b4b770821c371ca9593e1f30a",
+      "reviewed_sha256": "965443182d8df871a4967ff1a80ff05f91f0f88b4b770821c371ca9593e1f30a"
+    },
+    {
+      "path": "types_test.go",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "a24b094ee87a389223a0415fe335556170f447a695f9033a5f92a1a0dd23e46a",
+      "reviewed_sha256": "a24b094ee87a389223a0415fe335556170f447a695f9033a5f92a1a0dd23e46a"
+    },
+    {
+      "path": "web/.env.example",
+      "status": "reviewed",
+      "baseline_sha256": "9c1212e1d691c68e3c2776844fad3201eec7d2114679bc9779255a0803ae859f",
+      "reviewed_sha256": "9c1212e1d691c68e3c2776844fad3201eec7d2114679bc9779255a0803ae859f"
+    },
+    {
+      "path": "web/eslint.config.js",
+      "status": "reviewed",
+      "baseline_sha256": "56c0e5ab33878d39d5bdf1b1da78cbcc4aad455a396540d80f3c7635e357f266",
+      "reviewed_sha256": "56c0e5ab33878d39d5bdf1b1da78cbcc4aad455a396540d80f3c7635e357f266"
+    },
+    {
+      "path": "web/index.html",
+      "status": "reviewed",
+      "baseline_sha256": "91b959d53251331162d4276e55456601050af91041958da84c2cd473b522a553",
+      "reviewed_sha256": "91b959d53251331162d4276e55456601050af91041958da84c2cd473b522a553"
+    },
+    {
+      "path": "web/package-lock.json",
+      "status": "dependency_lock_integrity_review",
+      "baseline_sha256": "550311a3e8e075fd60508abdad64cf3967bf06ad97ca6cc700fb5a8eb6f38d41",
+      "reviewed_sha256": "550311a3e8e075fd60508abdad64cf3967bf06ad97ca6cc700fb5a8eb6f38d41"
+    },
+    {
+      "path": "web/package.json",
+      "status": "reviewed",
+      "baseline_sha256": "045eb5b94a9171aa3a2c79fdd28f2590eafa6e4f6e4aa9a3ae38864e1f48adb1",
+      "reviewed_sha256": "045eb5b94a9171aa3a2c79fdd28f2590eafa6e4f6e4aa9a3ae38864e1f48adb1"
+    },
+    {
+      "path": "web/public/amsonia-mark-v2.svg",
+      "status": "asset_structure_integrity_review",
+      "baseline_sha256": "1a8080801cf06e100d157ffa6597a101055f4f74f332ee1150ce4fd559cc2dcc",
+      "reviewed_sha256": "1a8080801cf06e100d157ffa6597a101055f4f74f332ee1150ce4fd559cc2dcc"
+    },
+    {
+      "path": "web/public/robots.txt",
+      "status": "reviewed",
+      "baseline_sha256": "16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95",
+      "reviewed_sha256": "16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95"
+    },
+    {
+      "path": "web/src/Account.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "b37c3c9f0cbc9cf6b6a86b9c6fa32e44398800766deab81670cc9fc07c72975d",
+      "reviewed_sha256": "b37c3c9f0cbc9cf6b6a86b9c6fa32e44398800766deab81670cc9fc07c72975d"
+    },
+    {
+      "path": "web/src/App.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "b9c095fa804ff55a4ea7cb9b0b1dc58ddae309e82ea940b64a1d6a12c91a48ee",
+      "reviewed_sha256": "b9c095fa804ff55a4ea7cb9b0b1dc58ddae309e82ea940b64a1d6a12c91a48ee"
+    },
+    {
+      "path": "web/src/Audit.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "baa894f24058a300d3ae081673cd1325e734181263b9e7a0d7fe9542b57bd32c",
+      "reviewed_sha256": "baa894f24058a300d3ae081673cd1325e734181263b9e7a0d7fe9542b57bd32c"
+    },
+    {
+      "path": "web/src/DeviceSessions.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "6b5462c8507a2e37aba747f6b10f92e7761283043b1fe9a3dccd9167e6fc69d3",
+      "reviewed_sha256": "6b5462c8507a2e37aba747f6b10f92e7761283043b1fe9a3dccd9167e6fc69d3"
+    },
+    {
+      "path": "web/src/DirectoryControls.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "7c9bb933c9be16d73477f97541b04d2b862e70ce3323c3cc6e1c9a803d529d19",
+      "reviewed_sha256": "7c9bb933c9be16d73477f97541b04d2b862e70ce3323c3cc6e1c9a803d529d19"
+    },
+    {
+      "path": "web/src/Invitations.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "09948d6393d8ee02a67584ffe74aa3edd509d3f4c516c5152efa04493f136518",
+      "reviewed_sha256": "09948d6393d8ee02a67584ffe74aa3edd509d3f4c516c5152efa04493f136518"
+    },
+    {
+      "path": "web/src/Members.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "2a8025ede165a3eaf7d78484a4e11106cae8b3403507e5eb68ba2f3666273910",
+      "reviewed_sha256": "2a8025ede165a3eaf7d78484a4e11106cae8b3403507e5eb68ba2f3666273910"
+    },
+    {
+      "path": "web/src/Organization.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "573e38e6a17d8152c2f0b7c02e80de91a88352e439c9ee52b555d6d8f41ae03e",
+      "reviewed_sha256": "573e38e6a17d8152c2f0b7c02e80de91a88352e439c9ee52b555d6d8f41ae03e"
+    },
+    {
+      "path": "web/src/PasswordRecovery.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "d4502eb4f5a0cc2c191750203dfac460558ec5112adff79b63d0fcfa4f16f799",
+      "reviewed_sha256": "d4502eb4f5a0cc2c191750203dfac460558ec5112adff79b63d0fcfa4f16f799"
+    },
+    {
+      "path": "web/src/PolicyLab.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "d5563e9a4f883bb469f15e6ecf832c1369f055b9e3fe8eb94f7b2a8e0457df6c",
+      "reviewed_sha256": "d5563e9a4f883bb469f15e6ecf832c1369f055b9e3fe8eb94f7b2a8e0457df6c"
+    },
+    {
+      "path": "web/src/RoleMembers.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "bd5a142f35c64dce9f02c482821eb83ce33779da4438e3d03b86a2d9a5ff58e0",
+      "reviewed_sha256": "bd5a142f35c64dce9f02c482821eb83ce33779da4438e3d03b86a2d9a5ff58e0"
+    },
+    {
+      "path": "web/src/Roles.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "98c051eec5a8a4f12c4041c4864737598a7f518abaeb9081c6d83e47b947080e",
+      "reviewed_sha256": "98c051eec5a8a4f12c4041c4864737598a7f518abaeb9081c6d83e47b947080e"
+    },
+    {
+      "path": "web/src/admin.test.tsx",
+      "status": "reviewed",
+      "baseline_sha256": "2fd91d6fa84b081368406b5692def580e87dd4c60be7a4b2bae840707c408636",
+      "reviewed_sha256": "2fd91d6fa84b081368406b5692def580e87dd4c60be7a4b2bae840707c408636"
+    },
+    {
+      "path": "web/src/api.test.ts",
+      "status": "reviewed",
+      "baseline_sha256": "6038b4ce6cf172107e72db96584b3ac95846c751acbc0397ce8160863ce72c15",
+      "reviewed_sha256": "6038b4ce6cf172107e72db96584b3ac95846c751acbc0397ce8160863ce72c15"
+    },
+    {
+      "path": "web/src/api.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "345f810fbe62bb2eab7887467e319199b3b571b02845cb53020d46c495ad60de",
+      "reviewed_sha256": "345f810fbe62bb2eab7887467e319199b3b571b02845cb53020d46c495ad60de"
+    },
+    {
+      "path": "web/src/audit.test.tsx",
+      "status": "reviewed",
+      "baseline_sha256": "3d5fd2dc0eb3234c9e62f2d126f85a91e5ed7d2a9a3edd28819841abfe0c8dbd",
+      "reviewed_sha256": "3d5fd2dc0eb3234c9e62f2d126f85a91e5ed7d2a9a3edd28819841abfe0c8dbd"
+    },
+    {
+      "path": "web/src/brand-links.test.ts",
+      "status": "reviewed",
+      "baseline_sha256": "387f4886e2f41cb4d10bdf2b91ed78623296c0a02eb13f000fbeacecc544c063",
+      "reviewed_sha256": "387f4886e2f41cb4d10bdf2b91ed78623296c0a02eb13f000fbeacecc544c063"
+    },
+    {
+      "path": "web/src/components.test.tsx",
+      "status": "reviewed",
+      "baseline_sha256": "b11f6a8abb01115cc0364dc0051432c0392db9189a97f89b2b87a661a4f2ea4b",
+      "reviewed_sha256": "b11f6a8abb01115cc0364dc0051432c0392db9189a97f89b2b87a661a4f2ea4b"
+    },
+    {
+      "path": "web/src/components.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "8a1b522ba25a9a73bb44afefacef92fe5b37eb893fdc3ec59522ab739c105f79",
+      "reviewed_sha256": "8a1b522ba25a9a73bb44afefacef92fe5b37eb893fdc3ec59522ab739c105f79"
+    },
+    {
+      "path": "web/src/config.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "e89a157c31af70b8ee77bf497d77cad51f54c4ede08e451e0527480f707d1023",
+      "reviewed_sha256": "e89a157c31af70b8ee77bf497d77cad51f54c4ede08e451e0527480f707d1023"
+    },
+    {
+      "path": "web/src/devices.test.tsx",
+      "status": "reviewed",
+      "baseline_sha256": "c2c57e531cd7f8ea667882826a2aba00f30dd4ed2e294580372dccacef50e961",
+      "reviewed_sha256": "c2c57e531cd7f8ea667882826a2aba00f30dd4ed2e294580372dccacef50e961"
+    },
+    {
+      "path": "web/src/directories.test.tsx",
+      "status": "reviewed",
+      "baseline_sha256": "5ba27e59895a18dd0bae94d0ef1b8dc954e4280b321bd303f39b34ee31562024",
+      "reviewed_sha256": "5ba27e59895a18dd0bae94d0ef1b8dc954e4280b321bd303f39b34ee31562024"
+    },
+    {
+      "path": "web/src/errors.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "7844a9d07e9fbfa8c42d6658bf285cb025f93a023e95e66e5f851533e659a87f",
+      "reviewed_sha256": "7844a9d07e9fbfa8c42d6658bf285cb025f93a023e95e66e5f851533e659a87f"
+    },
+    {
+      "path": "web/src/main.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "5d6704d12ce5b34800a378c321a58b1c1411477da21c7771e5cb49db49838cf1",
+      "reviewed_sha256": "5d6704d12ce5b34800a378c321a58b1c1411477da21c7771e5cb49db49838cf1"
+    },
+    {
+      "path": "web/src/navigation.tsx",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "41ffcd77bb2884228a7e58188220efb617e05f5b24631d1e0835e12393b6c142",
+      "reviewed_sha256": "41ffcd77bb2884228a7e58188220efb617e05f5b24631d1e0835e12393b6c142"
+    },
+    {
+      "path": "web/src/organization.test.tsx",
+      "status": "reviewed",
+      "baseline_sha256": "5ba2f4d72bd741c36f5e6ce4bb9e233cd8946feddc829610a011880975e19a52",
+      "reviewed_sha256": "5ba2f4d72bd741c36f5e6ce4bb9e233cd8946feddc829610a011880975e19a52"
+    },
+    {
+      "path": "web/src/pages.test.tsx",
+      "status": "reviewed",
+      "baseline_sha256": "af848812821cfade5aafc9bd2ce7550a8fb842d010bcb3d1937af81ca178ab07",
+      "reviewed_sha256": "af848812821cfade5aafc9bd2ce7550a8fb842d010bcb3d1937af81ca178ab07"
+    },
+    {
+      "path": "web/src/password.test.tsx",
+      "status": "reviewed",
+      "baseline_sha256": "5cfc8e6ff4e38b8ff63fce04e49c4c0eb90f9cdcb5f606d41c249278751f4b2e",
+      "reviewed_sha256": "5cfc8e6ff4e38b8ff63fce04e49c4c0eb90f9cdcb5f606d41c249278751f4b2e"
+    },
+    {
+      "path": "web/src/password.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "9551f340bead10848e0f9160204f377323d229c2ebbe5875c2dfc2d88975142b",
+      "reviewed_sha256": "9551f340bead10848e0f9160204f377323d229c2ebbe5875c2dfc2d88975142b"
+    },
+    {
+      "path": "web/src/policy-lab.test.tsx",
+      "status": "reviewed_and_fixed",
+      "baseline_sha256": "52f0ec79864ccad4bab1a5e9971e454ae0604624cb6d65e1dc19d0ab1e2fc41a",
+      "reviewed_sha256": "c1cdd7569c16b2b73198b4eef0a018efde3193349de6b4df7f1bf94905a733e9"
+    },
+    {
+      "path": "web/src/recovery.test.tsx",
+      "status": "reviewed",
+      "baseline_sha256": "1b533fccbf5edfded7d4ab4e074d72b9fb3e1149336ddc4c650a7aaf4ff6b3f8",
+      "reviewed_sha256": "1b533fccbf5edfded7d4ab4e074d72b9fb3e1149336ddc4c650a7aaf4ff6b3f8"
+    },
+    {
+      "path": "web/src/role-members.test.tsx",
+      "status": "reviewed",
+      "baseline_sha256": "c828680deea6e643a56a5e5d28a07f3578391dc36011c46ade99ed0300c46e1d",
+      "reviewed_sha256": "c828680deea6e643a56a5e5d28a07f3578391dc36011c46ade99ed0300c46e1d"
+    },
+    {
+      "path": "web/src/roleFields.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "f3eb41fd402f1d263aeda8249524fc7ac4d7e6899535a4c8bb8f0034900011e9",
+      "reviewed_sha256": "f3eb41fd402f1d263aeda8249524fc7ac4d7e6899535a4c8bb8f0034900011e9"
+    },
+    {
+      "path": "web/src/routing.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "848817052a5c2dbf51cfabce57ed0954c94bac0d0bad98c88ddbbda78914b615",
+      "reviewed_sha256": "848817052a5c2dbf51cfabce57ed0954c94bac0d0bad98c88ddbbda78914b615"
+    },
+    {
+      "path": "web/src/styles.css",
+      "status": "reviewed",
+      "baseline_sha256": "e1c53da5a02e3af564353d7eaea89bd383b98e47d12d9261ed4edc5edbbc247b",
+      "reviewed_sha256": "e1c53da5a02e3af564353d7eaea89bd383b98e47d12d9261ed4edc5edbbc247b"
+    },
+    {
+      "path": "web/src/types.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "c505485094977c668c8a0f21267470d4e682ae805e6ebc85acd6f3bda05b227f",
+      "reviewed_sha256": "c505485094977c668c8a0f21267470d4e682ae805e6ebc85acd6f3bda05b227f"
+    },
+    {
+      "path": "web/src/unicode-fields.test.tsx",
+      "status": "reviewed",
+      "baseline_sha256": "f84965d422b68e44497f279e4e11aaebf30ae7583ca7e58a9374123b52b3678e",
+      "reviewed_sha256": "f84965d422b68e44497f279e4e11aaebf30ae7583ca7e58a9374123b52b3678e"
+    },
+    {
+      "path": "web/src/useDirectory.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "8017df6ac3b6c76adc68361e6aab14fb2d5a65d0fbc7a145414e50798bf46fef",
+      "reviewed_sha256": "8017df6ac3b6c76adc68361e6aab14fb2d5a65d0fbc7a145414e50798bf46fef"
+    },
+    {
+      "path": "web/src/vite-env.d.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "c7f05ba0778af101f8d9047b6e8ad429ec7fd1a68bdf38871700c189b4bf12a5",
+      "reviewed_sha256": "c7f05ba0778af101f8d9047b6e8ad429ec7fd1a68bdf38871700c189b4bf12a5"
+    },
+    {
+      "path": "web/theme.css",
+      "status": "reviewed",
+      "baseline_sha256": "d0139284385861c6a2b902d4d51eb588c5dbdb806b0b07c59c5c81b790ab4076",
+      "reviewed_sha256": "d0139284385861c6a2b902d4d51eb588c5dbdb806b0b07c59c5c81b790ab4076"
+    },
+    {
+      "path": "web/tsconfig.app.json",
+      "status": "reviewed",
+      "baseline_sha256": "a7266d1c85fa6947c70073256d9a73e4c459e97b0b4ef24b5c48dcab498ef4c5",
+      "reviewed_sha256": "a7266d1c85fa6947c70073256d9a73e4c459e97b0b4ef24b5c48dcab498ef4c5"
+    },
+    {
+      "path": "web/tsconfig.json",
+      "status": "reviewed",
+      "baseline_sha256": "770b4140bbb581e2dfd9ea9946ffc9c75a1d86ba7d2db5f77c83e37cbdf9d808",
+      "reviewed_sha256": "770b4140bbb581e2dfd9ea9946ffc9c75a1d86ba7d2db5f77c83e37cbdf9d808"
+    },
+    {
+      "path": "web/tsconfig.node.json",
+      "status": "reviewed",
+      "baseline_sha256": "a7fa84c4bad76a9a22e3ca5177ea436f0689ab4b2b70f6469b76efedd0adadea",
+      "reviewed_sha256": "a7fa84c4bad76a9a22e3ca5177ea436f0689ab4b2b70f6469b76efedd0adadea"
+    },
+    {
+      "path": "web/vite.config.ts",
+      "status": "prior_review_reused_same_content",
+      "baseline_sha256": "e81c28245f4816a1868a245738ce22a0a927409e6af5100c12a2f39cfc34a1c3",
+      "reviewed_sha256": "e81c28245f4816a1868a245738ce22a0a927409e6af5100c12a2f39cfc34a1c3"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "kind": "runtime",
+      "files": [
+        "site/src/components/AnalyticsConsent.astro"
+      ],
+      "problem": "A throwing localStorage getter/read/write aborts consent initialization or ignores a choice.",
+      "resolution": "Guard optional persistence; apply consent and dismiss the card even without storage.",
+      "verification": "Four source-script Node regression tests pass; original source fails three. Ten isolated Chromium component scenarios (1440x900 and 390x844) pass, with synthetic GA network responses, no page/console errors or horizontal overflow."
+    },
+    {
+      "id": "F2",
+      "kind": "cache",
+      "files": [
+        "site/public/_headers"
+      ],
+      "problem": "Pages marks the unversioned og-amsonia.svg immutable for one year, retaining old content across releases.",
+      "resolution": "Revalidate the stable filename; retain immutable hashed/versioned assets.",
+      "verification": "Cloudflare Pages deployment contract test passes."
+    },
+    {
+      "id": "F3",
+      "kind": "api_contract",
+      "files": [
+        "openapi/openapi.yaml",
+        "internal/coreapp/contract_integration_test.go"
+      ],
+      "problem": "Eight bearer-protected operations omit the actual 401 response.",
+      "resolution": "Add Unauthorized responses and capture eight real unauthenticated handler exchanges in the PostgreSQL contract fixture.",
+      "verification": "Parsed all 46 operations and 268 local references; exact semantic comparison confirms only eight 401 additions. PostgreSQL/HTTP contract acceptance runs in current-commit GitHub CI."
+    },
+    {
+      "id": "F4",
+      "kind": "test_quality",
+      "files": [
+        "authorizer_test.go",
+        "integration_test.go",
+        "postgres/store_integration_test.go",
+        "web/src/policy-lab.test.tsx"
+      ],
+      "problem": "Ignored decisions/dead setup obscure permission cases; missing-subject test repeats missing-tenant; a concurrent-cycle test is entirely sequential; UI policy fixtures use nonexistent reason codes; a stale comment contradicts last-administrator protection.",
+      "resolution": "Assert complete decisions, cover both principal fields and row orders, add genuinely simultaneous reciprocal grants and persisted-graph assertions, and use current reason codes/comments.",
+      "verification": "Go formatting passes; unit, PostgreSQL and frontend suites run in current-commit GitHub CI."
+    },
+    {
+      "id": "F5",
+      "kind": "setup_documentation",
+      "files": [
+        "CONTRIBUTING.md",
+        "site/src/pages/open-source.astro"
+      ],
+      "problem": "Remaining setup instructions advertise Go 1.26.10 below go.mod minimum 1.26.11.",
+      "resolution": "Align active setup instructions with the required toolchain; keep explicitly historical artwork evidence dated."
+    },
+    {
+      "id": "F6",
+      "kind": "setup_documentation",
+      "files": [
+        "docs/getting-started.md"
+      ],
+      "problem": "The Compose organization-recovery command omits the generated env file used by make demo; required interpolation fails in a fresh shell.",
+      "resolution": "Use the same env file and Compose files as the local launcher."
+    },
+    {
+      "id": "F7",
+      "kind": "operations_documentation",
+      "files": [
+        "deploy/site/README.md",
+        "site/README.md",
+        "site/ARTWORK.md"
+      ],
+      "problem": "Current-looking documentation describes a stopped AWS origin as active, retired Platform pages as current, and all public assets as immutable.",
+      "resolution": "Point releases to the existing Pages runbook, align live route/cache documentation with shipped configuration, and label historical artwork validation."
+    },
+    {
+      "id": "F8",
+      "kind": "dependency_security",
+      "files": [
+        "site/package.json",
+        "site/package-lock.json",
+        "Dockerfile.web",
+        ".github/workflows/ci.yml",
+        ".github/workflows/deploy-site-pages.yml",
+        ".github/workflows/deploy-site.yml",
+        ".github/workflows/preview.yml",
+        ".github/workflows/public-preview.yml",
+        "CONTRIBUTING.md",
+        "README.md",
+        "docs/getting-started.md",
+        "site/README.md"
+      ],
+      "problem": "Current-commit npm audit rejects Astro 7.3.6 after November 9 disclosures GHSA-mh32-jxcr-mh9f and GHSA-r3h5-4585-7x3w. Patched Astro requires a newer Node baseline.",
+      "resolution": "Pin Astro 7.4.12 and regenerate only the site lockfile; align Node 22.23.4 in build images, existing workflows, engines and current development documentation. No local dependency installation/build or audit exception.",
+      "verification": "Official advisory/release metadata and Node release verified. Updated lockfile audit reports zero vulnerabilities; full compatibility checks run on the new PR head.",
+      "sources": [
+        "https://github.com/advisories/GHSA-mh32-jxcr-mh9f",
+        "https://github.com/advisories/GHSA-r3h5-4585-7x3w",
+        "https://github.com/withastro/astro/releases/tag/astro%407.4.12",
+        "https://nodejs.org/en/blog/release/v22.23.4"
+      ]
+    }
+  ],
+  "added_files": [
+    {
+      "path": "site/scripts/analytics-consent.test.mjs",
+      "status": "reviewed",
+      "sha256": "4780cf643961acda73c311b8a2ddb68371a4bda4f82a1e702c527c8dbbb3600e"
+    }
+  ],
+  "validation": {
+    "local": "gofmt, diff whitespace, source-script Node tests, Pages contract test, dependency/provenance integrity, SVG checksums and PNG inspection; no dependency installation or full local build/test suite. Site lock-only npm audit reports zero vulnerabilities; manifest/lock engines and dependency metadata match.",
+    "browser": "Exact consent markup/script and current CSS in a routed component fixture; synthetic GA responses prevent external tracking. All created contexts closed in finally. This is component verification, not a full Astro-site browser acceptance.",
+    "ci": "Required full checks run on the resulting PR head; links and exact commit are recorded in the PR and task delivery.",
+    "evidence": [
+      {
+        "path": "output/file-audit-20261116/consent-1440.png",
+        "bytes": 28258
+      },
+      {
+        "path": "output/file-audit-20261116/consent-390.png",
+        "bytes": 22017
+      }
+    ],
+    "iteration": "Initial head 138453a passed Go, web, PostgreSQL/API contract, deployment-contract and archive/browser checks. Site failed on newly disclosed Astro advisories; the updated dependency passes audit and full site checks at 21a0934. CodeQL flagged incomplete HTML matching in the new test extractor. The final test explicitly reads the component’s single known repository script block rather than treating a regular expression as an HTML filter. Final acceptance uses the resulting head, not earlier green subsets."
+  },
+  "separate_checkout": {
+    "path": "/Users/will/Codes/amsonia-core",
+    "branch": "codex/remove-platform-presentation",
+    "status": "pre-existing staged changes preserved; excluded from the active baseline and release",
+    "staged_paths": [
+      "README.md",
+      "deploy/aws/README.md",
+      "deploy/cloudflare/README.md",
+      "docs/brand-and-product-boundaries.md",
+      "site/public/_redirects",
+      "site/public/og-amsonia.png",
+      "site/public/og-amsonia.svg",
+      "site/scripts/check-built-site.mjs",
+      "site/src/components/SiteFooter.astro",
+      "site/src/components/WebsiteArtwork.astro",
+      "site/src/layouts/BaseLayout.astro",
+      "site/src/lib/site.ts",
+      "site/src/pages/about.astro",
+      "site/src/pages/architecture.astro",
+      "site/src/pages/best-go-saas-boilerplates.astro",
+      "site/src/pages/compare/platform-vs-next.astro",
+      "site/src/pages/compare/shipfast-vs-amsonia-next.astro",
+      "site/src/pages/docs/index.astro",
+      "site/src/pages/features/multi-tenancy.astro",
+      "site/src/pages/features/rbac.astro",
+      "site/src/pages/features/stripe-billing.astro",
+      "site/src/pages/go-saas-boilerplate.astro",
+      "site/src/pages/index.astro",
+      "site/src/pages/license.astro",
+      "site/src/pages/llms.txt.ts",
+      "site/src/pages/next.astro",
+      "site/src/pages/open-source.astro",
+      "site/src/pages/platform/changelog.astro",
+      "site/src/pages/platform/docs/billing.astro",
+      "site/src/pages/platform/docs/deployment.astro",
+      "site/src/pages/platform/docs/index.astro",
+      "site/src/pages/platform/docs/quickstart.astro",
+      "site/src/pages/platform/index.astro",
+      "site/src/pages/platform/roadmap.astro",
+      "site/src/pages/pricing.astro",
+      "site/src/pages/products.astro",
+      "site/src/pages/security.astro",
+      "site/src/pages/sitemap.xml.ts",
+      "site/src/styles/global.css"
+    ],
+    "observations": [
+      "The staged overlay reintroduces retired Platform pages and replaces the accepted 2026-11-06 product-boundary decision.",
+      "It replaces dated stopped-AWS/active-Pages runbooks with obsolete active-AWS migration instructions.",
+      "It deletes the PNG social image and removes its validation while switching metadata to SVG. These are separate uncommitted changes, not shipped in this audit."
+    ],
+    "review_depth": "Targeted read-only diff review; not claimed as complete acceptance of that separate branch."
+  }
+}

@@ -379,13 +379,7 @@ func TestLastAdministratorProtection(t *testing.T) {
 	bootstrapTenant(t, bs, "tenant-a", "owner-1", "role-owner")
 	owner := amsonia.Principal{TenantID: "tenant-a", SubjectID: "owner-1"}
 
-	// Revoking the owner's own grant-manage control is allowed at the grant
-	// level by design (the last-admin guard covers subject/role removal), but
-	// unassigning the owner role from the owner must be blocked when no other
-	// administrator remains.
-	//
-	// The unassign requires the actor to cover the role's grants; owner
-	// covers them, but the last-administrator guard must reject.
+	// Removing the only administrator's binding must fail and roll back.
 	if _, err := mgr.UnassignRole(context.Background(), owner, meta(), amsonia.UnassignRoleInput{
 		SubjectID: "owner-1", RoleID: "role-owner",
 	}); !errors.Is(err, amsonia.ErrLastAdministrator) {

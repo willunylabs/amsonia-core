@@ -41,7 +41,7 @@ Docker is not required for the manual path.
 
 - Go 1.26.11 or newer within the supported release line
 - PostgreSQL 16 or newer
-- Node.js 22.15 or newer and npm 10
+- Node.js 22.23.4 or newer and npm 10
 
 ## Create a local database
 
@@ -115,8 +115,10 @@ If an administrator already exists but organization setup did not finish, run:
 
 ```bash
 go run ./cmd/amsonia setup-organization
-# Compose equivalent:
-docker compose exec -T api /usr/local/bin/amsonia setup-organization
+# Equivalent for the stack started by `make demo`:
+docker compose --env-file .amsonia/local.env \
+  --file compose.yaml --file compose.local.yaml \
+  exec -T api /usr/local/bin/amsonia setup-organization
 ```
 
 This command is idempotent and serializes concurrent setup attempts. `make demo`

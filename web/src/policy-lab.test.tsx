@@ -10,8 +10,8 @@ const props = {
   permissions: ["iam:role:read", "iam:member:manage"].map(key => ({ key, description: key })),
 };
 type Decision = Awaited<ReturnType<typeof api.check>>;
-const allowed: Decision = { allowed: true, reason: "granted", effective_scope: "tenant" };
-const denied: Decision = { allowed: false, reason: "not_granted" };
+const allowed: Decision = { allowed: true, reason: "allowed", effective_scope: "tenant" };
+const denied: Decision = { allowed: false, reason: "permission_not_granted" };
 function deferred() {
   let resolve!: (value: Decision) => void;
   let reject!: (error: unknown) => void;
