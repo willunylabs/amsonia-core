@@ -1,0 +1,725 @@
+{
+  "date": "2026-11-17",
+  "scope": "The 39 paths from the previously staged checkout, read completely with their actual layout/configuration consumers. This follow-up does not claim a fresh review of every other repository file.",
+  "baseline": "3725be1e8754c7fc45b8f50c6335a4fe372b8044",
+  "historical_staged_tree_commit": "b27b4acba783ce9f4bf99d3209a183fcbcfd168a",
+  "files": [
+    {
+      "path": "README.md",
+      "original_staged": {
+        "exists": true,
+        "bytes": 10950,
+        "sha256": "9d2e27be7cd56c1a984a2425b15f6e841eca65ba87fce444072fb61ca02fea54",
+        "lines": 232
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 11541,
+        "sha256": "fb6251798cee8cba84a4c39e0078b1398c1ea38bb2ae6dd9bd9719bb0b1a52b4",
+        "lines": 242
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对安装/开发命令、工具版本、组织模式、文档引用和产品边界；发现首页范围说明仍指向退役 Platform，已改为宿主应用负责业务流程。",
+      "current_sha256": "07f9c2d9566402005e08ed8ead806fca8e3883982975f2646310f9017be81455"
+    },
+    {
+      "path": "deploy/aws/README.md",
+      "original_staged": {
+        "exists": true,
+        "bytes": 3816,
+        "sha256": "59d5b27bfba84597478331ca8e928a3a62f9ac3ff115f6aa39c2a325b05a6c87",
+        "lines": 91
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 4504,
+        "sha256": "95de135e61a707223a117216b19ff6fa739881f4506ed1ff47a410c3ee0bcde5",
+        "lines": 102
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对历史资源、OIDC/SSM 范围、禁用发布流程和恢复说明；这些是带日期的历史观测，未当成本轮实时 AWS 核验。",
+      "current_sha256": "95de135e61a707223a117216b19ff6fa739881f4506ed1ff47a410c3ee0bcde5"
+    },
+    {
+      "path": "deploy/cloudflare/README.md",
+      "original_staged": {
+        "exists": true,
+        "bytes": 1886,
+        "sha256": "3efdef647e4c99e9b62e19a102287e534ebaa569ed3e9040626787d5e9ea51f7",
+        "lines": 41
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 2567,
+        "sha256": "39a29e37e4e0f0db968c43497b4cfce6a49d3bd27542e1491a06313cb992d2bc",
+        "lines": 47
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文对照 deploy-site-pages.yml 的 ref、环境变量、构建、发布 SHA、pages.dev 检查和域名限制；保留历史观测和独立 DNS 验收边界。",
+      "current_sha256": "39a29e37e4e0f0db968c43497b4cfce6a49d3bd27542e1491a06313cb992d2bc"
+    },
+    {
+      "path": "docs/brand-and-product-boundaries.md",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2667,
+        "sha256": "faf3d42b70dd93ced4431c8c1fac8ce39c5ac84ca7935bff9c5f09b7b970e0ac",
+        "lines": 50
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 3918,
+        "sha256": "0313532fb57b13b7f8540e69a096953f63d81eb4357b0c491f5181599f0defca",
+        "lines": 67
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对 Next 商业产品/Core 开源入口、许可归属、canonical、CMS 发布边界与当前页面；作为退役页面判断依据。",
+      "current_sha256": "0313532fb57b13b7f8540e69a096953f63d81eb4357b0c491f5181599f0defca"
+    },
+    {
+      "path": "site/public/_redirects",
+      "original_staged": {
+        "exists": true,
+        "bytes": 245,
+        "sha256": "d752c93e16a3ec0d595bbda45e8bd544ce488c2ee47c9536ffe105727d9e32d3",
+        "lines": 4
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 1213,
+        "sha256": "9aa1cd39b6a81b0b930a5b715868cb7cbbe58dae6574d8d3dd34c81f6c1986ce",
+        "lines": 35
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "逐条核对 35 条源路径、目标、301、斜杠形式和通配规则；文件内容有效，调用它的检查器存在漏检，已修复检查器。",
+      "current_sha256": "9aa1cd39b6a81b0b930a5b715868cb7cbbe58dae6574d8d3dd34c81f6c1986ce"
+    },
+    {
+      "path": "site/public/og-amsonia.png",
+      "original_staged": {
+        "exists": false
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 75740,
+        "sha256": "5019087d7d1f59e0e1a2a65151fd3ff25ff0c5a6c7af99d2910c2417552f118f",
+        "lines": null
+      },
+      "review_depth": "complete file; binary asset visually inspected",
+      "conclusion": "视觉检查整张 1200×630 PNG，标题不越过右侧卡片；与 BaseLayout 的类型、尺寸、OG/Twitter 路径一致。旧暂存树没有该文件。",
+      "current_sha256": "5019087d7d1f59e0e1a2a65151fd3ff25ff0c5a6c7af99d2910c2417552f118f"
+    },
+    {
+      "path": "site/public/og-amsonia.svg",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2929,
+        "sha256": "6c946bc968d5eecccc63a0fcc879e7e8eea883044fbcb5d756dfc98b9419dec5",
+        "lines": 25
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 2929,
+        "sha256": "60ae9bccecc0c5521e720d36fee93b8d94dd8ff7075a0bf67817e80fa92b9e24",
+        "lines": 25
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "完整读取 SVG 的视口、渐变、形状、文本坐标和字号；当前 62px 标题保留。原 70px 会缩小与右卡片间距；未新生成或修改图片。",
+      "current_sha256": "60ae9bccecc0c5521e720d36fee93b8d94dd8ff7075a0bf67817e80fa92b9e24"
+    },
+    {
+      "path": "site/scripts/check-built-site.mjs",
+      "original_staged": {
+        "exists": true,
+        "bytes": 10602,
+        "sha256": "d2c30773ebe605750f5ba7db0ff1d6e5d33cdc5be89f8f4795cb7802ee96f13d",
+        "lines": 160
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 13224,
+        "sha256": "859855e57ac37c76098a821c8cc042c2af8e1bf467c430d87123cad4a140eac2",
+        "lines": 188
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文沿 requiredRoutes、pageFile、HTML/JSON-LD、链接图、PNG、sitemap、robots 到 redirects 检查；复现 5 种错误规则可通过 includes，改为核对完整规则并将成功日志移到最后。",
+      "current_sha256": "e6a1f88d85788fc7db163c525f36b1c911f632a9188cf9c9e77efff401460dac"
+    },
+    {
+      "path": "site/src/components/SiteFooter.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 1290,
+        "sha256": "20a0b4989e12578c4b74a72be26b78b1e91d19bb9fd83dfb12a2ec3c48e4ccfc",
+        "lines": 37
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 1215,
+        "sha256": "80375fc42a54bca2b4fe3fb74bcf44a29500265bded9ba3cd57d77608483df3e",
+        "lines": 36
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对页脚入口、链接来源、品牌图片和时间；全部目标有对应页面或明确外部来源。",
+      "current_sha256": "80375fc42a54bca2b4fe3fb74bcf44a29500265bded9ba3cd57d77608483df3e"
+    },
+    {
+      "path": "site/src/components/WebsiteArtwork.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 670,
+        "sha256": "abe409c56dfe29c158d0dd62e9f5b860b4a45e15bc4544b2c745b9a8e58a942a",
+        "lines": 11
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 659,
+        "sha256": "fc06764329c5a51976d20679684ca521029c28a8adf1127c82ffd0f257f545fa",
+        "lines": 11
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对 variant 默认值、两个资源路径、固有尺寸、alt 和加载属性，并追踪 index/next 调用。两版本默认都为 source，原记录所谓默认值回退不成立；保留现有插画接口及源素材。",
+      "current_sha256": "fc06764329c5a51976d20679684ca521029c28a8adf1127c82ffd0f257f545fa"
+    },
+    {
+      "path": "site/src/layouts/BaseLayout.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2288,
+        "sha256": "63c51c984a0411778b1a16aca4348bf3989caaf57b2291647ab63dafd22546f0",
+        "lines": 53
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 2468,
+        "sha256": "ec3a234faaf35386fc4fb448ffe9156c1df00b99eec1d5c5d9099822fbef28d5",
+        "lines": 57
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对 Props 默认值、canonical/noindex、OG/Twitter PNG、JSON-LD 输出及 header/footer/consent 组合；schema 来自静态页面常量，未发现用户输入流入 set:html。",
+      "current_sha256": "ec3a234faaf35386fc4fb448ffe9156c1df00b99eec1d5c5d9099822fbef28d5"
+    },
+    {
+      "path": "site/src/lib/site.ts",
+      "original_staged": {
+        "exists": true,
+        "bytes": 4142,
+        "sha256": "915f5c06e8bbd8a1c88e7f5cfdc7e7790de8998e2608625b00110fb872754738",
+        "lines": 120
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 4037,
+        "sha256": "c7f4b23e53aec52e0c20289b800afeefcf74609a1e9de4907a26fdfaf4f0b01f",
+        "lines": 118
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文追踪所有 URL 配置、primaryNav、absoluteUrl 文件/目录区分、breadcrumb 次序及软件/发布者实体引用；调用方均使用受控路径，无请求参数注入。",
+      "current_sha256": "c7f4b23e53aec52e0c20289b800afeefcf74609a1e9de4907a26fdfaf4f0b01f"
+    },
+    {
+      "path": "site/src/pages/about.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2329,
+        "sha256": "efe5d6b894dfe1b79ac7635fe42e8d0348f491fbebab08b47c260e6f25d67a0f",
+        "lines": 27
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 2126,
+        "sha256": "6e9c283ebb06700ae2e2746c1dc4f699849358ecafaaf0ff5693d196995a7f78",
+        "lines": 27
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文检查品牌文案、三个片段锚点与对应标题、外部联系和产品链接；当前页面与产品边界一致。",
+      "current_sha256": "6e9c283ebb06700ae2e2746c1dc4f699849358ecafaaf0ff5693d196995a7f78"
+    },
+    {
+      "path": "site/src/pages/architecture.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 3312,
+        "sha256": "25da0e0e023776f0406da5dbe6d1e3689048aa7029425bc4e5e755f4bb54f691",
+        "lines": 14
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "完整阅读历史两运行时架构内容和四组 relatedLinks；此页面属于退役 Platform，目前无生成入口，/architecture 与 /architecture/ 继续转至 Next。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/best-go-saas-boilerplates.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 3635,
+        "sha256": "7fda6c9df223b4a71c73053762c6f3ee5a2667809253daeb2673edec3bc2ab97",
+        "lines": 15
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "完整阅读历史比较准则、租户/账单/许可内容及产品定位；保留退役状态，两个 URL 形式有明确重定向。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/compare/platform-vs-next.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2764,
+        "sha256": "c9bbed504bfb06379dd93fbbbd13d70594f28fe30242e39bd04533d4d866a03c",
+        "lines": 19
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "完整阅读历史比较表、产品边界及 CTA；退役入口不恢复，当前比较页由 Next 到 ShipFast 页面连接。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/compare/shipfast-vs-amsonia-next.astro",
+      "original_staged": {
+        "exists": false
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 6097,
+        "sha256": "14d6a6f943d22282e5b15c521ea7166be8cf9e1fe4d78bba5ae7ee77c5f34ded",
+        "lines": 34
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对六行比较、列/行表头、可滚动区域、供应商引用、可见审阅日期、相关 CTA 与 capabilities 锚点。供应商内容保留为 2026-10-26 的有日期记录，未声称本轮重审私有产品或最新供应商功能。",
+      "current_sha256": "14d6a6f943d22282e5b15c521ea7166be8cf9e1fe4d78bba5ae7ee77c5f34ded"
+    },
+    {
+      "path": "site/src/pages/docs/index.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 1978,
+        "sha256": "49f4347543b0d693cc7ddd2f2783bd4f6e931e843e30b94d7fda4dedb052ab89",
+        "lines": 24
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 1334,
+        "sha256": "76b9c109699554e6014e09249cacd9f44caf1d56d292eb9769f01c4e7afcd70f",
+        "lines": 21
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对两个文档入口、布局与面包屑；私有源码通过公司联系路径获取，无伪造安装命令。",
+      "current_sha256": "76b9c109699554e6014e09249cacd9f44caf1d56d292eb9769f01c4e7afcd70f"
+    },
+    {
+      "path": "site/src/pages/features/multi-tenancy.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2996,
+        "sha256": "d009591a452507c84ff97c8fdb7e75196b652122e2c1bf479ed7dfb146daec60",
+        "lines": 14
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "完整阅读历史租户上下文、存储、运维和负例测试说明与 relatedLinks；属于退役产品文案，不把该文字当作 Core 实现证据。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/features/rbac.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2988,
+        "sha256": "27d21ed75f0a1bb0089da7a5ab1bdf06b796b2e1d85591cb4248b8427d0ccc57",
+        "lines": 14
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "完整阅读历史 membership/permission、服务端授权、委派与审计内容；保持退役跳转，实际 Core 实现由公开文档入口承接。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/features/stripe-billing.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2961,
+        "sha256": "b3a4510e845af99581104788f0b1e6ea1955a377c0e51601f86fa6144e5a57f8",
+        "lines": 14
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "完整阅读历史 checkout/webhook/lifecycle/scope 内容和链接；属于退役 Platform 文案，不恢复为 Core 账单能力。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/go-saas-boilerplate.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 4195,
+        "sha256": "7bccd3bd95ab81169090105c18c50a6dc5da59763a4b5cc668c5c289e3a9d5a6",
+        "lines": 31
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对历史 SoftwareApplication schema、五节文案及购买链接；保持退役，避免恢复第三方产品能力声明。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/index.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 7450,
+        "sha256": "7d5d12eb4d93ccd98b3cba957b338317a198c291b5310c2f2339fdc839b77dc7",
+        "lines": 100
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 6250,
+        "sha256": "6f5f428b836e0ccec49d9b157f18b5c079a5ecdd2feb720a7309edd75db05118",
+        "lines": 96
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对发布者/品牌/CollectionPage/WebSite 实体、Next 唯一商品、插画和所有导航 CTA；Core 作为独立仓库入口，非商业商品。",
+      "current_sha256": "6f5f428b836e0ccec49d9b157f18b5c079a5ecdd2feb720a7309edd75db05118"
+    },
+    {
+      "path": "site/src/pages/license.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2394,
+        "sha256": "428aca5c08ef2fa009de51e3938eedfc89d03c3e0485bbcf7bd20563cfa499c5",
+        "lines": 13
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 1807,
+        "sha256": "039a2c0e52ab1f9df8e9c8e7b514b3b8fe596678f04b7f071a9782d768af0932",
+        "lines": 12
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对私有源码条款、运维职责、TopicPage sections 和 relatedLinks；无静态价格或授予源码权利。",
+      "current_sha256": "039a2c0e52ab1f9df8e9c8e7b514b3b8fe596678f04b7f071a9782d768af0932"
+    },
+    {
+      "path": "site/src/pages/llms.txt.ts",
+      "original_staged": {
+        "exists": true,
+        "bytes": 1704,
+        "sha256": "b8fe4fb795a874dbdb0c91738af29c173bcdc4588262b96f173e92a920a69e33",
+        "lines": 31
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 1360,
+        "sha256": "5ebba0926662fd32d904a8f82b33bf48ad0edad0c98ef6abc84aa817ae12b0ec",
+        "lines": 26
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对文本生成、换行、Content-Type 和各来源 URL；只列当前产品/文档入口，不复活退役产品链接。",
+      "current_sha256": "5ebba0926662fd32d904a8f82b33bf48ad0edad0c98ef6abc84aa817ae12b0ec"
+    },
+    {
+      "path": "site/src/pages/next.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 4978,
+        "sha256": "82a8845103d6ddcb99dbf29f3061d001a74e8407fec5c0d60b249c52a283cf6b",
+        "lines": 25
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 6577,
+        "sha256": "c991fb6e5dca766ab2bea740152a97b04848cf8d8b7e5a4a1ff100db24aa689d",
+        "lines": 32
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对演示唯一入口与限制、四类能力、FAQ、源代码许可、单租户边界及比较页入口；capabilities 锚点存在。私有 Next 能力未做源码验证。",
+      "current_sha256": "c991fb6e5dca766ab2bea740152a97b04848cf8d8b7e5a4a1ff100db24aa689d"
+    },
+    {
+      "path": "site/src/pages/open-source.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 1998,
+        "sha256": "c728ea00f93743d89b6b10c67496011abacc4a79c003e1fa829cda30bb5472c2",
+        "lines": 21
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 5938,
+        "sha256": "edcbaaad2779c805a09ee8a4bf6409b74862df3442ade07702ea481cbc9c32df",
+        "lines": 32
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对 git clone/make demo、Compose/Go 版本、仓库文档与测试链接、Core/Next 边界及局部 CSS；引用路径在仓库存在。",
+      "current_sha256": "edcbaaad2779c805a09ee8a4bf6409b74862df3442ade07702ea481cbc9c32df"
+    },
+    {
+      "path": "site/src/pages/platform/changelog.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2456,
+        "sha256": "cbcf9dccd953c8fbb49f603b76cd9cf1e7a66a851da0d1fe995cf77895a8d8ab",
+        "lines": 13
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "完整读取历史日期记录及版本说明边界，检查 relatedLinks；保持退役页面，不把文档日期当交付版本。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/platform/docs/billing.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2906,
+        "sha256": "8c34030cbdf8148ae83c5c9e0f262e4ecdf4430cde2f4220230c108e54639b99",
+        "lines": 14
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "完整读取历史提供商配置、服务端 checkout、事件校验、fulfillment 及链接；保持退役，不声称其文案等于当前运行实现。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/platform/docs/deployment.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 3113,
+        "sha256": "522df80b8529f007108d570e160984ab73c23bc24b287b9bb0e47c4f8c70bf3a",
+        "lines": 14
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "完整读取历史拓扑、secret、不可变工件和恢复责任；保持退役，不将此指南用于重启已停 AWS 实例。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/platform/docs/index.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 3686,
+        "sha256": "629fffbb5b04f6495a10453dc9264fbb01c74f3268c612db9b50f77236b6839e",
+        "lines": 31
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对历史 scope/delivery/buyer/evaluation、结构化导航及购买入口；目前由明确重定向替代。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/platform/docs/quickstart.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 3001,
+        "sha256": "3e565633b1cc26a2a0f38046633619ab86ec9d275984bcaa49f79b1b5e143bd6",
+        "lines": 14
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "完整读取历史源码权利、工具链、配置与验证顺序；内容属于已退役的交付说明，不恢复空泛快速开始页。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/platform/index.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 5084,
+        "sha256": "50701f29f728db0f9794c6ec3d17c648bcec3a8e5edd8789350c095f1db9e436",
+        "lines": 24
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对历史产品 schema、架构、功能列表、购买和文档 CTA；与现有已接受边界冲突，保持退役。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/platform/roadmap.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2386,
+        "sha256": "6908158a30ada3a5733ebc8c85dd1ab5f9ea99a73129d24b72ac4c27bcf593ac",
+        "lines": 13
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对历史 now/next/later 内容与条件性承诺及导航；保持退役，不从路线图推断已实现能力。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/pricing.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2407,
+        "sha256": "2fef391d4b52f22f4e17fa21ec944e34309eae591f480816fc821f1db19ea918",
+        "lines": 18
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 1361,
+        "sha256": "53e204b85c44a770808dd55b21c1d199e9d7ea6d74e2faff76631b43d9e17a94",
+        "lines": 11
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对实际购买 URL 配置、联系路径、TopicPage 内容；未在本站编造价格，许可权利仍由适用合同定义。",
+      "current_sha256": "53e204b85c44a770808dd55b21c1d199e9d7ea6d74e2faff76631b43d9e17a94"
+    },
+    {
+      "path": "site/src/pages/products.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2696,
+        "sha256": "9e6ab5f375e889c2f5250a364ac54d95428a86d575404b7bbe1193b3771f7f40",
+        "lines": 22
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 1593,
+        "sha256": "9847c3d27d10c0ad8087953b2ac540ea08afae308e73e7af9f312aa3792022c6",
+        "lines": 20
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对单产品目录、身份/账单/数据库文案和相关 CTA；保留 Next 唯一商业商品。",
+      "current_sha256": "9847c3d27d10c0ad8087953b2ac540ea08afae308e73e7af9f312aa3792022c6"
+    },
+    {
+      "path": "site/src/pages/security.astro",
+      "original_staged": {
+        "exists": true,
+        "bytes": 2981,
+        "sha256": "441401692ef83f7e336e2eb2214e04dda5449db99b6618fd46bd1d0a986a8c1a",
+        "lines": 14
+      },
+      "accepted_baseline": {
+        "exists": false
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对历史 identity/isolation/payments/claims 与联系路径；保持退役，不把营销文案视为安全认证或实现证明。",
+      "current_sha256": null
+    },
+    {
+      "path": "site/src/pages/sitemap.xml.ts",
+      "original_staged": {
+        "exists": true,
+        "bytes": 1630,
+        "sha256": "006fd33a8756b27e5ee606807b0c5f1dc27957233c1e1decd07c31bea354b8f2",
+        "lines": 40
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 763,
+        "sha256": "e3e2d481eb7b4223d12c36b4c5493344bb10f36113a923ea4438f50a1b27b528",
+        "lines": 12
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "全文核对九条 canonical URL、文件路径和 XML 转义；404、退役页面及外部 demo 不入 sitemap。lastmod 为静态发布日期，未改成每次构建时间。",
+      "current_sha256": "e3e2d481eb7b4223d12c36b4c5493344bb10f36113a923ea4438f50a1b27b528"
+    },
+    {
+      "path": "site/src/styles/global.css",
+      "original_staged": {
+        "exists": true,
+        "bytes": 27049,
+        "sha256": "5c216e7a21879a89df44137c749fb0d767e2a8ebe5476d6603badf040612c002",
+        "lines": 305
+      },
+      "accepted_baseline": {
+        "exists": true,
+        "bytes": 27237,
+        "sha256": "96f985ef28428feea0608f5ed6b9e4c2041b6683d5f0c7a3d8c73d46bb5d286f",
+        "lines": 308
+      },
+      "review_depth": "complete file in each existing version, including unchanged contents",
+      "conclusion": "完整读取 308 行当前 CSS 与 305 行历史 CSS，包括所有媒体查询和布局调用；手机逻辑间距规则原本存在，撤销旧记录的误报。删除当前重复物理间距规则，浏览器四尺寸计算样式一致。",
+      "current_sha256": "527351bf0a8651191cbcf7431032f59634b1b279503d21b4932ab81f762575e3"
+    }
+  ],
+  "corrections_to_previous_report": [
+    "WebsiteArtwork defaults to source in both versions; the former claim about a changed default is withdrawn.",
+    "The historical CSS already contains an equivalent mobile margin-inline/padding-inline rule; removing the physical duplicate was not a spacing regression. The single-product grid rollback remains a valid difference."
+  ],
+  "new_findings": [
+    {
+      "id": "F1",
+      "file": "site/scripts/check-built-site.mjs",
+      "status": "fixed",
+      "impact": "Commented, malformed, incomplete or conflicting redirects could pass the deployment build gate.",
+      "proof": "All five mutated configurations passed the former includes expression. The production checker now calls checkRedirects; its 12 focused tests pass."
+    },
+    {
+      "id": "F2",
+      "file": "README.md",
+      "status": "fixed",
+      "impact": "Repository scope still names the retired Platform product contrary to the accepted product decision.",
+      "proof": "Replaced the stale product claim with host application responsibility; no product capability added."
+    },
+    {
+      "id": "F3",
+      "file": "site/src/styles/global.css",
+      "status": "fixed",
+      "impact": "Two mobile spacing declarations duplicate the same rule.",
+      "proof": "Kept the logical-property owner; Chromium at 1440, 720, 390 and 320 pixels produces identical margins, padding and geometry."
+    }
+  ],
+  "validation": {
+    "local": [
+      "12 redirect tests passed",
+      "node --check site/scripts/check-built-site.mjs",
+      "domain configuration check passed",
+      "visual-system contract check passed",
+      "git diff --check passed"
+    ],
+    "browser": {
+      "url": "about:blank in owned isolated context",
+      "method": "Isolated HTML fixture loading complete before/after source CSS; computed style and geometry comparison, not an entire built-site browser run.",
+      "viewports": [
+        [
+          1440,
+          900
+        ],
+        [
+          720,
+          844
+        ],
+        [
+          390,
+          844
+        ],
+        [
+          320,
+          844
+        ]
+      ],
+      "result": "identical geometry in all four cases",
+      "cleanup": "Owned tab closed in finally; existing tab untouched."
+    },
+    "ci": "Exact repair commit will be checked by the existing PR workflows; results are recorded with the PR."
+  },
+  "limitations": [
+    "No fresh live AWS/DNS inventory or production deployment. Dated runbooks remain dated.",
+    "No new audit of the private Next codebase or supplier claims.",
+    "Static reading and targeted verification do not prove absence of every possible bug."
+  ]
+}

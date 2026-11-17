@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkRedirects, retiredProductRoutes } from './check-redirects.mjs';
 
 const siteRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const distRoot = join(siteRoot, 'dist');
@@ -173,16 +174,14 @@ assert.doesNotMatch(sitemap, /\/(?:core|releases|platform|compare\/platform-vs-n
 const redirectsFile = join(distRoot, '_redirects');
 assert.ok(existsSync(redirectsFile), 'Cloudflare Pages redirects must be generated');
 const redirects = readFileSync(redirectsFile, 'utf8');
-assert.match(redirects, /^\/core\s+https:\/\/github\.com\/willunylabs\/amsonia-core\s+301$/m, 'the retired Core root must redirect to GitHub');
-assert.match(redirects, /^\/core\/\*\s+https:\/\/github\.com\/willunylabs\/amsonia-core\s+301$/m, 'retired Core descendants must redirect to GitHub');
+checkRedirects(redirects);
 
 const robots = readFileSync(join(distRoot, 'robots.txt'), 'utf8');
 assert.match(robots, /User-agent: \*\s+Allow: \//, 'robots.txt must allow crawling');
 assert.ok(robots.includes(`Sitemap: ${origin}/sitemap.xml`), 'robots.txt must advertise the configured canonical sitemap');
 
-console.log(`Amsonia site checks passed for ${requiredRoutes.length} routes and ${htmlFiles.length} HTML files.`);
-
-for (const route of ['/platform', '/platform/docs', '/platform/docs/quickstart', '/platform/docs/deployment', '/platform/docs/billing', '/platform/changelog', '/platform/roadmap', '/compare/platform-vs-next', '/go-saas-boilerplate', '/best-go-saas-boilerplates', '/features/multi-tenancy', '/features/rbac', '/features/stripe-billing', '/architecture', '/security']) {
+for (const route of retiredProductRoutes) {
   assert.ok(!existsSync(pageFile(route)), `retired route must not emit an introduction page: ${route}`);
-  assert.ok(redirects.includes(`${route} /next/ 301`), `retired route must redirect to Next: ${route}`);
 }
+
+console.log(`Amsonia site checks passed for ${requiredRoutes.length} routes and ${htmlFiles.length} HTML files.`);
