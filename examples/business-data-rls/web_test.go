@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -73,6 +74,7 @@ func TestInvoiceFormAuthorityAndPersistence(t *testing.T) {
 	if !strings.Contains(bad.Body.String(), "Kept draft") || len(repo.items) != 0 {
 		t.Fatal("invalid or unauthorized input reached storage or lost the draft")
 	}
+	request("POST", "/invoices", "acme-editor", "description="+url.QueryEscape(strings.Repeat("🌿", 121))+"&amount_cents=1250", "", 422)
 	form := request("GET", "/invoices/new", "acme-editor", "", "", 200)
 	if !strings.Contains(form.Body.String(), `method="post" action="/invoices"`) {
 		t.Fatal("create route does not expose a form")
@@ -92,6 +94,12 @@ func TestInvoiceFormAuthorityAndPersistence(t *testing.T) {
 	other := request("GET", "/", "globex-editor", "", "", 200).Body.String()
 	if strings.Contains(other, "Annual service") {
 		t.Fatal("cross-organization invoice leak")
+	}
+	unicodeDescription := strings.Repeat("🌿", 120)
+	request("POST", "/invoices", "acme-editor", "description="+url.QueryEscape(unicodeDescription)+"&amount_cents=1250", "", 303)
+	rows = repo.items["invoice-demo-acme"]
+	if len(rows) != 2 || rows[1].Description != unicodeDescription {
+		t.Fatal("maximum-length Unicode description was not preserved")
 	}
 	r := httptest.NewRequest(http.MethodGet, "http://rebinding.example/", nil)
 	w := httptest.NewRecorder()

@@ -2215,7 +2215,12 @@ components:
       additionalProperties: false
       required: [tenant_id, permission, mode, resource]
       properties:
-        tenant_id: { type: string }
+        tenant_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^[^\u0000-\u001f\u007f]+$'
+          description: Nonempty tenant ID of at most 256 UTF-8 bytes, with no ASCII control characters. Invalid IDs return 400 before membership lookup.
         subject_id:
           { type: string, description: Defaults to the current account. }
         permission: { type: string }
