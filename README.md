@@ -17,8 +17,8 @@ inspectable.
 
 Core focuses on identity, sessions, tenants, memberships, roles, permissions,
 authorization decisions, and policy audit. Billing, commerce, AI, education,
-messaging, and white-label operations belong to Amsonia Platform,
-not this open-source Core.
+messaging, and white-label operations are outside this repository's scope.
+Applications integrating Core supply their own business workflows.
 
 ## The problem it solves
 
