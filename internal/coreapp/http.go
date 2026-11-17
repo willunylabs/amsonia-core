@@ -607,6 +607,10 @@ func (api *API) checkAuthorization(response http.ResponseWriter, request *http.R
 	if !decodeJSON(response, request, &input) {
 		return
 	}
+	if amsonia.TenantID(input.TenantID).Validate() != nil {
+		writeDomainError(response, amsonia.ErrInvalidInput)
+		return
+	}
 	account := accountFromContext(request.Context())
 	if err := api.service.RequireMembership(request.Context(), input.TenantID, account.ID); err != nil {
 		if errors.Is(err, amsonia.ErrNotFound) {

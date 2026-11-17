@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -157,6 +158,24 @@ func TestAPIPathPrefixValidation(t *testing.T) {
 		if err := validateAPIPathPrefix(prefix); err == nil {
 			t.Errorf("accepted %q", prefix)
 		}
+	}
+}
+
+func TestAuthorizationCheckRejectsInvalidTenantBeforeStorage(t *testing.T) {
+	for _, tenant := range []string{"", "tenant\nother", "tenant\x00", strings.Repeat("t", 257)} {
+		t.Run(fmt.Sprintf("tenant=%q", tenant), func(t *testing.T) {
+			body, err := json.Marshal(map[string]string{"tenant_id": tenant, "permission": "iam:role:read", "mode": "tenant_action"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Invalid input must not require the organization resolver or store.
+			api := &API{}
+			response := httptest.NewRecorder()
+			api.checkAuthorization(response, httptest.NewRequest(http.MethodPost, "/api/v1/authorization/check", bytes.NewReader(body)))
+			if response.Code != http.StatusBadRequest || !strings.Contains(response.Body.String(), `"code":"invalid_request"`) {
+				t.Fatalf("invalid tenant response = %d %s; want invalid_request", response.Code, response.Body.String())
+			}
+		})
 	}
 }
 
