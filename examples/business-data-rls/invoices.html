@@ -39,7 +39,7 @@
     <section class="panel" aria-label="Invoice form">
       {{if .Error}}<p role="alert" class="notice error">{{.Error}}</p>{{end}}
       <form method="post" action="/invoices">
-        <div><label for="description">Description</label><input id="description" name="description" maxlength="120" required value="{{.Description}}"></div>
+        <div><label for="description">Description</label><input id="description" name="description" required value="{{.Description}}"></div>
         <div><label for="amount">Amount in cents</label><input id="amount" name="amount_cents" type="number" min="1" max="99999999" step="1" required value="{{.Amount}}" aria-describedby="amount-hint"><p id="amount-hint" class="hint">For example, 1250 represents $12.50.</p></div>
         <div class="actions"><button type="submit" class="button">Save invoice</button><a href="/">Cancel</a></div>
       </form>
