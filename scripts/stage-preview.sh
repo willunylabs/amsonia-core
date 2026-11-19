@@ -20,19 +20,24 @@ archives=(amsonia-core-*-linux-amd64.tar.gz)
 archive="${archives[0]}"
 bundle="${archive%.tar.gz}"
 version="$(tar -xOzf "$archive" "$bundle/VERSION")"
-[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]]
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-preview\.[0-9]+)?$ ]]
 [[ "$bundle" == "amsonia-core-$version-linux-amd64" ]]
 [[ "$(tar -xOzf "$archive" "$bundle/REVISION")" == "$sha" ]]
 cmp <(sha256sum "$archive") SHA256SUMS
 tag="v$version"
+prerelease=false
+if [[ "$version" == *-preview.* ]]; then
+    prerelease=true
+fi
 
 if ! gh release view "$tag" --repo "$repo" --json isDraft,isPrerelease,targetCommitish,assets > draft.json; then
     tar -xOzf "$archive" "$bundle/CHANGELOG.md" > notes.md
-    gh release create "$tag" --repo "$repo" --draft --prerelease --latest=false \
+    gh release create "$tag" --repo "$repo" --draft --prerelease="$prerelease" --latest=false \
         --target "$sha" --title "Amsonia Core $version" --notes-file notes.md
     gh release view "$tag" --repo "$repo" --json isDraft,isPrerelease,targetCommitish,assets > draft.json
 fi
-jq -e --arg sha "$sha" '.isDraft and .isPrerelease and .targetCommitish == $sha' draft.json >/dev/null
+jq -e --arg sha "$sha" --argjson prerelease "$prerelease" \
+    '.isDraft and .isPrerelease == $prerelease and .targetCommitish == $sha' draft.json >/dev/null
 
 # Never overwrite an existing attachment. A retry accepts only exact bytes.
 missing=()

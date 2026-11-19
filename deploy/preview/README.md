@@ -1,4 +1,4 @@
-# Install Amsonia Core preview
+# Install Amsonia Core from a release archive
 
 This bundle is for a Linux amd64 Docker engine with Docker Compose 2.24.4
 or newer. The installation also uses Bash, OpenSSL and standard Unix tools.
@@ -26,7 +26,7 @@ Keep the generated `.env` private. It contains the original database
 passwords and binding secrets; rerunning `init-env` refuses to replace it.
 `./amsonia-compose down` stops the services and preserves the named volume.
 
-## Upgrade an existing preview installation
+## Upgrade an existing installation
 
 Take and verify a backup as described in [the operator runbook](docs/self-hosting.md).
 Stop the old stack with `./amsonia-compose down` (without `-v`), unpack the
