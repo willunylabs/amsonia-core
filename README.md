@@ -95,9 +95,9 @@ An ambiguous deployment refuses to start. Apply all pending migrations and rerun
 [role provisioning script](ops/configure_database_roles.sql) before upgrading.
 See [the setup guide](docs/getting-started.md#organization-model) for configuration.
 
-## Install the recommended preview
+## Install Amsonia Core
 
-Start with [v0.2.0-preview.8](https://github.com/willunylabs/amsonia-core/releases/tag/v0.2.0-preview.8)
+Start with [v0.2.0](https://github.com/willunylabs/amsonia-core/releases/tag/v0.2.0)
 for a verified Linux amd64 installation. Download the archive and its
 `SHA256SUMS`, then follow the [install guide](deploy/preview/README.md). See
 the [release guide](docs/releases.md) for compatibility, tested upgrade paths,
