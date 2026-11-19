@@ -2,9 +2,8 @@
 
 Verified inventory update: 2026-10-26. The `amsonia-prod` instance below is
 **stopped**. The old AWS `deploy-site.yml` workflow is `disabled_manually`;
-`deploy-site-pages.yml` is active for the static product site. See the
-[current Pages release notes](../cloudflare/README.md). This corrects the old
-migration plan; it does not establish the exact cutover or retirement date.
+the former Pages deployment workflow is also disabled. See the
+[current Cloudflare publication notes](../cloudflare/README.md).
 
 This instance served only the static Amsonia product/technical site. It is not
 the Willuny blog CMS backend. That backend is the separate, running

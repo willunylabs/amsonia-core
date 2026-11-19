@@ -2,8 +2,8 @@
 
 These assets describe the former `amsonia-prod` EC2 static-site origin. The
 host is stopped and its deployment workflow is disabled, as recorded in the
-[current Cloudflare Pages runbook](../cloudflare/README.md). Use that runbook
-for site releases; these files are retained for recovery planning.
+[Cloudflare publication notes](../cloudflare/README.md). Use the linked Commerce
+runbook for production releases.
 
 The former origin served only the indexable static product and technical
 site at `amsonia.dev`. The hosted Amsonia Core Demo was
