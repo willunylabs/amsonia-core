@@ -3,6 +3,14 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 
+async function checkNextLink(page, text) {
+  const expected = process.env.SMOKE_NEXT_URL;
+  if (!expected) return;
+  const link = page.locator("a").filter({ hasText: text });
+  assert.equal(await link.getAttribute("href"), expected);
+  assert.equal(await link.getAttribute("target"), "_blank");
+}
+
 async function holdRequest(page, endpoint, trigger) {
   let receive;
   const intercepted = new Promise(resolve => { receive = resolve; });
@@ -114,10 +122,12 @@ async function main() {
         });
 
         await page.goto(url);
+        await checkNextLink(page, /^\s*Explore Amsonia Next\s*$/);
         await page.getByLabel("Email", { exact: true }).fill(process.env.SMOKE_LOGIN_EMAIL);
         await page.getByLabel("Password", { exact: true }).fill(process.env.SMOKE_LOGIN_PASSWORD);
         await page.getByRole("button", { name: "Enter the console" }).click();
         await page.getByRole("heading", { name: historical ? "Boundaries are explicit." : "Organization overview" }).waitFor();
+        await checkNextLink(page, /^\s*Amsonia Next\s*$/);
         const organization = process.env.SMOKE_ORGANIZATION ?? "My organization";
         await page.getByText(organization, { exact: false }).first().waitFor();
         assert.equal(await page.getByRole("button", { name: "Create tenant", exact: true }).count(), 0);

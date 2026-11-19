@@ -97,7 +97,7 @@ See [the setup guide](docs/getting-started.md#organization-model) for configurat
 
 ## Install Amsonia Core
 
-Start with [v0.2.0](https://github.com/willunylabs/amsonia-core/releases/tag/v0.2.0)
+Start with the [latest release](https://github.com/willunylabs/amsonia-core/releases/latest)
 for a verified Linux amd64 installation. Download the archive and its
 `SHA256SUMS`, then follow the [install guide](deploy/preview/README.md). See
 the [release guide](docs/releases.md) for compatibility, tested upgrade paths,
