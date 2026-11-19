@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0
+
+- Scope logout to the current device family and preserve shared cookies for
+  other sessions.
+- Retry audit writes after PostgreSQL serialization conflicts and retain
+  device activity after access tokens expire.
+- Keep Unicode invoice descriptions intact and validate tenant identifiers
+  consistently in authorization checks.
+- Package the API, CLI, Console and PostgreSQL 16 in a checksummed Linux amd64
+  release archive.
+
+This release and preview.8 use schema 12. Back up the database before upgrading
+and update the API, CLI and Console together.
+
 ## 0.2.0-preview.8
 
 - Reject malformed administrator grants when checking whether a tenant can

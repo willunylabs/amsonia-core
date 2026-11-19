@@ -1,4 +1,4 @@
-name: Preview bundle
+name: Release bundle
 
 on:
   pull_request:
@@ -39,7 +39,7 @@ jobs:
           python3 -B "$GITHUB_WORKSPACE/scripts/smoke-preview.py" amsonia-core-*-linux-amd64 \
             --browser-module "$RUNNER_TEMP/preview-browser/node_modules/playwright" \
             --screenshots "$RUNNER_TEMP/preview/screenshots"
-      - name: Verify backup and upgrade from the previous preview
+      - name: Verify backup and upgrade from the published release
         run: |
           mkdir -p "$RUNNER_TEMP/preview-upgrade"
           tar -xzf "$RUNNER_TEMP"/preview/amsonia-core-*-linux-amd64.tar.gz -C "$RUNNER_TEMP/preview-upgrade"

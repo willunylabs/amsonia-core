@@ -10,8 +10,8 @@ cd -- "$(dirname -- "$0")/.."
 version="$(node -p "require('./web/package.json').version")"
 api_version="$(awk '/^  version: / { print $2; exit }' openapi/openapi.yaml)"
 lock_version="$(node -p "const p=require('./web/package-lock.json'); p.version === p.packages[''].version ? p.version : ''")"
-if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ || "$version" != "$api_version" || "$version" != "$lock_version" ]]; then
-    echo 'Preview package, lockfile and OpenAPI versions must match.' >&2
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-preview\.[0-9]+)?$ || "$version" != "$api_version" || "$version" != "$lock_version" ]]; then
+    echo 'The package, lockfile and OpenAPI must use the same release version.' >&2
     exit 1
 fi
 if [[ "${GITHUB_REF_TYPE:-}" == tag && "${GITHUB_REF_NAME:-}" != "v$version" ]]; then

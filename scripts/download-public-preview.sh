@@ -3,7 +3,7 @@ set -euo pipefail
 
 release_tag="$1"
 output="$2"
-[[ "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$ ]]
+[[ "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-preview\.[0-9]+)?$ ]]
 mkdir -p "$output"
 cd "$output"
 version="${release_tag#v}"
