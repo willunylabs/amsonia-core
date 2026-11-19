@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1
+
+- Link to Amsonia Next by name from the Core sign-in page and Console sidebar.
+- Check both entry points in the packaged browser tests on desktop and mobile.
+- Point the installation guide to the current GitHub release.
+
+This release continues to use schema 12.
+
 ## 0.2.0
 
 - Scope logout to the current device family and preserve shared cookies for

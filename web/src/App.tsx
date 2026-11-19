@@ -118,7 +118,7 @@ function Login({ onLogin }: { onLogin: (account: Account) => void }) {
             </a>
             <span> · </span>
             <a href={COMMERCIAL_URL} target="_blank" rel="noreferrer">
-              See Amsonia Source Distribution
+              Explore Amsonia Next
             </a>
           </p>
         </div>
@@ -594,7 +594,7 @@ function Console({
             Self-hosted console
           </div>
           <a href={COMMERCIAL_URL} target="_blank" rel="noreferrer">
-            Amsonia Source Distribution <ArrowRight size={13} />
+            Amsonia Next <ArrowRight size={13} />
           </a>
         </div>
       </aside>

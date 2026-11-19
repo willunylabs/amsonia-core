@@ -8,7 +8,7 @@ COPY ops/nginx.conf ./nginx.conf
 COPY scripts/configure-web-proxy.mjs ./configure-web-proxy.mjs
 ARG VITE_API_URL=
 ARG VITE_GITHUB_URL=https://github.com/willunylabs/amsonia-core
-ARG VITE_COMMERCIAL_URL=https://amsonia.dev/platform/
+ARG VITE_COMMERCIAL_URL=https://amsonia.dev/store/en/products/amsonia-next
 ENV VITE_API_URL=$VITE_API_URL \
     VITE_GITHUB_URL=$VITE_GITHUB_URL \
     VITE_COMMERCIAL_URL=$VITE_COMMERCIAL_URL

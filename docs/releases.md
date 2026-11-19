@@ -6,7 +6,7 @@ the archive layout and backup procedure.
 
 | Release | Status | Verified environment |
 | --- | --- | --- |
-| [v0.2.0](https://github.com/willunylabs/amsonia-core/releases/tag/v0.2.0) | Current release | Linux amd64, Docker Compose 2.24.4 or newer, PostgreSQL 16, Amsonia schema 12 |
+| [Latest release](https://github.com/willunylabs/amsonia-core/releases/latest) | Recommended install bundle | Linux amd64, Docker Compose 2.24.4 or newer, PostgreSQL 16, Amsonia schema 12 |
 
 Older versions are recorded in the [changelog](../CHANGELOG.md). Use the
 current release for new installations and Go SDK dependencies.
