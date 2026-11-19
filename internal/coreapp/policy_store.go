@@ -2,9 +2,11 @@ package coreapp
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/willunylabs/amsonia-core"
 	"github.com/willunylabs/amsonia-core/internal/adminpolicy"
 )
@@ -154,12 +156,11 @@ func hasActiveAdministrator(ctx context.Context, query policyQueryer, tenant ams
 // after rollback. Request IDs make retries idempotent at the audit boundary.
 func (s *Service) RecordSecurityEvent(ctx context.Context, event amsonia.MutationAuditEvent) error {
 	slog.WarnContext(ctx, "security audit", "tenant", event.TenantID, "operation", event.Operation, "outcome", event.Outcome, "request_id", event.RequestID)
-	return s.store.RunTenant(ctx, event.TenantID, false, func(tx pgx.Tx) error {
+	insert := func(tx pgx.Tx) error {
 		// The audit table's primary key is a generated row ID, so ON CONFLICT
 		// alone cannot deduplicate a request. The serialized tenant transaction
-		// makes this existence check and insert atomic; concurrent snapshots may
-		// return a serialization error, which is safe to retry. Empty request IDs
-		// do not identify retries and must retain each independent event.
+		// makes this existence check and insert atomic. Empty request IDs do
+		// not identify retries and must retain each independent event.
 		_, err := tx.Exec(ctx, `INSERT INTO amsonia.audit_events
   (tenant_id,actor_subject,host_initiator,operation,phase,target_type,target_id,outcome,reason_code,request_id,role_version,at)
   SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
@@ -168,5 +169,18 @@ func (s *Service) RecordSecurityEvent(ctx context.Context, event amsonia.Mutatio
     WHERE tenant_id=$1 AND request_id=$10 AND operation=$4 AND phase=$5
   )`, string(event.TenantID), string(event.ActorSubjectID), event.HostInitiator, event.Operation, string(event.Phase), event.TargetType, event.TargetID, string(event.Outcome), event.ReasonCode, event.RequestID, event.RoleVersion, event.At)
 		return err
-	})
+	}
+	// A serialization failure aborts the transaction, including any insert.
+	// Use a fresh snapshot for each retry within the caller's deadline.
+	const maxAttempts = 4
+	for attempt := 1; ; attempt++ {
+		err := s.store.RunTenant(ctx, event.TenantID, false, insert)
+		var pgError *pgconn.PgError
+		if attempt == maxAttempts || !errors.As(err, &pgError) || pgError.Code != "40001" {
+			return err
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+	}
 }

@@ -411,11 +411,14 @@ func (api *API) logout(response http.ResponseWriter, request *http.Request) {
 	if cookie, err := request.Cookie("amsonia_refresh"); err == nil {
 		refreshToken = cookie.Value
 	}
-	if err := api.service.logoutSessions(request.Context(), accessToken, refreshToken); err != nil {
+	clearCookie, err := api.service.logoutSessions(request.Context(), accessToken, refreshToken)
+	if err != nil {
 		writeDomainError(response, err)
 		return
 	}
-	api.clearRefreshCookie(response, request)
+	if clearCookie {
+		api.clearRefreshCookie(response, request)
+	}
 	response.WriteHeader(http.StatusNoContent)
 }
 

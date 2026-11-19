@@ -504,17 +504,20 @@ func (s *Service) Authenticate(ctx context.Context, accessToken string) (Account
 
 // Logout revokes the device family identified by an access token.
 func (s *Service) Logout(ctx context.Context, accessToken string) error {
-	return s.logoutSessions(ctx, accessToken, "")
+	_, err := s.logoutSessions(ctx, accessToken, "")
+	return err
 }
 
 // RevokeRefresh revokes the device family identified by a refresh token.
 func (s *Service) RevokeRefresh(ctx context.Context, refreshToken string) error {
-	return s.logoutSessions(ctx, "", refreshToken)
+	_, err := s.logoutSessions(ctx, "", refreshToken)
+	return err
 }
 
-// logoutSessions locks accounts in a consistent order with refresh/password
-// changes, then revokes both supplied token families in one transaction.
-func (s *Service) logoutSessions(ctx context.Context, accessToken, refreshToken string) error {
+// logoutSessions revokes one device family and reports whether to clear the
+// browser cookie. A supplied bearer identifies the tab's session, even after
+// expiry. The shared cookie may belong to a different session.
+func (s *Service) logoutSessions(ctx context.Context, accessToken, refreshToken string) (bool, error) {
 	var accessHash, refreshHash []byte
 	if strings.HasPrefix(accessToken, "as_") && len(accessToken) <= 128 {
 		accessHash = tokenHash(accessToken)
@@ -523,34 +526,44 @@ func (s *Service) logoutSessions(ctx context.Context, accessToken, refreshToken 
 		refreshHash = tokenHash(refreshToken)
 	}
 	if accessHash == nil && refreshHash == nil {
-		return nil
+		return true, nil
 	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer tx.Rollback(context.Background())
-	rows, err := tx.Query(ctx, `SELECT account_id FROM amsonia.accounts WHERE account_id IN (
- SELECT account_id FROM amsonia.access_sessions WHERE token_hash=$1
- UNION SELECT account_id FROM amsonia.refresh_sessions WHERE token_hash=$2
- ) ORDER BY account_id FOR UPDATE`, accessHash, refreshHash)
-	if err != nil {
-		return err
+	type sessionFamily struct{ accountID, sessionID string }
+	var access, refresh sessionFamily
+	if err := tx.QueryRow(ctx, `SELECT COALESCE(a.account_id,''), COALESCE(a.session_id,''),
+  COALESCE(r.account_id,''), COALESCE(r.session_id,'')
+ FROM (VALUES ($1::bytea,$2::bytea)) AS tokens(access_hash,refresh_hash)
+ LEFT JOIN amsonia.access_sessions a ON a.token_hash=tokens.access_hash
+ LEFT JOIN amsonia.refresh_sessions r ON r.token_hash=tokens.refresh_hash`, accessHash, refreshHash).
+		Scan(&access.accountID, &access.sessionID, &refresh.accountID, &refresh.sessionID); err != nil {
+		return false, err
 	}
-	if _, err := pgx.CollectRows(rows, pgx.RowTo[string]); err != nil {
-		return err
+	target := access
+	if accessToken == "" {
+		target = refresh
 	}
+	clearCookie := refresh.accountID == "" || refresh == target
+	if target.accountID == "" {
+		return clearCookie, nil
+	}
+	// Lock the account before writing either token table, as refresh and
+	// credential changes do. A refresh that wins the lock is revoked as well.
+	if _, err := tx.Exec(ctx, `SELECT account_id FROM amsonia.accounts WHERE account_id=$1 FOR UPDATE`, target.accountID); err != nil {
+		return false, err
+	}
+	now := s.now()
 	for _, table := range []string{"access_sessions", "refresh_sessions"} {
-		_, err = tx.Exec(ctx, `UPDATE amsonia.`+table+` SET revoked_at=COALESCE(revoked_at,$3)
-   WHERE (account_id,session_id) IN (
-    SELECT account_id,session_id FROM amsonia.access_sessions WHERE token_hash=$1
-    UNION SELECT account_id,session_id FROM amsonia.refresh_sessions WHERE token_hash=$2
-   )`, accessHash, refreshHash, s.now())
-		if err != nil {
-			return err
+		if _, err := tx.Exec(ctx, `UPDATE amsonia.`+table+` SET revoked_at=$3
+ WHERE account_id=$1 AND session_id=$2 AND revoked_at IS NULL`, target.accountID, target.sessionID, now); err != nil {
+			return false, err
 		}
 	}
-	return tx.Commit(ctx)
+	return clearCookie, tx.Commit(ctx)
 }
 
 func (s *Service) ListTenants(ctx context.Context, accountID string) ([]Tenant, error) {

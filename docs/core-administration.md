@@ -54,8 +54,9 @@ A device session family keeps its stable ID across refresh rotations. Revoking
 it invalidates both token types. The session list contains timestamps and browser
 metadata. The sign-in time stays fixed after older token rows are cleaned up.
 Migration 12 initializes it from the earliest retained row in each family.
-The displayed address and browser come from the same most recently active
-token record. Remote addresses come from the API's
+The displayed activity time, address and browser come from the latest retained
+activity in the device family, including activity on expired access tokens.
+Remote addresses come from the API's
 connection, so reverse-proxy addresses may appear. Activity updates are throttled
 to once per minute.
 
@@ -85,12 +86,13 @@ new tab has no access token. The optional `POST /api/v1/auth/restore` endpoint
 returns 204 for an anonymous browser, without generating a normal sign-in error.
 Temporary network or service failures retain the
 credentials and offer retry; a definitive rejection returns to sign-in. Signing
-out waits for server confirmation and revokes the entire device session family,
-including older live access tokens from refresh rotations. Other device families
-remain active. Revoked current refresh tokens are rejected without affecting
-other devices; reuse of a token already consumed by rotation still invokes the
-account-wide replay response. If rotation commits but its response is lost,
-retrying with the old cookie triggers that response and requires a fresh sign-in.
+out waits for server confirmation and revokes the device family identified by
+the tab's bearer, including older live access tokens from refresh rotations.
+Without a bearer, the refresh cookie identifies the family. Cookies belonging
+to other device families are preserved. Reusing a refresh token consumed by
+rotation still invokes the account-wide replay response. If rotation commits
+but its response is lost, retrying with the old cookie triggers that response
+and requires a fresh sign-in.
 
 Cookie-changing sign-in, refresh, sign-out and password-change requests are ordered within each
 page and, when available, across tabs using the browser's

@@ -167,14 +167,14 @@ paths:
       summary: Revoke a session
       tags: [Authentication]
       operationId: logout
-      description: Atomically revokes the device session families identified by supplied access and refresh credentials, including older live access tokens from rotation. Other device families remain active. It is safe to call after access expiry. Failed requests retain the refresh cookie for an explicit retry.
+      description: Revokes the device family identified by the bearer, including after access expiry. Without a bearer, the refresh cookie identifies the family. A refresh cookie for another device family is preserved. Failed requests retain the refresh cookie for an explicit retry.
       security:
         - bearerAuth: []
         - refreshCookie: []
       responses:
         "204":
           {
-            description: Device session families revoked and refresh cookie cleared.,
+            description: Logout completed. A matching or unrecognized refresh cookie is cleared.,
           }
         "500":
           description: Logout failed; credentials and cookie are retained for retry.
