@@ -98,7 +98,7 @@ func TestDeviceLogoutAndRefreshLifecycle(t *testing.T) {
 		}()
 		go func() {
 			defer group.Done()
-			logoutError = s.logoutSessions(ctx, session.AccessToken, session.RefreshToken)
+			_, logoutError = s.logoutSessions(ctx, session.AccessToken, session.RefreshToken)
 		}()
 		group.Wait()
 		if logoutError != nil {
@@ -146,6 +146,73 @@ func TestDeviceLogoutAndRefreshLifecycle(t *testing.T) {
 	}
 	assertInvalid(latest.AccessToken)
 	assertInvalid(other.AccessToken)
+}
+
+func TestLogoutPreservesOtherDeviceFamilies(t *testing.T) {
+	s, _, handler, owner := coreFixture(t)
+	ctx := t.Context()
+	const password = "shared-browser-test-password"
+	admin, err := s.BootstrapAdmin(ctx, BootstrapInput{Email: "browser-admin@example.test", Password: password})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tenant, err := s.CreateTenant(ctx, admin, CreateTenantInput{Name: "Shared browser"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	member, err := s.ProvisionMember(ctx, admin, ProvisionMemberInput{TenantID: tenant.ID, Email: "browser-member@example.test", Password: password})
+	if err != nil {
+		t.Fatal(err)
+	}
+	login := func(account Account) Session {
+		t.Helper()
+		session, err := s.Login(ctx, LoginInput{Email: account.Email, Password: password})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return session
+	}
+	logout := func(access, refresh string, clear bool) {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
+		if access != "" {
+			req.Header.Set("Authorization", "Bearer "+access)
+		}
+		req.AddCookie(&http.Cookie{Name: "amsonia_refresh", Value: refresh})
+		res := httptest.NewRecorder()
+		handler.ServeHTTP(res, req)
+		cookies := res.Result().Cookies()
+		if res.Code != http.StatusNoContent || clear && (len(cookies) != 1 || cookies[0].MaxAge != -1) || !clear && len(cookies) != 0 {
+			t.Fatalf("logout clear=%t: %d, %d cookies, %s", clear, res.Code, len(cookies), res.Body.String())
+		}
+	}
+	assertRevoked := func(session Session) {
+		t.Helper()
+		if _, err := s.Authenticate(ctx, session.AccessToken); !errors.Is(err, ErrSessionInvalid) {
+			t.Fatalf("access still valid: %v", err)
+		}
+		if _, err := s.Refresh(ctx, RefreshInput{RefreshToken: session.RefreshToken}); !errors.Is(err, ErrSessionInvalid) {
+			t.Fatalf("refresh still valid: %v", err)
+		}
+	}
+	first, shared, second := login(admin), login(member), login(member)
+	if _, err := owner.Exec(ctx, `UPDATE amsonia.access_sessions SET expires_at=now()-interval '1 second' WHERE token_hash=$1`, tokenHash(first.AccessToken)); err != nil {
+		t.Fatal(err)
+	}
+	logout(first.AccessToken, shared.RefreshToken, false)
+	assertRevoked(first)
+	logout(second.AccessToken, shared.RefreshToken, false)
+	assertRevoked(second)
+	logout("as_unknown", shared.RefreshToken, false)
+	if _, err := s.Authenticate(ctx, shared.AccessToken); err != nil {
+		t.Fatalf("shared-cookie family was revoked: %v", err)
+	}
+	shared, err = s.Refresh(ctx, RefreshInput{RefreshToken: shared.RefreshToken})
+	if err != nil {
+		t.Fatalf("shared cookie could not refresh: %v", err)
+	}
+	logout("", shared.RefreshToken, true)
+	assertRevoked(shared)
 }
 
 func TestRefreshRechecksExpiryAfterAccountLock(t *testing.T) {
@@ -242,6 +309,21 @@ func TestSessionDeviceMetadataSurvivesPruning(t *testing.T) {
 	}
 	if after := list(next.AccessToken); before.ID != after.ID {
 		t.Fatalf("session ID changed from %s to %s", before.ID, after.ID)
+	}
+	lastActive := now.Add(2 * time.Minute)
+	now = lastActive
+	if _, err := s.Authenticate(ctx, next.AccessToken); err != nil {
+		t.Fatal(err)
+	}
+	now = next.ExpiresAt
+	sessions, err := s.ListSessions(ctx, account.ID, next.AccessToken)
+	if err != nil || len(sessions) != 1 || sessions[0].ID != before.ID || sessions[0].Current ||
+		!sessions[0].LastSeenAt.Equal(lastActive) || !sessions[0].ExpiresAt.Equal(before.ExpiresAt) {
+		t.Fatalf("access expiry changed live device activity: %+v %v", sessions, err)
+	}
+	now = before.ExpiresAt
+	if sessions, err := s.ListSessions(ctx, account.ID, next.AccessToken); err != nil || len(sessions) != 0 {
+		t.Fatalf("retained activity kept an expired device visible: %+v %v", sessions, err)
 	}
 }
 

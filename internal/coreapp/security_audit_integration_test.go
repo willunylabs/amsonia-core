@@ -3,11 +3,9 @@
 package coreapp
 
 import (
-	"errors"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/willunylabs/amsonia-core"
 )
 
@@ -55,23 +53,14 @@ func TestSecurityAuditDeduplicatesRequestRetries(t *testing.T) {
 		t.Fatalf("distinct events were discarded: count=%d error=%v", count, err)
 	}
 
-	// Concurrent serializable snapshots may conflict. Retrying those conflicts
-	// must leave exactly one durable event, even though the generated row IDs differ.
+	// Concurrent writers each call the production sink once.
 	event.RequestID = "concurrent-request"
 	start := make(chan struct{})
 	results := make(chan error, 6)
 	for range 6 {
 		go func() {
 			<-start
-			var err error
-			for range 6 {
-				err = service.RecordSecurityEvent(ctx, event)
-				var databaseError *pgconn.PgError
-				if !errors.As(err, &databaseError) || databaseError.Code != "40001" {
-					break
-				}
-			}
-			results <- err
+			results <- service.RecordSecurityEvent(ctx, event)
 		}()
 	}
 	close(start)
@@ -83,5 +72,30 @@ func TestSecurityAuditDeduplicatesRequestRetries(t *testing.T) {
 	if err := owner.QueryRow(ctx, `SELECT count(*) FROM amsonia.audit_events
 		WHERE tenant_id=$1 AND request_id=$2`, event.TenantID, event.RequestID).Scan(&count); err != nil || count != 1 {
 		t.Fatalf("concurrent retries duplicated audit: count=%d error=%v", count, err)
+	}
+
+	// Force a serialization failure at commit after the insert has succeeded.
+	// nextval survives the aborted transaction and permits a fresh attempt.
+	if _, err := owner.Exec(ctx, `
+		CREATE SEQUENCE amsonia.audit_test_attempts;
+		CREATE FUNCTION amsonia.fail_first_audit_commit() RETURNS trigger
+		LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $$
+		BEGIN
+			IF nextval('amsonia.audit_test_attempts'::regclass) = 1 THEN
+				RAISE EXCEPTION 'test serialization failure' USING ERRCODE = '40001';
+			END IF;
+			RETURN NEW;
+		END;
+		$$;
+		CREATE CONSTRAINT TRIGGER audit_test_fail_once
+		AFTER INSERT ON amsonia.audit_events DEFERRABLE INITIALLY DEFERRED
+		FOR EACH ROW WHEN (NEW.request_id = 'commit-retry') EXECUTE FUNCTION amsonia.fail_first_audit_commit();`); err != nil {
+		t.Fatal(err)
+	}
+	event.RequestID = "commit-retry"
+	record(event)
+	if err := owner.QueryRow(ctx, `SELECT count(*) FROM amsonia.audit_events
+		WHERE tenant_id=$1 AND request_id=$2`, event.TenantID, event.RequestID).Scan(&count); err != nil || count != 1 {
+		t.Fatalf("commit retry lost or duplicated audit: count=%d error=%v", count, err)
 	}
 }
