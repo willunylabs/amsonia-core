@@ -167,7 +167,7 @@ must perform the same strip and forward the trusted HTTPS scheme, and the API
 process must set `AMSONIA_API_PREFIX=/backend`. Prefixes contain only ASCII
 letters, digits, `-._~` and slash-separated segments, without dot segments or
 a trailing slash. This is an API prefix, not a mount path for the whole web app.
-Prebuilt preview archives use the empty prefix; changing their `.env` cannot
+Prebuilt release archives use the empty prefix; changing their `.env` cannot
 rebuild the static frontend. Keep their default or build from source.
 
 ## PostgreSQL integration checks

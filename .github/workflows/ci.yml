@@ -39,7 +39,7 @@ jobs:
           trap 'rm -rf -- "$workdir"' EXIT
           cd "$workdir"
           go mod init example.com/amsonia-sdk-example
-          go get github.com/willunylabs/amsonia-core@v0.2.0-preview.8
+          go get github.com/willunylabs/amsonia-core@v0.2.0
           sdk_dir="$(go list -m -f '{{.Dir}}' github.com/willunylabs/amsonia-core)"
           cp "$sdk_dir/examples/saas/main.go" ./main.go
           go mod tidy
