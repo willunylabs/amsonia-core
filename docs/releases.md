@@ -7,8 +7,9 @@ the archive layout and backup procedure.
 | Release | Status | Verified environment |
 | --- | --- | --- |
 | [v0.2.0-preview.8](https://github.com/willunylabs/amsonia-core/releases/tag/v0.2.0-preview.8) | Recommended preview | Linux amd64, Docker Compose 2.24.4 or newer, PostgreSQL 16, Amsonia schema 12 |
-| [v0.2.0-preview.7](https://github.com/willunylabs/amsonia-core/releases/tag/v0.2.0-preview.7) | Previous preview | Linux amd64, Docker Compose 2.24.4 or newer, PostgreSQL 16, Amsonia schema 12 |
-| [v0.1.0](https://github.com/willunylabs/amsonia-core/releases/tag/v0.1.0) | Legacy stable tag, displayed as Latest by GitHub | Refer to the original release for its scope |
+
+Older versions are recorded in the [changelog](../CHANGELOG.md). Use the
+recommended preview for new installations and Go SDK dependencies.
 
 The published preview archive contains the API, CLI, Console and PostgreSQL 16
 images. Use its `VERSION` and `REVISION` files when reporting a problem. For

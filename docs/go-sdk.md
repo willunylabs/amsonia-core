@@ -7,7 +7,7 @@ the kernel without a database or running Console.
 ## Run from your own module
 
 With Go 1.26.11 or newer, run these commands from a directory where you want to
-create a disposable example. They use the published preview.7 module and the
+create a disposable example. They use the published preview.8 module and the
 example included in that version.
 
 ```bash
@@ -15,7 +15,7 @@ mkdir amsonia-sdk-example
 cd amsonia-sdk-example
 export GOWORK=off
 go mod init example.com/amsonia-sdk-example
-go get github.com/willunylabs/amsonia-core@v0.2.0-preview.7
+go get github.com/willunylabs/amsonia-core@v0.2.0-preview.8
 sdk_dir="$(go list -m -f '{{.Dir}}' github.com/willunylabs/amsonia-core)"
 cp "$sdk_dir/examples/saas/main.go" ./main.go
 go mod tidy
